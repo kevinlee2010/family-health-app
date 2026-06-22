@@ -1,18 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import './App.css'
 
-const STORAGE_KEY = 'family-health-tracker.members.v1'
+const relationships = ['Mother', 'Father', 'Sibling', 'Grandparent']
 
-const blankMember = {
-  name: '',
-  relationship: '',
-}
-
-const blankMedication = {
-  name: '',
-  dosage: '',
-  schedule: '',
-}
+const conditions = [
+  'Type 2 diabetes',
+  'Heart disease',
+  'High blood pressure',
+  'High cholesterol',
+  'Breast cancer',
+  'Colon cancer',
+  'Stroke',
+]
 
 function createId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -22,323 +21,149 @@ function createId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-function getInitial(name) {
-  return name.trim().charAt(0).toUpperCase() || '?'
-}
-
-function loadMembers() {
-  try {
-    const storedMembers = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-
-    if (!Array.isArray(storedMembers)) {
-      return []
-    }
-
-    return storedMembers
-      .filter((member) => member && typeof member.name === 'string')
-      .map((member) => ({
-        id: member.id || createId(),
-        name: member.name,
-        relationship: member.relationship || '',
-        medications: Array.isArray(member.medications)
-          ? member.medications
-              .filter(
-                (medication) =>
-                  medication && typeof medication.name === 'string',
-              )
-              .map((medication) => ({
-                id: medication.id || createId(),
-                name: medication.name,
-                dosage: medication.dosage || '',
-                schedule: medication.schedule || '',
-              }))
-          : [],
-      }))
-  } catch {
-    return []
-  }
-}
-
 function App() {
-  const [members, setMembers] = useState(loadMembers)
-  const [memberForm, setMemberForm] = useState(blankMember)
-  const [medicationForms, setMedicationForms] = useState({})
+  const [familyMembers, setFamilyMembers] = useState([])
+  const [relationship, setRelationship] = useState('')
+  const [selectedConditions, setSelectedConditions] = useState([])
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(members))
-  }, [members])
+  function toggleCondition(condition) {
+    setSelectedConditions((currentConditions) =>
+      currentConditions.includes(condition)
+        ? currentConditions.filter((item) => item !== condition)
+        : [...currentConditions, condition],
+    )
+  }
 
-  const medicationCount = useMemo(
-    () => members.reduce((total, member) => total + member.medications.length, 0),
-    [members],
-  )
-
-  function addMember(event) {
+  function addFamilyMember(event) {
     event.preventDefault()
 
-    const name = memberForm.name.trim()
-    const relationship = memberForm.relationship.trim()
-
-    if (!name) {
+    if (!relationship) {
+      setError('Choose a relationship before adding a family member.')
       return
     }
 
-    setMembers((currentMembers) => [
+    setFamilyMembers((currentMembers) => [
       ...currentMembers,
       {
         id: createId(),
-        name,
         relationship,
-        medications: [],
+        conditions: selectedConditions,
       },
     ])
-    setMemberForm(blankMember)
+    setRelationship('')
+    setSelectedConditions([])
+    setError('')
   }
 
-  function removeMember(memberId) {
-    setMembers((currentMembers) =>
+  function removeFamilyMember(memberId) {
+    setFamilyMembers((currentMembers) =>
       currentMembers.filter((member) => member.id !== memberId),
-    )
-    setMedicationForms((currentForms) => {
-      const nextForms = { ...currentForms }
-      delete nextForms[memberId]
-      return nextForms
-    })
-  }
-
-  function updateMedicationForm(memberId, field, value) {
-    setMedicationForms((currentForms) => ({
-      ...currentForms,
-      [memberId]: {
-        ...blankMedication,
-        ...currentForms[memberId],
-        [field]: value,
-      },
-    }))
-  }
-
-  function addMedication(event, memberId) {
-    event.preventDefault()
-
-    const medicationForm = medicationForms[memberId] || blankMedication
-    const name = medicationForm.name.trim()
-    const dosage = medicationForm.dosage.trim()
-    const schedule = medicationForm.schedule.trim()
-
-    if (!name || !schedule) {
-      return
-    }
-
-    setMembers((currentMembers) =>
-      currentMembers.map((member) =>
-        member.id === memberId
-          ? {
-              ...member,
-              medications: [
-                ...member.medications,
-                {
-                  id: createId(),
-                  name,
-                  dosage,
-                  schedule,
-                },
-              ],
-            }
-          : member,
-      ),
-    )
-    setMedicationForms((currentForms) => ({
-      ...currentForms,
-      [memberId]: blankMedication,
-    }))
-  }
-
-  function removeMedication(memberId, medicationId) {
-    setMembers((currentMembers) =>
-      currentMembers.map((member) =>
-        member.id === memberId
-          ? {
-              ...member,
-              medications: member.medications.filter(
-                (medication) => medication.id !== medicationId,
-              ),
-            }
-          : member,
-      ),
     )
   }
 
   return (
     <main className="app-shell">
-      <section className="app-header" aria-labelledby="app-title">
-        <div>
-          <p className="eyebrow">Family health</p>
-          <h1 id="app-title">Medication Tracker</h1>
+      <section className="family-form-panel" aria-labelledby="form-title">
+        <div className="page-heading">
+          <p className="eyebrow">Family history</p>
+          <h1 id="form-title">Add a family member</h1>
         </div>
-        <div className="summary-grid" aria-label="Tracker summary">
-          <div>
-            <strong>{members.length}</strong>
-            <span>Members</span>
-          </div>
-          <div>
-            <strong>{medicationCount}</strong>
-            <span>Medications</span>
-          </div>
-        </div>
-      </section>
 
-      <section className="add-member-panel" aria-labelledby="add-member-title">
-        <div>
-          <h2 id="add-member-title">Add Family Member</h2>
-        </div>
-        <form className="member-form" onSubmit={addMember}>
-          <label>
-            Name
-            <input
-              value={memberForm.name}
-              onChange={(event) =>
-                setMemberForm((currentForm) => ({
-                  ...currentForm,
-                  name: event.target.value,
-                }))
-              }
-              placeholder="Avery"
-              required
-            />
-          </label>
-          <label>
+        <form className="family-form" onSubmit={addFamilyMember} noValidate>
+          <label className="field-group" htmlFor="relationship">
             Relationship
-            <input
-              value={memberForm.relationship}
-              onChange={(event) =>
-                setMemberForm((currentForm) => ({
-                  ...currentForm,
-                  relationship: event.target.value,
-                }))
-              }
-              placeholder="Parent"
-            />
+            <select
+              id="relationship"
+              value={relationship}
+              onChange={(event) => {
+                setRelationship(event.target.value)
+                setError('')
+              }}
+              required
+            >
+              <option value="">Choose one</option>
+              {relationships.map((relationshipOption) => (
+                <option key={relationshipOption} value={relationshipOption}>
+                  {relationshipOption}
+                </option>
+              ))}
+            </select>
           </label>
-          <button type="submit">Add member</button>
+
+          <fieldset className="condition-fieldset">
+            <legend>Conditions</legend>
+            <div className="condition-grid">
+              {conditions.map((condition) => (
+                <label className="condition-option" key={condition}>
+                  <input
+                    type="checkbox"
+                    checked={selectedConditions.includes(condition)}
+                    onChange={() => toggleCondition(condition)}
+                  />
+                  <span>{condition}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <p className="form-error" role="alert" aria-live="polite">
+            {error}
+          </p>
+
+          <button className="primary-action" type="submit">
+            <span aria-hidden="true" className="button-icon">
+              +
+            </span>
+            Add family member
+          </button>
         </form>
       </section>
 
-      <section className="member-list" aria-label="Family medication list">
-        {members.length === 0 ? (
+      <section className="family-list-panel" aria-labelledby="list-title">
+        <div className="list-heading">
+          <div>
+            <p className="eyebrow">Current entries</p>
+            <h2 id="list-title">Family members</h2>
+          </div>
+          <span className="member-count">{familyMembers.length} added</span>
+        </div>
+
+        {familyMembers.length === 0 ? (
           <div className="empty-state">
-            <h2>No Family Members Yet</h2>
-            <p>Add a family member to begin tracking medications.</p>
+            <strong>No family members added yet.</strong>
+            <span>Submitted entries will appear here.</span>
           </div>
         ) : (
-          members.map((member) => {
-            const medicationForm = medicationForms[member.id] || blankMedication
-
-            return (
-              <article className="member-card" key={member.id}>
-                <header className="member-card-header">
-                  <div className="member-identity">
-                    <span aria-hidden="true" className="avatar">
-                      {getInitial(member.name)}
-                    </span>
-                    <div>
-                      <h2>{member.name}</h2>
-                      <p>{member.relationship || 'Family member'}</p>
-                    </div>
-                  </div>
+          <ul className="family-list" aria-live="polite">
+            {familyMembers.map((member) => (
+              <li className="family-card" key={member.id}>
+                <div className="family-card-header">
+                  <p className="relationship-name">{member.relationship}</p>
                   <button
-                    className="text-button"
+                    className="remove-button"
                     type="button"
-                    onClick={() => removeMember(member.id)}
+                    aria-label={`Remove ${member.relationship}`}
+                    onClick={() => removeFamilyMember(member.id)}
                   >
-                    Remove
+                    &times;
                   </button>
-                </header>
-
-                <div className="medication-section">
-                  <div className="section-title-row">
-                    <h3>Medications</h3>
-                    <span>{member.medications.length}</span>
-                  </div>
-
-                  {member.medications.length === 0 ? (
-                    <p className="empty-line">No medications added.</p>
-                  ) : (
-                    <ul className="medication-list">
-                      {member.medications.map((medication) => (
-                        <li key={medication.id}>
-                          <div>
-                            <strong>{medication.name}</strong>
-                            <span>{medication.schedule}</span>
-                            {medication.dosage ? <em>{medication.dosage}</em> : null}
-                          </div>
-                          <button
-                            className="text-button"
-                            type="button"
-                            onClick={() =>
-                              removeMedication(member.id, medication.id)
-                            }
-                          >
-                            Remove
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
 
-                <form
-                  className="medication-form"
-                  onSubmit={(event) => addMedication(event, member.id)}
-                >
-                  <label>
-                    Medication
-                    <input
-                      value={medicationForm.name}
-                      onChange={(event) =>
-                        updateMedicationForm(
-                          member.id,
-                          'name',
-                          event.target.value,
-                        )
-                      }
-                      placeholder="Vitamin D"
-                      required
-                    />
-                  </label>
-                  <label>
-                    Dosage
-                    <input
-                      value={medicationForm.dosage}
-                      onChange={(event) =>
-                        updateMedicationForm(
-                          member.id,
-                          'dosage',
-                          event.target.value,
-                        )
-                      }
-                      placeholder="1000 IU"
-                    />
-                  </label>
-                  <label>
-                    Schedule
-                    <input
-                      value={medicationForm.schedule}
-                      onChange={(event) =>
-                        updateMedicationForm(
-                          member.id,
-                          'schedule',
-                          event.target.value,
-                        )
-                      }
-                      placeholder="Morning"
-                      required
-                    />
-                  </label>
-                  <button type="submit">Add medication</button>
-                </form>
-              </article>
-            )
-          })
+                {member.conditions.length > 0 ? (
+                  <ul className="condition-list">
+                    {member.conditions.map((condition) => (
+                      <li className="condition-pill" key={condition}>
+                        {condition}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="no-conditions">No listed conditions selected.</p>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </main>
