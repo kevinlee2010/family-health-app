@@ -62,6 +62,7 @@ p {
 }
 
 button,
+input,
 select {
   font: inherit;
 }
@@ -94,7 +95,8 @@ h2 {
   font-weight: 750;
 }
 
-select {
+select,
+input {
   width: 100%;
   min-height: 48px;
   border: 1px solid var(--line);
@@ -102,70 +104,169 @@ select {
   background: var(--surface);
   color: var(--ink);
   padding: 0 14px;
+  font-weight: 500;
   outline: none;
 }
 
 select:focus,
-.condition-option:focus-within {
+input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.14);
 }
 
-.condition-fieldset {
+.illness-fieldset {
   margin: 0;
   padding: 0;
   border: 0;
 }
 
-.condition-fieldset legend {
+.illness-fieldset legend {
   margin-bottom: 10px;
   color: #26352f;
   font-size: 0.95rem;
   font-weight: 750;
 }
 
-.condition-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
 }
 
-.condition-option {
-  min-height: 46px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.autocomplete {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.autocomplete .field-group {
+  gap: 0;
+}
+
+.autocomplete-input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.add-illness-button {
+  min-height: 48px;
+  border: 1px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  background: var(--accent);
+  color: #ffffff;
+  padding: 0 18px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.add-illness-button:hover {
+  background: var(--accent-dark);
+}
+
+.add-illness-button:disabled {
+  border-color: var(--line);
+  background: #edf2ef;
+  color: #8a9994;
+  cursor: not-allowed;
+}
+
+.illness-picker-section {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.picker-label {
+  color: #26352f;
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+.suggestion-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 230px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  display: grid;
+  gap: 2px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-  padding: 11px 12px;
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease,
-    transform 160ms ease;
+  box-shadow: 0 16px 36px rgba(23, 35, 31, 0.14);
 }
 
-.condition-option:hover {
-  border-color: #adc4bb;
-  background: #fbfdfc;
-}
-
-.condition-option:has(input:checked) {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.condition-option input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--accent);
-  flex: 0 0 auto;
-}
-
-.condition-option span {
+.suggestion-button {
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
   color: var(--ink);
+  padding: 0 10px;
+  text-align: left;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.suggestion-button:hover,
+.suggestion-button:focus-visible {
+  background: var(--surface-strong);
+  color: var(--accent-dark);
+  outline: none;
+}
+
+.selected-illness-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.selected-illness-pill {
+  min-height: 36px;
+  border: 1px solid #b8d8d1;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.selected-illness-pill span {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.selected-illness-pill:hover,
+.selected-illness-pill:focus-visible {
+  border-color: #f2b8b5;
+  background: #fff8f7;
+  color: var(--danger);
+  outline: none;
+}
+
+.helper-text {
+  color: var(--muted);
+  font-size: 0.94rem;
   font-weight: 650;
 }
 
@@ -199,8 +300,14 @@ select:focus,
   background: var(--accent-dark);
 }
 
-.primary-action:active,
-.condition-option:active {
+.primary-action:focus-visible,
+.remove-button:focus-visible,
+.add-illness-button:focus-visible {
+  outline: 3px solid rgba(15, 118, 110, 0.22);
+  outline-offset: 2px;
+}
+
+.primary-action:active {
   transform: translateY(1px);
 }
 
@@ -295,7 +402,7 @@ select:focus,
   background: #fff8f7;
 }
 
-.condition-list {
+.illness-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -304,7 +411,7 @@ select:focus,
   gap: 8px;
 }
 
-.condition-pill {
+.illness-pill {
   border-radius: 999px;
   background: #edf4f2;
   color: #29423a;
@@ -313,7 +420,7 @@ select:focus,
   font-weight: 700;
 }
 
-.no-conditions {
+.no-illnesses {
   color: var(--muted);
   font-weight: 650;
 }
@@ -321,10 +428,6 @@ select:focus,
 @media (max-width: 820px) {
   .app-shell {
     padding: 24px 0;
-  }
-
-  .condition-grid {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -349,5 +452,19 @@ select:focus,
 
   h1 {
     font-size: 2.1rem;
+  }
+
+  .autocomplete {
+    grid-template-columns: 1fr;
+  }
+
+  .autocomplete-input,
+  .add-illness-button {
+    border-radius: 8px;
+  }
+
+  .suggestion-list {
+    position: static;
+    max-height: 210px;
   }
 }
