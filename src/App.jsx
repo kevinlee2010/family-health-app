@@ -351,6 +351,8 @@ function App() {
   const selectedTreeNode =
     treeMembers.find((member) => member.id === selectedTreeNodeId) || selfTreeNode
   const riskAssessments = buildRiskAssessments({ familyMembers, userProfile })
+  const disclaimerText =
+    'This tool is for educational purposes only and is not a medical diagnosis. Talk to a healthcare professional for medical advice.'
 
   function addProfileIllness(illness) {
     setProfileIllnesses((currentIllnesses) =>
@@ -424,6 +426,28 @@ function App() {
 
   return (
     <main className="app-shell">
+      <header className="app-hero">
+        <div className="app-hero-copy">
+          <p className="eyebrow">Family health history</p>
+          <h1>Family Health Risk Tracker</h1>
+          <p className="app-subtitle">
+            Capture your profile, record family conditions, visualize patterns,
+            and review educational prevention prompts in one simple workspace.
+          </p>
+        </div>
+
+        <div className="hero-stats" aria-label="Family health summary">
+          <div className="hero-stat">
+            <strong>{treeEntryCount}</strong>
+            <span>People tracked</span>
+          </div>
+          <div className="hero-stat">
+            <strong>{riskAssessments.length}</strong>
+            <span>Awareness cards</span>
+          </div>
+        </div>
+      </header>
+
       <nav className="view-tabs" aria-label="Family health views">
         {viewTabs.map((tab) => (
           <button
@@ -745,11 +769,6 @@ function App() {
             <h1 id="risk-title">Risk Assessment</h1>
           </div>
 
-          <p className="medical-disclaimer">
-            This tool is for educational purposes only and is not a medical
-            diagnosis. Talk to a healthcare professional for medical advice.
-          </p>
-
           {riskAssessments.length === 0 ? (
             <div className="empty-state">
               <strong>No risk cards yet.</strong>
@@ -799,6 +818,8 @@ function App() {
           )}
         </section>
       ) : null}
+
+      <p className="app-disclaimer">{disclaimerText}</p>
     </main>
   )
 }
