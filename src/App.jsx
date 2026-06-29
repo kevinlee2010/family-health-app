@@ -46,7 +46,7 @@ const starterIllnesses = [
 
 const viewTabs = [
   { id: 'profile', label: 'My Profile' },
-  { id: 'history', label: 'Family History' },
+  { id: 'history', label: 'Family History Form' },
   { id: 'tree', label: 'Family Tree' },
   { id: 'risk', label: 'Risk Assessment' },
 ]
@@ -144,6 +144,32 @@ function getRiskClass(riskLevel) {
   }
 
   return `risk-${riskLevel.toLowerCase()}`
+}
+
+function getDisplayName(member) {
+  if (member.isPlaceholder) {
+    return 'You (Self)'
+  }
+
+  return member.name || member.relationship
+}
+
+function getTreeMeta(member) {
+  if (member.isPlaceholder) {
+    return 'Self'
+  }
+
+  if (member.isSelf) {
+    return [
+      member.relationship,
+      member.age ? `Age ${member.age}` : '',
+      member.sex,
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  }
+
+  return member.name ? member.relationship : ''
 }
 
 function IllnessPicker({
@@ -292,13 +318,21 @@ function App() {
   const [selectedIllnesses, setSelectedIllnesses] = useState([])
   const [illnessInput, setIllnessInput] = useState('')
   const [error, setError] = useState('')
+  const [selectedTreeNodeId, setSelectedTreeNodeId] = useState(null)
 
   const selfTreeNode = userProfile
     ? {
         ...userProfile,
         relationship: 'Self',
       }
-    : null
+    : {
+        id: 'self-placeholder',
+        relationship: 'Self',
+        name: 'You',
+        illnesses: [],
+        isPlaceholder: true,
+        isSelf: true,
+      }
   const groupedFamilyMembers = familyTreeTiers.map((tier) => {
     const tierMembers = familyMembers.filter((member) =>
       tier.relationships.includes(member.relationship),
@@ -313,6 +347,9 @@ function App() {
     }
   })
   const treeEntryCount = familyMembers.length + (userProfile ? 1 : 0)
+  const treeMembers = groupedFamilyMembers.flatMap((tier) => tier.members)
+  const selectedTreeNode =
+    treeMembers.find((member) => member.id === selectedTreeNodeId) || selfTreeNode
   const riskAssessments = buildRiskAssessments({ familyMembers, userProfile })
 
   function addProfileIllness(illness) {
@@ -616,42 +653,40 @@ function App() {
             <span className="legend-item legend-three-plus">3+ conditions</span>
           </div>
 
-          {treeEntryCount === 0 ? (
-            <div className="empty-state">
-              <strong>No family members in the tree yet.</strong>
-              <span>Add your profile or family members in the other tabs.</span>
-            </div>
-          ) : (
-            <div className="family-tree">
-              {groupedFamilyMembers.map((tier) => (
-                <section className="tree-tier" key={tier.id}>
-                  <div className="tier-label">
-                    <h2>{tier.label}</h2>
-                  </div>
+          <div className="family-tree">
+            {groupedFamilyMembers.map((tier) => (
+              <section className="tree-tier" key={tier.id}>
+                <div className="tier-label">
+                  <h2>{tier.label}</h2>
+                </div>
 
-                  {tier.members.length === 0 ? (
-                    <p className="empty-tier">No {tier.label.toLowerCase()} added.</p>
-                  ) : (
-                    <ul className="tree-node-list">
-                      {tier.members.map((member) => {
-                        const conditionCount = getConditionCount(member.illnesses)
-                        const tone = getTreeNodeTone(conditionCount)
+                {tier.members.length === 0 ? (
+                  <p className="empty-tier">No {tier.label.toLowerCase()} added.</p>
+                ) : (
+                  <ul className="tree-node-list">
+                    {tier.members.map((member) => {
+                      const conditionCount = getConditionCount(member.illnesses)
+                      const tone = getTreeNodeTone(conditionCount)
+                      const isSelected = selectedTreeNode.id === member.id
 
-                        return (
-                          <li
-                            className={`tree-node tree-node-${tone}${
-                              member.isSelf ? ' tree-node-self' : ''
-                            }`}
-                            key={member.id}
+                      return (
+                        <li
+                          className={`tree-node tree-node-${tone}${
+                            member.isSelf ? ' tree-node-self' : ''
+                          }${isSelected ? ' selected' : ''}`}
+                          key={member.id}
+                        >
+                          <button
+                            className="tree-node-action"
+                            type="button"
+                            onClick={() => setSelectedTreeNodeId(member.id)}
                           >
                             <div className="tree-node-header">
                               <div>
-                                <strong>{member.relationship}</strong>
-                                {member.isSelf ? (
+                                <strong>{getDisplayName(member)}</strong>
+                                {getTreeMeta(member) ? (
                                   <p className="tree-profile-meta">
-                                    {[member.name, member.age ? `Age ${member.age}` : '', member.sex]
-                                      .filter(Boolean)
-                                      .join(' · ') || 'My profile'}
+                                    {getTreeMeta(member)}
                                   </p>
                                 ) : null}
                               </div>
@@ -669,15 +704,37 @@ function App() {
                                 No illnesses selected.
                               </p>
                             )}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  )}
-                </section>
-              ))}
-            </div>
-          )}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </section>
+            ))}
+          </div>
+
+          <aside className="tree-detail-panel" aria-live="polite">
+            <p className="eyebrow">Selected person</p>
+            <h2>{getDisplayName(selectedTreeNode)}</h2>
+            <p className="tree-detail-meta">{selectedTreeNode.relationship}</p>
+            {selectedTreeNode.isPlaceholder ? (
+              <p className="helper-text">
+                Add your profile in the My Profile tab to replace this placeholder.
+              </p>
+            ) : null}
+            {selectedTreeNode.illnesses.length > 0 ? (
+              <ul className="illness-list">
+                {selectedTreeNode.illnesses.map((illness) => (
+                  <li className="illness-pill" key={illness}>
+                    {illness}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="no-illnesses">No illnesses selected.</p>
+            )}
+          </aside>
         </section>
       ) : null}
 
