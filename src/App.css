@@ -540,6 +540,11 @@ body {
   background: var(--status-red);
 }
 
+.summary-current {
+  border-color: var(--status-blue-border);
+  background: var(--status-blue);
+}
+
 .results-toolbar {
   display: grid;
   grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);

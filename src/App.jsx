@@ -154,6 +154,8 @@ const resultFilters = [
   },
 ]
 
+const resultsRiskLevels = ['Increased', 'High', 'Current Condition']
+
 function createId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID()
@@ -857,11 +859,11 @@ function App() {
     ...(userProfile ? [userProfile] : []),
   ])
   const profileCompletion = getProfileCompletion(profileForm, profileIllnesses)
+  const resultRiskAssessments = riskAssessments.filter((risk) =>
+    resultsRiskLevels.includes(risk.riskLevel),
+  )
   const highRiskCount = riskAssessments.filter(
     (risk) => risk.riskLevel === 'High',
-  ).length
-  const averageRiskCount = riskAssessments.filter(
-    (risk) => risk.riskLevel === 'Average',
   ).length
   const increasedRiskCount = riskAssessments.filter(
     (risk) => risk.riskLevel === 'Increased',
@@ -903,7 +905,7 @@ function App() {
     (filter) => filter.id === resultsFilter,
   )
   const normalizedResultsSearch = normalizeIllness(resultsSearch)
-  const filteredRiskResults = riskAssessments.filter((risk) => {
+  const filteredRiskResults = resultRiskAssessments.filter((risk) => {
     const matchesSearch =
       normalizedResultsSearch === '' ||
       normalizeIllness(risk.conditionName).includes(normalizedResultsSearch)
@@ -1164,17 +1166,17 @@ function App() {
             </div>
 
             <div className="results-summary-grid">
-              <div className="results-summary-item summary-average">
-                <strong>{averageRiskCount}</strong>
-                <span>Average Risk</span>
+              <div className="results-summary-item summary-high">
+                <strong>{highRiskCount}</strong>
+                <span>High Risk</span>
               </div>
               <div className="results-summary-item summary-increased">
                 <strong>{increasedRiskCount}</strong>
                 <span>Increased Risk</span>
               </div>
-              <div className="results-summary-item summary-high">
-                <strong>{highRiskCount}</strong>
-                <span>High Risk</span>
+              <div className="results-summary-item summary-current">
+                <strong>{currentConditionCount}</strong>
+                <span>Current Conditions</span>
               </div>
             </div>
           </section>
@@ -1211,15 +1213,15 @@ function App() {
 
           <p className="results-disclaimer">
             This tool is for educational purposes only and is not a medical
-            diagnosis. Consult a healthcare professional for medical advice.
+            diagnosis. Talk to a healthcare professional for medical advice.
           </p>
 
-          {riskAssessments.length === 0 ? (
+          {resultRiskAssessments.length === 0 ? (
             <div className="empty-state">
               <strong>No results yet.</strong>
               <span>
-                Add your profile and family history to generate personalized
-                educational results.
+                Add your profile or family history to see increased, high, or
+                current condition results.
               </span>
             </div>
           ) : filteredRiskResults.length === 0 ? (
