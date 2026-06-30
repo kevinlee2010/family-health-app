@@ -90,7 +90,7 @@ function getUserHasCondition(sources) {
 
 function getRiskLevel({ familyContributors, userHasCondition }) {
   if (userHasCondition) {
-    return 'Current condition'
+    return 'Current Condition'
   }
 
   if (familyContributors.length >= 2) {
@@ -105,7 +105,7 @@ function getRiskLevel({ familyContributors, userHasCondition }) {
 }
 
 function getExplanation({ conditionName, familyContributors, riskLevel }) {
-  if (riskLevel === 'Current condition') {
+  if (riskLevel === 'Current Condition') {
     if (familyContributors.length > 0) {
       return `You listed ${conditionName} in your own profile. This card is shown as a current condition, and ${familyContributors.length} family member${familyContributors.length === 1 ? '' : 's'} also listed it.`
     }
@@ -124,11 +124,15 @@ function getExplanation({ conditionName, familyContributors, riskLevel }) {
   return `No family members currently list ${conditionName}, so this educational tool marks it as average family-history awareness.`
 }
 
-export function buildRiskAssessments({ familyMembers, userProfile }) {
+function getEntryIllnesses(entry) {
+  return entry?.illnesses || entry?.conditions || []
+}
+
+export function calculateRisk(familyMembers = [], userProfile = null) {
   const conditionMap = new Map()
 
   familyMembers.forEach((member) => {
-    member.illnesses.forEach((illness) => {
+    getEntryIllnesses(member).forEach((illness) => {
       addConditionToMap(conditionMap, illness, {
         relationship: member.relationship,
         type: 'family',
@@ -137,7 +141,7 @@ export function buildRiskAssessments({ familyMembers, userProfile }) {
   })
 
   if (userProfile) {
-    userProfile.illnesses.forEach((illness) => {
+    getEntryIllnesses(userProfile).forEach((illness) => {
       addConditionToMap(conditionMap, illness, {
         relationship: 'Self',
         type: 'self',
@@ -149,19 +153,26 @@ export function buildRiskAssessments({ familyMembers, userProfile }) {
     const familyContributors = getFamilyContributors(sources)
     const userHasCondition = getUserHasCondition(sources)
     const riskLevel = getRiskLevel({ familyContributors, userHasCondition })
+    const reason = getExplanation({
+      conditionName,
+      familyContributors,
+      riskLevel,
+    })
 
     return {
       conditionName,
+      riskLevel,
+      reason,
+      relatives: familyContributors,
       contributors: userHasCondition
         ? ['Self', ...familyContributors]
         : familyContributors,
-      explanation: getExplanation({
-        conditionName,
-        familyContributors,
-        riskLevel,
-      }),
-      riskLevel,
+      explanation: reason,
       suggestions: getSuggestions(conditionName),
     }
   })
+}
+
+export function buildRiskAssessments({ familyMembers, userProfile }) {
+  return calculateRisk(familyMembers, userProfile)
 }

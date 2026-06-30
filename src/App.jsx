@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { buildRiskAssessments } from './riskRules'
+import { calculateRisk } from './riskRules'
 import { getConditionDetails } from './conditionDetails'
 import { buildFamilyHealthSummary } from './healthCategories'
 
@@ -113,10 +113,33 @@ const illnessCategories = [
 const starterIllnesses = illnessCategories.flatMap((category) => category.illnesses)
 
 const viewTabs = [
+  { id: 'dashboard', label: 'Dashboard' },
   { id: 'profile', label: 'My Profile' },
-  { id: 'history', label: 'Family History Form' },
+  { id: 'history', label: 'Family History' },
   { id: 'tree', label: 'Family Tree' },
   { id: 'risk', label: 'Risk Assessment' },
+  { id: 'library', label: 'Condition Library' },
+  { id: 'prevention', label: 'Prevention & Tips' },
+  { id: 'reports', label: 'Reports' },
+]
+
+const defaultPreventionTips = [
+  {
+    title: 'Discuss screening',
+    text: 'Review your personal and family history with a healthcare professional.',
+  },
+  {
+    title: 'Stay active',
+    text: 'Aim for regular movement that fits your health, schedule, and abilities.',
+  },
+  {
+    title: 'Track changes',
+    text: 'Update symptoms, diagnoses, and family history when something changes.',
+  },
+  {
+    title: 'Avoid tobacco',
+    text: 'Avoid tobacco and secondhand smoke to support heart, lung, and cancer prevention.',
+  },
 ]
 
 function createId() {
@@ -208,7 +231,7 @@ function getConditionSummary(illnessCount) {
 }
 
 function getRiskClass(riskLevel) {
-  if (riskLevel === 'Current condition') {
+  if (riskLevel === 'Current Condition') {
     return 'risk-current'
   }
 
@@ -217,6 +240,37 @@ function getRiskClass(riskLevel) {
 
 function getHealthCategoryRiskClass(riskLevel) {
   return `category-${riskLevel.toLowerCase()}`
+}
+
+function getUniqueIllnesses(entries) {
+  const illnessMap = new Map()
+
+  entries.forEach((entry) => {
+    entry.illnesses.forEach((illness) => {
+      if (isNoIllness(illness)) {
+        return
+      }
+
+      const key = getIllnessKey(illness)
+
+      if (!illnessMap.has(key)) {
+        illnessMap.set(key, illness)
+      }
+    })
+  })
+
+  return Array.from(illnessMap.values())
+}
+
+function getProfileCompletion(profileForm, profileIllnesses) {
+  const completedFields = [
+    profileForm.name.trim(),
+    profileForm.age,
+    profileForm.sex,
+    profileIllnesses.length > 0 ? 'conditions' : '',
+  ].filter(Boolean).length
+
+  return Math.round((completedFields / 4) * 100)
 }
 
 function getDisplayName(member) {
@@ -725,7 +779,7 @@ function IllnessPicker({
 }
 
 function App() {
-  const [activeView, setActiveView] = useState('profile')
+  const [activeView, setActiveView] = useState('dashboard')
   const [userProfile, setUserProfile] = useState(null)
   const [profileForm, setProfileForm] = useState({
     name: '',
@@ -778,12 +832,56 @@ function App() {
     familyHealthSummary.categories.find(
       (category) => category.id === activeHealthCategoryId,
     ) || null
-  const riskAssessments = buildRiskAssessments({ familyMembers, userProfile })
+  const riskAssessments = calculateRisk(familyMembers, userProfile)
   const activeConditionDetails = activeConditionName
     ? getConditionDetails(activeConditionName)
     : null
   const disclaimerText =
     'This tool is for educational purposes only and is not a medical diagnosis. Talk to a healthcare professional for medical advice.'
+  const trackedConditions = getUniqueIllnesses([
+    ...familyMembers,
+    ...(userProfile ? [userProfile] : []),
+  ])
+  const profileCompletion = getProfileCompletion(profileForm, profileIllnesses)
+  const highRiskCount = riskAssessments.filter(
+    (risk) => risk.riskLevel === 'High',
+  ).length
+  const increasedRiskCount = riskAssessments.filter(
+    (risk) => risk.riskLevel === 'Increased',
+  ).length
+  const currentConditionCount = riskAssessments.filter(
+    (risk) => risk.riskLevel === 'Current Condition',
+  ).length
+  const dashboardSummaryCards = [
+    {
+      label: 'Family Members',
+      value: familyMembers.length,
+      detail: userProfile ? 'Profile included in tree' : 'Add your profile next',
+    },
+    {
+      label: 'Conditions Tracked',
+      value: trackedConditions.length,
+      detail:
+        trackedConditions.length > 0
+          ? `${trackedConditions.length} unique condition${
+              trackedConditions.length === 1 ? '' : 's'
+            }`
+          : 'Start with profile or family history',
+    },
+    {
+      label: 'Risk Insights',
+      value: riskAssessments.length,
+      detail:
+        highRiskCount > 0
+          ? `${highRiskCount} high awareness`
+          : `${increasedRiskCount} increased awareness`,
+    },
+    {
+      label: 'Profile Completion',
+      value: `${profileCompletion}%`,
+      detail: profileCompletion === 100 ? 'Profile ready' : 'Keep building it',
+    },
+  ]
 
   useEffect(() => {
     if (!activeConditionName && !activeHealthCategoryId) {
@@ -893,41 +991,130 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
-      <header className="app-hero">
-        <div className="app-hero-copy">
-          <p className="eyebrow">Family health history</p>
-          <h1>Know Your Family History. Take Control of Your Health.</h1>
-          <p className="app-subtitle">
-            Turn your family's medical history into personalized health
-            insights, prevention guidance, and educational resources.
-          </p>
-        </div>
-
-        <div className="hero-stats" aria-label="Family health summary">
-          <div className="hero-stat">
-            <strong>{treeEntryCount}</strong>
-            <span>People tracked</span>
-          </div>
-          <div className="hero-stat">
-            <strong>{riskAssessments.length}</strong>
-            <span>Awareness cards</span>
+    <div className="app-layout">
+      <aside className="app-sidebar" aria-label="Family health dashboard">
+        <div className="sidebar-brand">
+          <span className="brand-mark" aria-hidden="true">
+            +
+          </span>
+          <div>
+            <strong>Health History</strong>
+            <span>Your data stays on your device.</span>
           </div>
         </div>
-      </header>
 
-      <nav className="view-tabs" aria-label="Family health views">
-        {viewTabs.map((tab) => (
-          <button
-            className={activeView === tab.id ? 'view-tab active' : 'view-tab'}
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveView(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+        <nav className="view-tabs" aria-label="Family health views">
+          {viewTabs.map((tab) => (
+            <button
+              className={activeView === tab.id ? 'view-tab active' : 'view-tab'}
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveView(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <main className="app-shell">
+        <header className="app-hero">
+          <div className="app-hero-copy">
+            <p className="eyebrow">Family health history</p>
+            <h1>Know Your Family History. Take Control of Your Health.</h1>
+            <p className="app-subtitle">
+              Turn your family's medical history into personalized health
+              insights, prevention guidance, and educational resources.
+            </p>
+          </div>
+
+          <div className="hero-card" aria-label="Privacy note">
+            <span>Your data stays on your device.</span>
+            <strong>{treeEntryCount} people tracked</strong>
+          </div>
+        </header>
+
+      {activeView === 'dashboard' ? (
+        <section className="dashboard-panel" aria-labelledby="dashboard-title">
+          <div className="page-heading dashboard-heading">
+            <div>
+              <p className="eyebrow">Dashboard</p>
+              <h1 id="dashboard-title">Health overview</h1>
+            </div>
+            <span className="privacy-pill">Your data stays on your device.</span>
+          </div>
+
+          <div className="dashboard-summary-grid">
+            {dashboardSummaryCards.map((card) => (
+              <article className="dashboard-summary-card" key={card.label}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+                <p>{card.detail}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="dashboard-content-grid">
+            <section className="insight-panel">
+              <div className="section-heading-row">
+                <div>
+                  <p className="eyebrow">Family insights</p>
+                  <h2>Top areas to review</h2>
+                </div>
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={() => setActiveView('risk')}
+                >
+                  View risks
+                </button>
+              </div>
+
+              <ul className="dashboard-attention-list">
+                {familyHealthSummary.topAreas.map((category) => (
+                  <li key={category.id}>
+                    <button
+                      className={`attention-area-button ${getHealthCategoryRiskClass(
+                        category.riskLevel,
+                      )}`}
+                      type="button"
+                      onClick={() => openHealthCategoryDetails(category.id)}
+                    >
+                      <span>{category.name}</span>
+                      <strong>{category.riskLevel}</strong>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="insight-panel">
+              <div className="section-heading-row">
+                <div>
+                  <p className="eyebrow">Next steps</p>
+                  <h2>Prevention focus</h2>
+                </div>
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={() => setActiveView('prevention')}
+                >
+                  View tips
+                </button>
+              </div>
+
+              <ul className="compact-tip-list">
+                {defaultPreventionTips.slice(0, 3).map((tip) => (
+                  <li key={tip.title}>
+                    <strong>{tip.title}</strong>
+                    <span>{tip.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </div>
+        </section>
+      ) : null}
 
       {activeView === 'profile' ? (
         <section className="profile-panel" aria-labelledby="profile-title">
@@ -1292,21 +1479,21 @@ function App() {
                           onOpenConditionDetails={openConditionDetails}
                         />
                       </h2>
-                      <p>{risk.explanation}</p>
+                      <p>{risk.reason}</p>
                     </div>
                     <span className="risk-level">{risk.riskLevel}</span>
                   </div>
 
                   <div className="risk-detail-grid">
                     <div>
-                      <h3>Contributors</h3>
+                      <h3>Relatives</h3>
                       <ul className="risk-pill-list">
-                        {risk.contributors.length > 0 ? (
-                          risk.contributors.map((contributor) => (
-                            <li key={contributor}>{contributor}</li>
+                        {risk.relatives.length > 0 ? (
+                          risk.relatives.map((relative) => (
+                            <li key={relative}>{relative}</li>
                           ))
                         ) : (
-                          <li>No family contributors listed</li>
+                          <li>No relatives contributed to this card</li>
                         )}
                       </ul>
                     </div>
@@ -1327,6 +1514,154 @@ function App() {
         </section>
       ) : null}
 
+      {activeView === 'library' ? (
+        <section className="condition-library-panel" aria-labelledby="library-title">
+          <div className="page-heading">
+            <p className="eyebrow">Condition Library</p>
+            <h1 id="library-title">Condition Library</h1>
+          </div>
+
+          <div className="library-category-grid">
+            {illnessCategories.map((category) => (
+              <section className="library-category-card" key={category.name}>
+                <h2>{category.name}</h2>
+                <ul>
+                  {category.illnesses.map((illness) => {
+                    const hasDetails = Boolean(getConditionDetails(illness))
+
+                    return (
+                      <li key={illness}>
+                        <button
+                          className="library-condition-button"
+                          type="button"
+                          onClick={() => openConditionDetails(illness)}
+                        >
+                          <span>{illness}</span>
+                          <strong>{hasDetails ? 'Details' : 'Coming soon'}</strong>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {activeView === 'prevention' ? (
+        <section className="prevention-panel" aria-labelledby="prevention-title">
+          <div className="page-heading">
+            <p className="eyebrow">Prevention & Tips</p>
+            <h1 id="prevention-title">Prevention & Tips</h1>
+          </div>
+
+          <div className="prevention-grid">
+            {defaultPreventionTips.map((tip) => (
+              <article className="prevention-tip-card" key={tip.title}>
+                <span aria-hidden="true">+</span>
+                <h2>{tip.title}</h2>
+                <p>{tip.text}</p>
+              </article>
+            ))}
+          </div>
+
+          <section className="insight-panel personalized-tip-panel">
+            <div className="section-heading-row">
+              <div>
+                <p className="eyebrow">From your entries</p>
+                <h2>Personalized prevention prompts</h2>
+              </div>
+              <span className="member-count">{riskAssessments.length} cards</span>
+            </div>
+
+            {riskAssessments.length === 0 ? (
+              <div className="empty-state compact-empty">
+                <strong>No personalized prompts yet.</strong>
+                <span>Add profile or family conditions to generate prompts.</span>
+              </div>
+            ) : (
+              <div className="prevention-prompt-list">
+                {riskAssessments.map((risk) => (
+                  <article className="prevention-prompt-card" key={risk.conditionName}>
+                    <h3>
+                      <ConditionButton
+                        className="condition-heading-button"
+                        conditionName={risk.conditionName}
+                        onOpenConditionDetails={openConditionDetails}
+                      />
+                    </h3>
+                    <ul className="prevention-list">
+                      {risk.suggestions.map((suggestion) => (
+                        <li key={suggestion}>{suggestion}</li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </section>
+      ) : null}
+
+      {activeView === 'reports' ? (
+        <section className="reports-panel" aria-labelledby="reports-title">
+          <div className="page-heading">
+            <p className="eyebrow">Reports</p>
+            <h1 id="reports-title">Reports</h1>
+          </div>
+
+          <div className="report-grid">
+            <article className="report-card">
+              <span>Family health snapshot</span>
+              <strong>{familyMembers.length} family members</strong>
+              <p>{trackedConditions.length} unique conditions tracked.</p>
+            </article>
+            <article className="report-card">
+              <span>Risk overview</span>
+              <strong>{highRiskCount} high awareness</strong>
+              <p>
+                {increasedRiskCount} increased and {currentConditionCount} current
+                condition cards.
+              </p>
+            </article>
+            <article className="report-card">
+              <span>Profile status</span>
+              <strong>{profileCompletion}% complete</strong>
+              <p>Profile information helps place you in the family tree.</p>
+            </article>
+          </div>
+
+          <section className="report-summary-panel">
+            <div className="section-heading-row">
+              <div>
+                <p className="eyebrow">Tracked conditions</p>
+                <h2>Current report summary</h2>
+              </div>
+              <span className="privacy-pill">Your data stays on your device.</span>
+            </div>
+
+            {trackedConditions.length === 0 ? (
+              <div className="empty-state compact-empty">
+                <strong>No tracked conditions yet.</strong>
+                <span>Add profile or family history entries to build the report.</span>
+              </div>
+            ) : (
+              <ul className="illness-list">
+                {trackedConditions.map((condition) => (
+                  <li key={condition}>
+                    <ConditionButton
+                      conditionName={condition}
+                      onOpenConditionDetails={openConditionDetails}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </section>
+      ) : null}
+
       <p className="app-disclaimer">{disclaimerText}</p>
 
       {activeConditionName ? (
@@ -1344,7 +1679,8 @@ function App() {
           onOpenConditionDetails={openConditionDetails}
         />
       ) : null}
-    </main>
+      </main>
+    </div>
   )
 }
 
