@@ -156,6 +156,31 @@ const resultFilters = [
 
 const resultsRiskLevels = ['Increased', 'High', 'Current Condition']
 
+const initialProfileForm = {
+  name: '',
+  age: '',
+  sex: '',
+}
+
+const workflowSteps = [
+  {
+    id: 'profile',
+    label: 'My Profile',
+  },
+  {
+    id: 'history',
+    label: 'Family History',
+  },
+  {
+    id: 'results',
+    label: 'Risk Assessment',
+  },
+  {
+    id: 'prevention',
+    label: 'Prevention Tips',
+  },
+]
+
 function createId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID()
@@ -795,11 +820,7 @@ function IllnessPicker({
 function App() {
   const [activeView, setActiveView] = useState('dashboard')
   const [userProfile, setUserProfile] = useState(null)
-  const [profileForm, setProfileForm] = useState({
-    name: '',
-    age: '',
-    sex: '',
-  })
+  const [profileForm, setProfileForm] = useState(initialProfileForm)
   const [profileIllnesses, setProfileIllnesses] = useState([])
   const [profileIllnessInput, setProfileIllnessInput] = useState('')
   const [familyMembers, setFamilyMembers] = useState([])
@@ -915,6 +936,20 @@ function App() {
 
     return matchesSearch && matchesFilter
   })
+  const workflowProgress = workflowSteps.map((step, index) => {
+    const isComplete =
+      (step.id === 'profile' && Boolean(userProfile)) ||
+      (step.id === 'history' && familyMembers.length > 0) ||
+      (step.id === 'results' && resultRiskAssessments.length > 0) ||
+      (step.id === 'prevention' && riskAssessments.length > 0)
+
+    return {
+      ...step,
+      isActive: activeView === step.id,
+      isComplete,
+      number: index + 1,
+    }
+  })
 
   useEffect(() => {
     if (!activeConditionName && !activeHealthCategoryId) {
@@ -943,6 +978,18 @@ function App() {
   function openHealthCategoryDetails(categoryId) {
     setActiveConditionName(null)
     setActiveHealthCategoryId(categoryId)
+  }
+
+  function changeView(viewId) {
+    setActiveView(viewId)
+    setActiveConditionName(null)
+    setActiveHealthCategoryId(null)
+
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector('.app-shell')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 
   function addProfileIllness(illness) {
@@ -1023,6 +1070,32 @@ function App() {
     )
   }
 
+  function handleStartOver() {
+    const confirmed = window.confirm(
+      'Start over and clear your profile, family history, results, and filters?',
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setActiveView('dashboard')
+    setUserProfile(null)
+    setProfileForm(initialProfileForm)
+    setProfileIllnesses([])
+    setProfileIllnessInput('')
+    setFamilyMembers([])
+    setRelationship('')
+    setSelectedIllnesses([])
+    setIllnessInput('')
+    setError('')
+    setResultsSearch('')
+    setResultsFilter('all')
+    setSelectedTreeNodeId(null)
+    setActiveConditionName(null)
+    setActiveHealthCategoryId(null)
+  }
+
   return (
     <div className="app-layout">
       <aside className="app-sidebar" aria-label="Family health dashboard">
@@ -1042,7 +1115,7 @@ function App() {
               className={activeView === tab.id ? 'view-tab active' : 'view-tab'}
               key={tab.id}
               type="button"
-              onClick={() => setActiveView(tab.id)}
+              onClick={() => changeView(tab.id)}
             >
               {tab.label}
             </button>
@@ -1066,6 +1139,38 @@ function App() {
             <strong>{treeEntryCount} people tracked</strong>
           </div>
         </header>
+
+        <section className="privacy-banner" aria-label="Privacy">
+          <div>
+            <p className="eyebrow">Privacy</p>
+            <p>
+              Your data stays on your device. This app does not send your family
+              health history to a server.
+            </p>
+          </div>
+          <button className="danger-action" type="button" onClick={handleStartOver}>
+            Start Over
+          </button>
+        </section>
+
+        <section className="progress-panel" aria-label="Setup progress">
+          <ol className="progress-steps">
+            {workflowProgress.map((step) => (
+              <li key={step.id}>
+                <button
+                  className={`progress-step${
+                    step.isComplete ? ' complete' : ''
+                  }${step.isActive ? ' active' : ''}`}
+                  type="button"
+                  onClick={() => changeView(step.id)}
+                >
+                  <span className="progress-number">{step.number}</span>
+                  <span>{step.label}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
 
       {activeView === 'dashboard' ? (
         <section className="dashboard-panel" aria-labelledby="dashboard-title">
@@ -1097,7 +1202,7 @@ function App() {
                 <button
                   className="secondary-action"
                   type="button"
-                  onClick={() => setActiveView('risk')}
+                  onClick={() => changeView('risk')}
                 >
                   View risks
                 </button>
@@ -1130,7 +1235,7 @@ function App() {
                 <button
                   className="secondary-action"
                   type="button"
-                  onClick={() => setActiveView('prevention')}
+                  onClick={() => changeView('prevention')}
                 >
                   View tips
                 </button>
