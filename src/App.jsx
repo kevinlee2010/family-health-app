@@ -897,10 +897,10 @@ function App() {
       <header className="app-hero">
         <div className="app-hero-copy">
           <p className="eyebrow">Family health history</p>
-          <h1>Family Health Risk Tracker</h1>
+          <h1>Know Your Family History. Take Control of Your Health.</h1>
           <p className="app-subtitle">
-            Capture your profile, record family conditions, visualize patterns,
-            and review educational prevention prompts in one simple workspace.
+            Turn your family's medical history into personalized health
+            insights, prevention guidance, and educational resources.
           </p>
         </div>
 
