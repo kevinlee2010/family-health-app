@@ -112,17 +112,46 @@ const illnessCategories = [
 
 const starterIllnesses = illnessCategories.flatMap((category) => category.illnesses)
 
-const viewTabs = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'results', label: 'Results' },
-  { id: 'profile', label: 'My Profile' },
-  { id: 'history', label: 'Family History' },
-  { id: 'tree', label: 'Family Tree' },
-  { id: 'risk', label: 'Risk Assessment' },
-  { id: 'library', label: 'Condition Library' },
-  { id: 'prevention', label: 'Prevention & Tips' },
-  { id: 'reports', label: 'Reports' },
+const appPages = [
+  { id: 'dashboard', label: 'Dashboard', showInSidebar: true },
+  {
+    id: 'profile',
+    label: 'My Profile',
+    progressLabel: 'My Profile',
+    showInSidebar: true,
+  },
+  {
+    id: 'history',
+    label: 'Family History',
+    progressLabel: 'Family History',
+    showInSidebar: true,
+  },
+  { id: 'tree', label: 'Family Tree', showInSidebar: true },
+  {
+    id: 'risk',
+    label: 'Risk Assessment',
+    progressLabel: 'Risk Assessment',
+    showInSidebar: true,
+  },
+  {
+    id: 'results',
+    label: 'Results',
+    progressLabel: 'Results',
+    showInSidebar: true,
+  },
+  { id: 'library', label: 'Condition Library', showInSidebar: true },
+  {
+    id: 'prevention',
+    label: 'Prevention & Tips',
+    progressLabel: 'Prevention Tips',
+    showInSidebar: true,
+  },
+  { id: 'reports', label: 'Reports', showInSidebar: true },
 ]
+
+const viewTabs = appPages
+  .filter((page) => page.showInSidebar)
+  .map(({ id, label }) => ({ id, label }))
 
 const defaultPreventionTips = [
   {
@@ -162,24 +191,9 @@ const initialProfileForm = {
   sex: '',
 }
 
-const workflowSteps = [
-  {
-    id: 'profile',
-    label: 'My Profile',
-  },
-  {
-    id: 'history',
-    label: 'Family History',
-  },
-  {
-    id: 'results',
-    label: 'Risk Assessment',
-  },
-  {
-    id: 'prevention',
-    label: 'Prevention Tips',
-  },
-]
+const workflowSteps = appPages
+  .filter((page) => page.progressLabel)
+  .map(({ id, progressLabel }) => ({ id, label: progressLabel }))
 
 function createId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -940,6 +954,7 @@ function App() {
     const isComplete =
       (step.id === 'profile' && Boolean(userProfile)) ||
       (step.id === 'history' && familyMembers.length > 0) ||
+      (step.id === 'risk' && riskAssessments.length > 0) ||
       (step.id === 'results' && resultRiskAssessments.length > 0) ||
       (step.id === 'prevention' && riskAssessments.length > 0)
 
@@ -1127,7 +1142,10 @@ function App() {
         <header className="app-hero">
           <div className="app-hero-copy">
             <p className="eyebrow">Family health history</p>
-            <h1>Know Your Family History. Take Control of Your Health.</h1>
+            <h1>
+              <span>Know Your Family History.</span>
+              <span>Take Control of Your Health.</span>
+            </h1>
             <p className="app-subtitle">
               Turn your family's medical history into personalized health
               insights, prevention guidance, and educational resources.
