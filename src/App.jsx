@@ -114,6 +114,7 @@ const starterIllnesses = illnessCategories.flatMap((category) => category.illnes
 
 const viewTabs = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'results', label: 'Results' },
   { id: 'profile', label: 'My Profile' },
   { id: 'history', label: 'Family History' },
   { id: 'tree', label: 'Family Tree' },
@@ -139,6 +140,17 @@ const defaultPreventionTips = [
   {
     title: 'Avoid tobacco',
     text: 'Avoid tobacco and secondhand smoke to support heart, lung, and cancer prevention.',
+  },
+]
+
+const resultFilters = [
+  { id: 'all', label: 'All' },
+  { id: 'high', label: 'High Risk', riskLevel: 'High' },
+  { id: 'increased', label: 'Increased Risk', riskLevel: 'Increased' },
+  {
+    id: 'current',
+    label: 'Current Conditions',
+    riskLevel: 'Current Condition',
   },
 ]
 
@@ -793,6 +805,8 @@ function App() {
   const [selectedIllnesses, setSelectedIllnesses] = useState([])
   const [illnessInput, setIllnessInput] = useState('')
   const [error, setError] = useState('')
+  const [resultsSearch, setResultsSearch] = useState('')
+  const [resultsFilter, setResultsFilter] = useState('all')
   const [selectedTreeNodeId, setSelectedTreeNodeId] = useState(null)
   const [activeConditionName, setActiveConditionName] = useState(null)
   const [activeHealthCategoryId, setActiveHealthCategoryId] = useState(null)
@@ -846,6 +860,9 @@ function App() {
   const highRiskCount = riskAssessments.filter(
     (risk) => risk.riskLevel === 'High',
   ).length
+  const averageRiskCount = riskAssessments.filter(
+    (risk) => risk.riskLevel === 'Average',
+  ).length
   const increasedRiskCount = riskAssessments.filter(
     (risk) => risk.riskLevel === 'Increased',
   ).length
@@ -882,6 +899,20 @@ function App() {
       detail: profileCompletion === 100 ? 'Profile ready' : 'Keep building it',
     },
   ]
+  const activeResultsFilter = resultFilters.find(
+    (filter) => filter.id === resultsFilter,
+  )
+  const normalizedResultsSearch = normalizeIllness(resultsSearch)
+  const filteredRiskResults = riskAssessments.filter((risk) => {
+    const matchesSearch =
+      normalizedResultsSearch === '' ||
+      normalizeIllness(risk.conditionName).includes(normalizedResultsSearch)
+    const matchesFilter =
+      !activeResultsFilter?.riskLevel ||
+      risk.riskLevel === activeResultsFilter.riskLevel
+
+    return matchesSearch && matchesFilter
+  })
 
   useEffect(() => {
     if (!activeConditionName && !activeHealthCategoryId) {
@@ -1113,6 +1144,139 @@ function App() {
               </ul>
             </section>
           </div>
+        </section>
+      ) : null}
+
+      {activeView === 'results' ? (
+        <section className="results-panel" aria-labelledby="results-title">
+          <div className="page-heading dashboard-heading">
+            <div>
+              <p className="eyebrow">Personalized results</p>
+              <h1 id="results-title">Results Dashboard</h1>
+            </div>
+            <span className="privacy-pill">Your data stays on your device.</span>
+          </div>
+
+          <section className="overall-summary-card" aria-label="Overall Health Summary">
+            <div>
+              <p className="eyebrow">Overall Health Summary</p>
+              <h2>Risk level overview</h2>
+            </div>
+
+            <div className="results-summary-grid">
+              <div className="results-summary-item summary-average">
+                <strong>{averageRiskCount}</strong>
+                <span>Average Risk</span>
+              </div>
+              <div className="results-summary-item summary-increased">
+                <strong>{increasedRiskCount}</strong>
+                <span>Increased Risk</span>
+              </div>
+              <div className="results-summary-item summary-high">
+                <strong>{highRiskCount}</strong>
+                <span>High Risk</span>
+              </div>
+            </div>
+          </section>
+
+          <div className="results-toolbar">
+            <label className="field-group results-search" htmlFor="results-search">
+              Search conditions
+              <input
+                id="results-search"
+                type="search"
+                value={resultsSearch}
+                onChange={(event) => setResultsSearch(event.target.value)}
+                placeholder="Search by condition name"
+              />
+            </label>
+
+            <div className="results-filter-group" aria-label="Filter results">
+              {resultFilters.map((filter) => (
+                <button
+                  className={
+                    resultsFilter === filter.id
+                      ? 'results-filter-button active'
+                      : 'results-filter-button'
+                  }
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setResultsFilter(filter.id)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <p className="results-disclaimer">
+            This tool is for educational purposes only and is not a medical
+            diagnosis. Consult a healthcare professional for medical advice.
+          </p>
+
+          {riskAssessments.length === 0 ? (
+            <div className="empty-state">
+              <strong>No results yet.</strong>
+              <span>
+                Add your profile and family history to generate personalized
+                educational results.
+              </span>
+            </div>
+          ) : filteredRiskResults.length === 0 ? (
+            <div className="empty-state compact-empty">
+              <strong>No matching results.</strong>
+              <span>Try a different search or filter.</span>
+            </div>
+          ) : (
+            <div className="results-card-list">
+              {filteredRiskResults.map((risk) => (
+                <article
+                  className={`result-card ${getRiskClass(risk.riskLevel)}`}
+                  key={risk.conditionName}
+                >
+                  <div className="result-card-header">
+                    <div>
+                      <h2>{risk.conditionName}</h2>
+                      <span className="result-risk-badge">{risk.riskLevel}</span>
+                    </div>
+                    <button
+                      className="secondary-action learn-more-button"
+                      type="button"
+                      onClick={() => openConditionDetails(risk.conditionName)}
+                    >
+                      Learn More
+                    </button>
+                  </div>
+
+                  <p className="result-reason">{risk.reason}</p>
+
+                  <div className="result-detail-grid">
+                    <section>
+                      <h3>Relatives contributing</h3>
+                      <ul className="risk-pill-list">
+                        {risk.relatives.length > 0 ? (
+                          risk.relatives.map((relative) => (
+                            <li key={relative}>{relative}</li>
+                          ))
+                        ) : (
+                          <li>No relatives contributed to this risk level</li>
+                        )}
+                      </ul>
+                    </section>
+
+                    <section>
+                      <h3>Educational prevention suggestions</h3>
+                      <ul className="prevention-list">
+                        {risk.suggestions.slice(0, 3).map((suggestion) => (
+                          <li key={suggestion}>{suggestion}</li>
+                        ))}
+                      </ul>
+                    </section>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       ) : null}
 
