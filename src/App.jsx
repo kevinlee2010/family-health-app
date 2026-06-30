@@ -139,7 +139,6 @@ const appPages = [
     progressLabel: 'Results',
     showInSidebar: true,
   },
-  { id: 'library', label: 'Condition Library', showInSidebar: true },
   {
     id: 'prevention',
     label: 'Prevention & Tips',
@@ -371,6 +370,10 @@ function ConditionButton({
   )
 }
 
+function ConditionTag({ conditionName, className = 'illness-pill' }) {
+  return <span className={`condition-tag ${className}`}>{conditionName}</span>
+}
+
 function ConditionDetailList({ items, title }) {
   return (
     <section className="condition-detail-section">
@@ -458,11 +461,9 @@ function ConditionDetailsModal({ conditionName, details, onClose }) {
           </>
         ) : (
           <div className="condition-unavailable">
-            <strong>Information for this condition is not yet available.</strong>
-            <span>
-              You can still track it in your profile, family history, tree, and
-              risk awareness cards.
-            </span>
+            <strong>
+              Educational information for this condition is not available yet.
+            </strong>
           </div>
         )}
       </section>
@@ -667,7 +668,6 @@ function IllnessPicker({
   onAddIllness,
   onClearIllnesses,
   onRemoveIllness,
-  onOpenConditionDetails,
   selectedIllnesses,
 }) {
   const normalizedInput = normalizeIllness(inputValue)
@@ -806,10 +806,9 @@ function IllnessPicker({
             {selectedIllnesses.map((illness) => (
               <li key={illness}>
                 <div className="selected-illness-pill">
-                  <ConditionButton
+                  <ConditionTag
                     className="selected-illness-name"
                     conditionName={illness}
-                    onOpenConditionDetails={onOpenConditionDetails}
                   />
                   <button
                     className="selected-illness-remove"
@@ -1361,7 +1360,13 @@ function App() {
                 >
                   <div className="result-card-header">
                     <div>
-                      <h2>{risk.conditionName}</h2>
+                      <h2>
+                        <ConditionButton
+                          className="condition-heading-button"
+                          conditionName={risk.conditionName}
+                          onOpenConditionDetails={openConditionDetails}
+                        />
+                      </h2>
                       <span className="result-risk-badge">{risk.riskLevel}</span>
                     </div>
                     <button
@@ -1479,7 +1484,6 @@ function App() {
                 onAddIllness={addProfileIllness}
                 onClearIllnesses={clearProfileIllnesses}
                 onRemoveIllness={removeProfileIllness}
-                onOpenConditionDetails={openConditionDetails}
                 selectedIllnesses={profileIllnesses}
               />
             </fieldset>
@@ -1541,7 +1545,6 @@ function App() {
                   onAddIllness={addFamilyIllness}
                   onClearIllnesses={clearFamilyIllnesses}
                   onRemoveIllness={removeFamilyIllness}
-                  onOpenConditionDetails={openConditionDetails}
                   selectedIllnesses={selectedIllnesses}
                 />
               </fieldset>
@@ -1593,10 +1596,7 @@ function App() {
                       <ul className="illness-list">
                         {member.illnesses.map((illness) => (
                           <li key={illness}>
-                            <ConditionButton
-                              conditionName={illness}
-                              onOpenConditionDetails={openConditionDetails}
-                            />
+                            <ConditionTag conditionName={illness} />
                           </li>
                         ))}
                       </ul>
@@ -1682,12 +1682,9 @@ function App() {
                               <ul className="tree-illness-list">
                                 {member.illnesses.map((illness) => (
                                   <li key={illness}>
-                                    <ConditionButton
+                                    <ConditionTag
                                       className="tree-condition-pill"
                                       conditionName={illness}
-                                      onOpenConditionDetails={
-                                        openConditionDetails
-                                      }
                                     />
                                   </li>
                                 ))}
@@ -1716,10 +1713,7 @@ function App() {
               <ul className="illness-list">
                 {selectedTreeNode.illnesses.map((illness) => (
                   <li key={illness}>
-                    <ConditionButton
-                      conditionName={illness}
-                      onOpenConditionDetails={openConditionDetails}
-                    />
+                    <ConditionTag conditionName={illness} />
                   </li>
                 ))}
               </ul>
@@ -1803,41 +1797,6 @@ function App() {
         </section>
       ) : null}
 
-      {activeView === 'library' ? (
-        <section className="condition-library-panel" aria-labelledby="library-title">
-          <div className="page-heading">
-            <p className="eyebrow">Condition Library</p>
-            <h1 id="library-title">Condition Library</h1>
-          </div>
-
-          <div className="library-category-grid">
-            {illnessCategories.map((category) => (
-              <section className="library-category-card" key={category.name}>
-                <h2>{category.name}</h2>
-                <ul>
-                  {category.illnesses.map((illness) => {
-                    const hasDetails = Boolean(getConditionDetails(illness))
-
-                    return (
-                      <li key={illness}>
-                        <button
-                          className="library-condition-button"
-                          type="button"
-                          onClick={() => openConditionDetails(illness)}
-                        >
-                          <span>{illness}</span>
-                          <strong>{hasDetails ? 'Details' : 'Coming soon'}</strong>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       {activeView === 'prevention' ? (
         <section className="prevention-panel" aria-labelledby="prevention-title">
           <div className="page-heading">
@@ -1874,11 +1833,7 @@ function App() {
                 {riskAssessments.map((risk) => (
                   <article className="prevention-prompt-card" key={risk.conditionName}>
                     <h3>
-                      <ConditionButton
-                        className="condition-heading-button"
-                        conditionName={risk.conditionName}
-                        onOpenConditionDetails={openConditionDetails}
-                      />
+                      {risk.conditionName}
                     </h3>
                     <ul className="prevention-list">
                       {risk.suggestions.map((suggestion) => (
@@ -1939,10 +1894,7 @@ function App() {
               <ul className="illness-list">
                 {trackedConditions.map((condition) => (
                   <li key={condition}>
-                    <ConditionButton
-                      conditionName={condition}
-                      onOpenConditionDetails={openConditionDetails}
-                    />
+                    <ConditionTag conditionName={condition} />
                   </li>
                 ))}
               </ul>

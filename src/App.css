@@ -177,7 +177,6 @@ body {
 .family-list-panel,
 .family-tree-panel,
 .risk-panel,
-.condition-library-panel,
 .prevention-panel,
 .reports-panel {
   border: 1px solid rgba(220, 230, 238, 0.95);
@@ -193,7 +192,6 @@ body {
 .family-list-panel,
 .family-tree-panel,
 .risk-panel,
-.condition-library-panel,
 .prevention-panel,
 .reports-panel {
   padding: 28px;
@@ -474,7 +472,6 @@ body {
 
 .dashboard-attention-list,
 .compact-tip-list,
-.library-category-card ul,
 .prevention-prompt-list {
   list-style: none;
   margin: 0;
@@ -499,68 +496,6 @@ body {
 
 .compact-tip-list strong {
   color: var(--ink);
-}
-
-.library-category-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-}
-
-.library-category-card {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: var(--shadow-soft);
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-}
-
-.library-category-card h2 {
-  font-size: 1.15rem;
-}
-
-.library-category-card ul {
-  display: grid;
-  gap: 8px;
-}
-
-.library-condition-button {
-  width: 100%;
-  min-height: 46px;
-  border: 1px solid #e1ebf1;
-  border-radius: 8px;
-  background: #f9fcfd;
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.library-condition-button span {
-  font-weight: 800;
-}
-
-.library-condition-button strong {
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--surface-strong);
-  color: var(--muted-strong);
-  padding: 5px 8px;
-  font-size: 0.76rem;
-  font-weight: 900;
-}
-
-.library-condition-button:hover,
-.library-condition-button:focus-visible {
-  border-color: #93cfc6;
-  background: var(--accent-soft);
-  outline: none;
 }
 
 .prevention-grid {
@@ -1111,15 +1046,7 @@ input:focus {
   align-items: center;
   padding: 0 4px 0 12px;
   font-weight: 850;
-  cursor: pointer;
-}
-
-.selected-illness-name:hover,
-.selected-illness-name:focus-visible {
-  color: var(--accent-dark);
-  outline: none;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  cursor: default;
 }
 
 .selected-illness-remove {
@@ -1187,7 +1114,6 @@ input:focus {
 .secondary-action:focus-visible,
 .danger-action:focus-visible,
 .progress-step:focus-visible,
-.library-condition-button:focus-visible,
 .results-filter-button:focus-visible,
 .condition-button:focus-visible,
 .tree-node-select-button:focus-visible {
@@ -1334,7 +1260,7 @@ input:focus {
   font-weight: 800;
   line-height: 1.2;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
   transition:
     background 160ms ease,
     border-color 160ms ease,
@@ -1342,8 +1268,12 @@ input:focus {
     transform 160ms ease;
 }
 
-.illness-pill:hover,
-.illness-pill:focus-visible {
+.condition-button.illness-pill {
+  cursor: pointer;
+}
+
+.condition-button.illness-pill:hover,
+.condition-button.illness-pill:focus-visible {
   border-color: #93cfc6;
   background: var(--accent-soft);
   color: var(--accent-dark);
@@ -1562,11 +1492,11 @@ input:focus {
   font-size: 0.84rem;
   font-weight: 800;
   line-height: 1.2;
-  cursor: pointer;
+  cursor: default;
 }
 
-.tree-condition-pill:hover,
-.tree-condition-pill:focus-visible {
+.condition-button.tree-condition-pill:hover,
+.condition-button.tree-condition-pill:focus-visible {
   border-color: rgba(8, 127, 115, 0.35);
   background: #ffffff;
   color: var(--accent-dark);
@@ -2339,7 +2269,6 @@ input:focus {
   .family-list-panel,
   .family-tree-panel,
   .risk-panel,
-  .condition-library-panel,
   .prevention-panel,
   .reports-panel {
     padding: 20px;
