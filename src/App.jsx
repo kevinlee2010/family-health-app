@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { buildRiskAssessments } from './riskRules'
 import { getConditionDetails } from './conditionDetails'
+import { buildFamilyHealthSummary } from './healthCategories'
 
 const relationships = ['Mother', 'Father', 'Sibling', 'Grandparent']
 
@@ -147,6 +148,10 @@ function getRiskClass(riskLevel) {
   return `risk-${riskLevel.toLowerCase()}`
 }
 
+function getHealthCategoryRiskClass(riskLevel) {
+  return `category-${riskLevel.toLowerCase()}`
+}
+
 function getDisplayName(member) {
   if (member.isPlaceholder) {
     return 'You (Self)'
@@ -286,6 +291,195 @@ function ConditionDetailsModal({ conditionName, details, onClose }) {
             </span>
           </div>
         )}
+      </section>
+    </div>
+  )
+}
+
+function FamilyHealthSummaryDashboard({ summary, onOpenCategoryDetails }) {
+  const hasElevatedAreas = summary.topAreas.some(
+    (category) => category.riskLevel !== 'Average',
+  )
+
+  return (
+    <section
+      className="family-health-dashboard"
+      aria-labelledby="family-health-summary-title"
+    >
+      <div className="summary-dashboard-header">
+        <div>
+          <p className="eyebrow">Family Health Summary</p>
+          <h2 id="family-health-summary-title">
+            Overall Family Health Summary
+          </h2>
+          <p>
+            Categories group family history entries into broad health areas for
+            educational awareness. Some conditions may appear in more than one
+            category.
+          </p>
+        </div>
+
+        <div className="summary-count-grid" aria-label="Risk category counts">
+          <div className="summary-count summary-count-high">
+            <strong>{summary.riskCounts.High}</strong>
+            <span>High</span>
+          </div>
+          <div className="summary-count summary-count-increased">
+            <strong>{summary.riskCounts.Increased}</strong>
+            <span>Increased</span>
+          </div>
+          <div className="summary-count summary-count-average">
+            <strong>{summary.riskCounts.Average}</strong>
+            <span>Average</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="attention-summary">
+        <div>
+          <h3>Top three areas to review</h3>
+          <p>
+            {hasElevatedAreas
+              ? 'These categories currently have the strongest family-history signals.'
+              : 'No elevated categories yet; these are the first areas shown while more history is added.'}
+          </p>
+        </div>
+
+        <ul className="attention-area-list">
+          {summary.topAreas.map((category) => (
+            <li key={category.id}>
+              <button
+                className={`attention-area-button ${getHealthCategoryRiskClass(
+                  category.riskLevel,
+                )}`}
+                type="button"
+                onClick={() => onOpenCategoryDetails(category.id)}
+              >
+                <span>{category.name}</span>
+                <strong>{category.riskLevel}</strong>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="health-category-grid">
+        {summary.categories.map((category) => (
+          <button
+            className={`health-category-card ${getHealthCategoryRiskClass(
+              category.riskLevel,
+            )}`}
+            key={category.id}
+            type="button"
+            onClick={() => onOpenCategoryDetails(category.id)}
+          >
+            <span className="category-card-topline">
+              <span>{category.name}</span>
+              <strong>{category.riskLevel}</strong>
+            </span>
+            <span className="category-card-explanation">
+              {category.explanation}
+            </span>
+
+            {category.conditions.length > 0 ? (
+              <span className="category-condition-preview">
+                {category.conditions.map((condition) => (
+                  <span key={condition.conditionName}>
+                    {condition.conditionName}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              <span className="category-empty-note">
+                No mapped family conditions yet.
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function HealthCategoryDetailsModal({
+  category,
+  onClose,
+  onOpenConditionDetails,
+}) {
+  return (
+    <div className="condition-modal-backdrop" onClick={onClose}>
+      <section
+        className="condition-modal health-category-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="health-category-detail-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="condition-modal-header">
+          <div>
+            <p className="eyebrow">Family health category</p>
+            <h2 id="health-category-detail-title">{category.name}</h2>
+          </div>
+          <button
+            className="remove-button"
+            type="button"
+            onClick={onClose}
+            aria-label="Close family health category details"
+          >
+            &times;
+          </button>
+        </div>
+
+        <p className="condition-modal-disclaimer">
+          This category summary is educational only and is not medical advice.
+          Talk to a healthcare professional for medical advice.
+        </p>
+
+        <section
+          className={`category-detail-risk ${getHealthCategoryRiskClass(
+            category.riskLevel,
+          )}`}
+        >
+          <div>
+            <h3>{category.riskLevel} family-history awareness</h3>
+            <p>{category.explanation}</p>
+          </div>
+          <span>{category.observationCount} family entries</span>
+        </section>
+
+        <section className="condition-overview">
+          <h3>What this category includes</h3>
+          <p>{category.description}</p>
+        </section>
+
+        <section className="category-detail-conditions">
+          <h3>Family conditions contributing to this category</h3>
+          {category.conditions.length > 0 ? (
+            <ul>
+              {category.conditions.map((condition) => (
+                <li key={condition.conditionName}>
+                  <div>
+                    <ConditionButton
+                      className="category-detail-condition-button"
+                      conditionName={condition.conditionName}
+                      onOpenConditionDetails={onOpenConditionDetails}
+                    />
+                    <span>
+                      Listed by {condition.relatives.join(', ')}
+                      {condition.count > condition.relatives.length
+                        ? ` (${condition.count} total entries)`
+                        : ''}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="category-empty-note">
+              No family history entries currently map to this category.
+            </p>
+          )}
+        </section>
       </section>
     </div>
   )
@@ -446,6 +640,7 @@ function App() {
   const [error, setError] = useState('')
   const [selectedTreeNodeId, setSelectedTreeNodeId] = useState(null)
   const [activeConditionName, setActiveConditionName] = useState(null)
+  const [activeHealthCategoryId, setActiveHealthCategoryId] = useState(null)
 
   const selfTreeNode = userProfile
     ? {
@@ -477,6 +672,11 @@ function App() {
   const treeMembers = groupedFamilyMembers.flatMap((tier) => tier.members)
   const selectedTreeNode =
     treeMembers.find((member) => member.id === selectedTreeNodeId) || selfTreeNode
+  const familyHealthSummary = buildFamilyHealthSummary({ familyMembers })
+  const activeHealthCategory =
+    familyHealthSummary.categories.find(
+      (category) => category.id === activeHealthCategoryId,
+    ) || null
   const riskAssessments = buildRiskAssessments({ familyMembers, userProfile })
   const activeConditionDetails = activeConditionName
     ? getConditionDetails(activeConditionName)
@@ -485,12 +685,13 @@ function App() {
     'This tool is for educational purposes only and is not a medical diagnosis. Talk to a healthcare professional for medical advice.'
 
   useEffect(() => {
-    if (!activeConditionName) {
+    if (!activeConditionName && !activeHealthCategoryId) {
       return undefined
     }
 
     function closeOnEscape(event) {
       if (event.key === 'Escape') {
+        setActiveHealthCategoryId(null)
         setActiveConditionName(null)
       }
     }
@@ -500,7 +701,17 @@ function App() {
     return () => {
       window.removeEventListener('keydown', closeOnEscape)
     }
-  }, [activeConditionName])
+  }, [activeConditionName, activeHealthCategoryId])
+
+  function openConditionDetails(conditionName) {
+    setActiveHealthCategoryId(null)
+    setActiveConditionName(conditionName)
+  }
+
+  function openHealthCategoryDetails(categoryId) {
+    setActiveConditionName(null)
+    setActiveHealthCategoryId(categoryId)
+  }
 
   function addProfileIllness(illness) {
     setProfileIllnesses((currentIllnesses) =>
@@ -682,7 +893,7 @@ function App() {
                 onInputClear={() => setProfileIllnessInput('')}
                 onAddIllness={addProfileIllness}
                 onRemoveIllness={removeProfileIllness}
-                onOpenConditionDetails={setActiveConditionName}
+                onOpenConditionDetails={openConditionDetails}
                 selectedIllnesses={profileIllnesses}
               />
             </fieldset>
@@ -743,7 +954,7 @@ function App() {
                   onInputClear={() => setIllnessInput('')}
                   onAddIllness={addFamilyIllness}
                   onRemoveIllness={removeFamilyIllness}
-                  onOpenConditionDetails={setActiveConditionName}
+                  onOpenConditionDetails={openConditionDetails}
                   selectedIllnesses={selectedIllnesses}
                 />
               </fieldset>
@@ -797,7 +1008,7 @@ function App() {
                           <li key={illness}>
                             <ConditionButton
                               conditionName={illness}
-                              onOpenConditionDetails={setActiveConditionName}
+                              onOpenConditionDetails={openConditionDetails}
                             />
                           </li>
                         ))}
@@ -888,7 +1099,7 @@ function App() {
                                       className="tree-condition-pill"
                                       conditionName={illness}
                                       onOpenConditionDetails={
-                                        setActiveConditionName
+                                        openConditionDetails
                                       }
                                     />
                                   </li>
@@ -920,7 +1131,7 @@ function App() {
                   <li key={illness}>
                     <ConditionButton
                       conditionName={illness}
-                      onOpenConditionDetails={setActiveConditionName}
+                      onOpenConditionDetails={openConditionDetails}
                     />
                   </li>
                 ))}
@@ -937,6 +1148,16 @@ function App() {
           <div className="page-heading">
             <p className="eyebrow">Educational risk awareness</p>
             <h1 id="risk-title">Risk Assessment</h1>
+          </div>
+
+          <FamilyHealthSummaryDashboard
+            summary={familyHealthSummary}
+            onOpenCategoryDetails={openHealthCategoryDetails}
+          />
+
+          <div className="risk-section-heading">
+            <p className="eyebrow">Detailed cards</p>
+            <h2>Detailed Risk Assessment</h2>
           </div>
 
           {riskAssessments.length === 0 ? (
@@ -957,7 +1178,7 @@ function App() {
                         <ConditionButton
                           className="condition-heading-button"
                           conditionName={risk.conditionName}
-                          onOpenConditionDetails={setActiveConditionName}
+                          onOpenConditionDetails={openConditionDetails}
                         />
                       </h2>
                       <p>{risk.explanation}</p>
@@ -1002,6 +1223,14 @@ function App() {
           conditionName={activeConditionName}
           details={activeConditionDetails}
           onClose={() => setActiveConditionName(null)}
+        />
+      ) : null}
+
+      {activeHealthCategory ? (
+        <HealthCategoryDetailsModal
+          category={activeHealthCategory}
+          onClose={() => setActiveHealthCategoryId(null)}
+          onOpenConditionDetails={openConditionDetails}
         />
       ) : null}
     </main>
