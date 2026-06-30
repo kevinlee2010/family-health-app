@@ -393,24 +393,52 @@ input:focus {
   color: var(--accent-dark);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px;
+  gap: 4px;
+  padding: 0 4px 0 0;
   font-size: 0.92rem;
   font-weight: 800;
-  cursor: pointer;
   transition:
     background 160ms ease,
     border-color 160ms ease,
     color 160ms ease;
 }
 
-.selected-illness-pill span {
+.selected-illness-name {
+  min-height: 34px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px 0 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.selected-illness-name:hover,
+.selected-illness-name:focus-visible {
+  color: var(--accent-dark);
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.selected-illness-remove {
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--accent-dark);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
   font-size: 1.05rem;
   line-height: 1;
 }
 
-.selected-illness-pill:hover,
-.selected-illness-pill:focus-visible {
+.selected-illness-remove:hover,
+.selected-illness-remove:focus-visible {
   border-color: #f2b8b5;
   background: #fff8f7;
   color: var(--danger);
@@ -456,7 +484,9 @@ input:focus {
 .primary-action:focus-visible,
 .remove-button:focus-visible,
 .add-illness-button:focus-visible,
-.view-tab:focus-visible {
+.view-tab:focus-visible,
+.condition-button:focus-visible,
+.tree-node-select-button:focus-visible {
   outline: 3px solid rgba(15, 118, 110, 0.22);
   outline-offset: 2px;
 }
@@ -588,13 +618,35 @@ input:focus {
 }
 
 .illness-pill {
+  appearance: none;
   border-radius: 999px;
   border: 1px solid #c8ddd6;
   background: #edf7f4;
   color: #25483f;
+  display: inline-flex;
+  align-items: center;
   padding: 7px 10px;
   font-size: 0.9rem;
   font-weight: 800;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.illness-pill:hover,
+.illness-pill:focus-visible {
+  border-color: #93cfc6;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.illness-pill:active {
+  transform: translateY(1px);
 }
 
 .no-illnesses {
@@ -700,19 +752,27 @@ input:focus {
 .tree-node-action {
   width: 100%;
   min-height: 132px;
-  border: 0;
-  background: transparent;
   color: inherit;
-  cursor: pointer;
   display: grid;
   gap: 12px;
   padding: 16px;
   text-align: left;
 }
 
-.tree-node-action:focus-visible {
-  outline: 3px solid rgba(15, 118, 110, 0.3);
-  outline-offset: -3px;
+.tree-node-select-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  text-align: left;
+}
+
+.tree-node-select-button:focus-visible {
+  outline-offset: 3px;
 }
 
 .tree-node-self {
@@ -753,14 +813,20 @@ input:focus {
   font-size: 1.08rem;
 }
 
+.tree-node-title-block {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
 .tree-profile-meta {
-  margin-top: 4px;
+  display: block;
   color: #53615d;
   font-size: 0.86rem;
   font-weight: 700;
 }
 
-.tree-node-header span {
+.tree-condition-count {
   flex: 0 0 auto;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.62);
@@ -780,6 +846,10 @@ input:focus {
 }
 
 .tree-illness-list li {
+  display: flex;
+}
+
+.tree-condition-pill {
   border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.74);
@@ -787,12 +857,28 @@ input:focus {
   padding: 6px 9px;
   font-size: 0.84rem;
   font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.tree-condition-pill:hover,
+.tree-condition-pill:focus-visible {
+  border-color: rgba(8, 127, 115, 0.35);
+  background: #ffffff;
+  color: var(--accent-dark);
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .tree-no-illnesses,
 .empty-tier {
   color: var(--muted);
   font-weight: 650;
+}
+
+.tree-no-illnesses {
+  display: block;
 }
 
 .empty-tier {
@@ -828,6 +914,146 @@ input:focus {
   box-shadow: var(--shadow-soft);
   padding: 16px 18px;
   font-weight: 700;
+}
+
+.condition-modal-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  min-height: 100svh;
+  overflow-y: auto;
+  background: rgba(23, 35, 31, 0.48);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.condition-modal {
+  width: min(920px, 100%);
+  max-height: min(90svh, 900px);
+  overflow-y: auto;
+  border: 1px solid rgba(217, 227, 222, 0.95);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(23, 35, 31, 0.24);
+  display: grid;
+  gap: 18px;
+  padding: 26px;
+}
+
+.condition-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.condition-modal-header h2 {
+  font-size: clamp(1.75rem, 4vw, 2.55rem);
+}
+
+.condition-modal-disclaimer {
+  border: 1px solid #c7d8ee;
+  border-radius: 8px;
+  background: #eef6ff;
+  color: #244569;
+  padding: 13px 15px;
+  font-weight: 750;
+}
+
+.condition-overview,
+.condition-detail-section,
+.condition-resources,
+.condition-unavailable {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+  padding: 16px;
+}
+
+.condition-overview {
+  display: grid;
+  gap: 8px;
+}
+
+.condition-overview h3,
+.condition-detail-section h3,
+.condition-resources h3 {
+  margin: 0;
+  color: #26352f;
+  font-size: 1rem;
+}
+
+.condition-overview p,
+.condition-detail-section p {
+  color: var(--muted-strong);
+  font-weight: 650;
+}
+
+.condition-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.condition-detail-section {
+  display: grid;
+  gap: 10px;
+}
+
+.condition-detail-section ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #3d4b47;
+  display: grid;
+  gap: 8px;
+  font-weight: 650;
+}
+
+.condition-resources {
+  display: grid;
+  gap: 12px;
+}
+
+.condition-resource-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.condition-resource-list a {
+  min-height: 44px;
+  border: 1px solid #c8ddd6;
+  border-radius: 8px;
+  background: #edf7f4;
+  color: var(--accent-dark);
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.condition-resource-list a:hover,
+.condition-resource-list a:focus-visible {
+  border-color: #93cfc6;
+  background: var(--accent-soft);
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.condition-unavailable {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.condition-unavailable strong {
+  color: var(--ink);
 }
 
 .risk-card-list {
@@ -871,6 +1097,25 @@ input:focus {
 
 .risk-card-header h2 {
   font-size: 1.25rem;
+}
+
+.condition-heading-button {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 0;
+  font: inherit;
+  font-weight: 850;
+  text-align: left;
+  cursor: pointer;
+}
+
+.condition-heading-button:hover,
+.condition-heading-button:focus-visible {
+  color: var(--accent-dark);
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .risk-card-header p {
@@ -974,6 +1219,10 @@ input:focus {
   .risk-detail-grid {
     grid-template-columns: 1fr;
   }
+
+  .condition-detail-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 520px) {
@@ -1054,6 +1303,28 @@ input:focus {
   .app-disclaimer {
     padding: 14px;
     font-size: 0.92rem;
+  }
+
+  .condition-modal-backdrop {
+    align-items: start;
+    padding: 12px;
+  }
+
+  .condition-modal {
+    max-height: calc(100svh - 24px);
+    padding: 18px;
+  }
+
+  .condition-modal-header {
+    align-items: stretch;
+  }
+
+  .condition-modal-header h2 {
+    font-size: 1.8rem;
+  }
+
+  .condition-resource-list {
+    grid-template-columns: 1fr;
   }
 
   .tree-node-header {

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import { buildRiskAssessments } from './riskRules'
+import { getConditionDetails } from './conditionDetails'
 
 const relationships = ['Mother', 'Father', 'Sibling', 'Grandparent']
 
@@ -172,6 +173,124 @@ function getTreeMeta(member) {
   return member.name ? member.relationship : ''
 }
 
+function ConditionButton({
+  conditionName,
+  onOpenConditionDetails,
+  className = 'illness-pill',
+}) {
+  return (
+    <button
+      className={`condition-button ${className}`}
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation()
+        onOpenConditionDetails(conditionName)
+      }}
+    >
+      {conditionName}
+    </button>
+  )
+}
+
+function ConditionDetailList({ items, title }) {
+  return (
+    <section className="condition-detail-section">
+      <h3>{title}</h3>
+      <ul>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function ConditionDetailsModal({ conditionName, details, onClose }) {
+  const displayName = details?.name || conditionName
+
+  return (
+    <div className="condition-modal-backdrop" onClick={onClose}>
+      <section
+        className="condition-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="condition-details-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="condition-modal-header">
+          <div>
+            <p className="eyebrow">Condition details</p>
+            <h2 id="condition-details-title">{displayName}</h2>
+          </div>
+          <button
+            className="remove-button"
+            type="button"
+            onClick={onClose}
+            aria-label="Close condition details"
+          >
+            &times;
+          </button>
+        </div>
+
+        <p className="condition-modal-disclaimer">
+          This information is educational only and is not medical advice. Talk to
+          a healthcare professional for medical advice.
+        </p>
+
+        {details ? (
+          <>
+            <section className="condition-overview">
+              <h3>What it is</h3>
+              <p>{details.overview}</p>
+            </section>
+
+            <div className="condition-detail-grid">
+              <ConditionDetailList
+                title="Common symptoms"
+                items={details.symptoms}
+              />
+              <ConditionDetailList
+                title="Major risk factors"
+                items={details.riskFactors}
+              />
+              <ConditionDetailList
+                title="Prevention tips"
+                items={details.preventionTips}
+              />
+
+              <section className="condition-detail-section">
+                <h3>Typical screening recommendations</h3>
+                <p>{details.screening}</p>
+              </section>
+            </div>
+
+            <section className="condition-resources">
+              <h3>Trusted resources</h3>
+              <ul className="condition-resource-list">
+                {details.resources.map((resource) => (
+                  <li key={resource.url}>
+                    <a href={resource.url} target="_blank" rel="noreferrer">
+                      {resource.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </>
+        ) : (
+          <div className="condition-unavailable">
+            <strong>Information for this condition is not yet available.</strong>
+            <span>
+              You can still track it in your profile, family history, tree, and
+              risk awareness cards.
+            </span>
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
+
 function IllnessPicker({
   inputId,
   inputValue,
@@ -179,6 +298,7 @@ function IllnessPicker({
   onInputClear,
   onAddIllness,
   onRemoveIllness,
+  onOpenConditionDetails,
   selectedIllnesses,
 }) {
   const normalizedInput = normalizeIllness(inputValue)
@@ -283,15 +403,21 @@ function IllnessPicker({
           <ul className="selected-illness-list">
             {selectedIllnesses.map((illness) => (
               <li key={illness}>
-                <button
-                  className="selected-illness-pill"
-                  type="button"
-                  onClick={() => onRemoveIllness(illness)}
-                  aria-label={`Remove ${illness}`}
-                >
-                  {illness}
-                  <span aria-hidden="true">&times;</span>
-                </button>
+                <div className="selected-illness-pill">
+                  <ConditionButton
+                    className="selected-illness-name"
+                    conditionName={illness}
+                    onOpenConditionDetails={onOpenConditionDetails}
+                  />
+                  <button
+                    className="selected-illness-remove"
+                    type="button"
+                    onClick={() => onRemoveIllness(illness)}
+                    aria-label={`Remove ${illness}`}
+                  >
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -319,6 +445,7 @@ function App() {
   const [illnessInput, setIllnessInput] = useState('')
   const [error, setError] = useState('')
   const [selectedTreeNodeId, setSelectedTreeNodeId] = useState(null)
+  const [activeConditionName, setActiveConditionName] = useState(null)
 
   const selfTreeNode = userProfile
     ? {
@@ -351,8 +478,29 @@ function App() {
   const selectedTreeNode =
     treeMembers.find((member) => member.id === selectedTreeNodeId) || selfTreeNode
   const riskAssessments = buildRiskAssessments({ familyMembers, userProfile })
+  const activeConditionDetails = activeConditionName
+    ? getConditionDetails(activeConditionName)
+    : null
   const disclaimerText =
     'This tool is for educational purposes only and is not a medical diagnosis. Talk to a healthcare professional for medical advice.'
+
+  useEffect(() => {
+    if (!activeConditionName) {
+      return undefined
+    }
+
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') {
+        setActiveConditionName(null)
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [activeConditionName])
 
   function addProfileIllness(illness) {
     setProfileIllnesses((currentIllnesses) =>
@@ -534,6 +682,7 @@ function App() {
                 onInputClear={() => setProfileIllnessInput('')}
                 onAddIllness={addProfileIllness}
                 onRemoveIllness={removeProfileIllness}
+                onOpenConditionDetails={setActiveConditionName}
                 selectedIllnesses={profileIllnesses}
               />
             </fieldset>
@@ -594,6 +743,7 @@ function App() {
                   onInputClear={() => setIllnessInput('')}
                   onAddIllness={addFamilyIllness}
                   onRemoveIllness={removeFamilyIllness}
+                  onOpenConditionDetails={setActiveConditionName}
                   selectedIllnesses={selectedIllnesses}
                 />
               </fieldset>
@@ -644,8 +794,11 @@ function App() {
                     {member.illnesses.length > 0 ? (
                       <ul className="illness-list">
                         {member.illnesses.map((illness) => (
-                          <li className="illness-pill" key={illness}>
-                            {illness}
+                          <li key={illness}>
+                            <ConditionButton
+                              conditionName={illness}
+                              onOpenConditionDetails={setActiveConditionName}
+                            />
                           </li>
                         ))}
                       </ul>
@@ -700,35 +853,49 @@ function App() {
                           }${isSelected ? ' selected' : ''}`}
                           key={member.id}
                         >
-                          <button
-                            className="tree-node-action"
-                            type="button"
-                            onClick={() => setSelectedTreeNodeId(member.id)}
-                          >
-                            <div className="tree-node-header">
-                              <div>
-                                <strong>{getDisplayName(member)}</strong>
-                                {getTreeMeta(member) ? (
-                                  <p className="tree-profile-meta">
-                                    {getTreeMeta(member)}
-                                  </p>
-                                ) : null}
-                              </div>
-                              <span>{getConditionSummary(conditionCount)}</span>
-                            </div>
+                          <div className="tree-node-action">
+                            <button
+                              className="tree-node-select-button"
+                              type="button"
+                              onClick={() => setSelectedTreeNodeId(member.id)}
+                            >
+                              <span className="tree-node-header">
+                                <span className="tree-node-title-block">
+                                  <strong>{getDisplayName(member)}</strong>
+                                  {getTreeMeta(member) ? (
+                                    <span className="tree-profile-meta">
+                                      {getTreeMeta(member)}
+                                    </span>
+                                  ) : null}
+                                </span>
+                                <span className="tree-condition-count">
+                                  {getConditionSummary(conditionCount)}
+                                </span>
+                              </span>
+
+                              {member.illnesses.length === 0 ? (
+                                <span className="tree-no-illnesses">
+                                  No illnesses selected.
+                                </span>
+                              ) : null}
+                            </button>
 
                             {member.illnesses.length > 0 ? (
                               <ul className="tree-illness-list">
                                 {member.illnesses.map((illness) => (
-                                  <li key={illness}>{illness}</li>
+                                  <li key={illness}>
+                                    <ConditionButton
+                                      className="tree-condition-pill"
+                                      conditionName={illness}
+                                      onOpenConditionDetails={
+                                        setActiveConditionName
+                                      }
+                                    />
+                                  </li>
                                 ))}
                               </ul>
-                            ) : (
-                              <p className="tree-no-illnesses">
-                                No illnesses selected.
-                              </p>
-                            )}
-                          </button>
+                            ) : null}
+                          </div>
                         </li>
                       )
                     })}
@@ -750,8 +917,11 @@ function App() {
             {selectedTreeNode.illnesses.length > 0 ? (
               <ul className="illness-list">
                 {selectedTreeNode.illnesses.map((illness) => (
-                  <li className="illness-pill" key={illness}>
-                    {illness}
+                  <li key={illness}>
+                    <ConditionButton
+                      conditionName={illness}
+                      onOpenConditionDetails={setActiveConditionName}
+                    />
                   </li>
                 ))}
               </ul>
@@ -783,7 +953,13 @@ function App() {
                 >
                   <div className="risk-card-header">
                     <div>
-                      <h2>{risk.conditionName}</h2>
+                      <h2>
+                        <ConditionButton
+                          className="condition-heading-button"
+                          conditionName={risk.conditionName}
+                          onOpenConditionDetails={setActiveConditionName}
+                        />
+                      </h2>
                       <p>{risk.explanation}</p>
                     </div>
                     <span className="risk-level">{risk.riskLevel}</span>
@@ -820,6 +996,14 @@ function App() {
       ) : null}
 
       <p className="app-disclaimer">{disclaimerText}</p>
+
+      {activeConditionName ? (
+        <ConditionDetailsModal
+          conditionName={activeConditionName}
+          details={activeConditionDetails}
+          onClose={() => setActiveConditionName(null)}
+        />
+      ) : null}
     </main>
   )
 }
