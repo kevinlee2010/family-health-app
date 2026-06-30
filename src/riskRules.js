@@ -34,7 +34,12 @@ const conditionSuggestions = [
 ]
 
 export function normalizeConditionName(value) {
-  return value.trim().replace(/\s+/g, ' ').toLowerCase()
+  return value
+    .trim()
+    .replace(/\u2019/g, "'")
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
 }
 
 export function isNoCondition(value) {

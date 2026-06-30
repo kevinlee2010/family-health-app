@@ -28,23 +28,89 @@ const familyTreeTiers = [
   },
 ]
 
-const starterIllnesses = [
-  noIllnessOption,
-  'Type 2 Diabetes',
-  'Heart Disease',
-  'High Blood Pressure',
-  'High Cholesterol',
-  'Breast Cancer',
-  'Colon Cancer',
-  'Stroke',
-  'Asthma',
-  'Cancer',
-  'Depression',
-  "Alzheimer's Disease",
-  'Kidney Disease',
-  'Obesity',
-  'Autoimmune Disease',
+const illnessCategories = [
+  {
+    name: 'Cardiovascular',
+    illnesses: [
+      'Heart Disease',
+      'Heart Attack',
+      'Stroke',
+      'High Blood Pressure (Hypertension)',
+      'High Cholesterol',
+    ],
+  },
+  {
+    name: 'Diabetes & Metabolic',
+    illnesses: ['Type 1 Diabetes', 'Type 2 Diabetes', 'Obesity'],
+  },
+  {
+    name: 'Cancer',
+    illnesses: [
+      'Breast Cancer',
+      'Colon Cancer',
+      'Ovarian Cancer',
+      'Prostate Cancer',
+      'Pancreatic Cancer',
+      'Lung Cancer',
+      'Melanoma',
+    ],
+  },
+  {
+    name: 'Neurological',
+    illnesses: ["Alzheimer's Disease", "Parkinson's Disease"],
+  },
+  {
+    name: 'Respiratory',
+    illnesses: ['Asthma', 'COPD'],
+  },
+  {
+    name: 'Bone & Joint',
+    illnesses: ['Osteoporosis', 'Rheumatoid Arthritis'],
+  },
+  {
+    name: 'Autoimmune',
+    illnesses: [
+      'Lupus',
+      "Crohn's Disease",
+      'Ulcerative Colitis',
+      'Celiac Disease',
+    ],
+  },
+  {
+    name: 'Kidney & Endocrine',
+    illnesses: [
+      'Thyroid Disease',
+      'Polycystic Kidney Disease',
+      'Chronic Kidney Disease',
+    ],
+  },
+  {
+    name: 'Vision',
+    illnesses: ['Glaucoma', 'Macular Degeneration'],
+  },
+  {
+    name: 'Mental Health',
+    illnesses: [
+      'Depression',
+      'Anxiety',
+      'Bipolar Disorder',
+      'Schizophrenia',
+      'ADHD',
+      'Autism Spectrum Disorder',
+    ],
+  },
+  {
+    name: 'Inherited Blood Disorders',
+    illnesses: [
+      'Sickle Cell Disease',
+      'Thalassemia',
+      'Hemophilia',
+      'Cystic Fibrosis',
+    ],
+  },
 ]
+
+const starterIllnesses = illnessCategories.flatMap((category) => category.illnesses)
 
 const viewTabs = [
   { id: 'profile', label: 'My Profile' },
@@ -65,8 +131,12 @@ function normalizeIllness(value) {
   return value.trim().replace(/\s+/g, ' ').toLowerCase()
 }
 
+function getIllnessKey(value) {
+  return normalizeIllness(value).replace(/\s*\([^)]*\)/g, '')
+}
+
 function isNoIllness(value) {
-  return normalizeIllness(value) === normalizeIllness(noIllnessOption)
+  return getIllnessKey(value) === getIllnessKey(noIllnessOption)
 }
 
 function getConditionCount(illnesses) {
@@ -74,28 +144,25 @@ function getConditionCount(illnesses) {
 }
 
 function addIllnessToList(currentIllnesses, illness) {
-  const normalizedIllness = normalizeIllness(illness)
+  const illnessKey = getIllnessKey(illness)
 
-  if (!normalizedIllness) {
+  if (!illnessKey) {
     return currentIllnesses
   }
 
   if (isNoIllness(illness)) {
-    return [noIllnessOption]
+    return []
   }
 
   if (
     currentIllnesses.some(
-      (currentIllness) => normalizeIllness(currentIllness) === normalizedIllness,
+      (currentIllness) => getIllnessKey(currentIllness) === illnessKey,
     )
   ) {
     return currentIllnesses
   }
 
-  return [
-    ...currentIllnesses.filter((currentIllness) => !isNoIllness(currentIllness)),
-    illness,
-  ]
+  return [...currentIllnesses, illness]
 }
 
 function formatCustomIllness(value) {
@@ -491,34 +558,49 @@ function IllnessPicker({
   onInputChange,
   onInputClear,
   onAddIllness,
+  onClearIllnesses,
   onRemoveIllness,
   onOpenConditionDetails,
   selectedIllnesses,
 }) {
   const normalizedInput = normalizeIllness(inputValue)
-  const selectedIllnessKeys = selectedIllnesses.map(normalizeIllness)
+  const typedIllnessKey = getIllnessKey(inputValue)
+  const selectedIllnessKeys = selectedIllnesses.map(getIllnessKey)
   const canAddTypedIllness =
-    normalizedInput !== '' && !selectedIllnessKeys.includes(normalizedInput)
-  const matchingSuggestions = starterIllnesses.filter((illness) => {
-    const normalizedIllness = normalizeIllness(illness)
+    typedIllnessKey !== '' && !selectedIllnessKeys.includes(typedIllnessKey)
+  const matchingSuggestionGroups = illnessCategories
+    .map((category) => {
+      const categoryMatches =
+        normalizedInput !== '' &&
+        normalizeIllness(category.name).includes(normalizedInput)
+      const matchingIllnesses = category.illnesses.filter((illness) => {
+        const illnessKey = getIllnessKey(illness)
+        const illnessMatches = normalizeIllness(illness).includes(normalizedInput)
 
-    return (
-      !selectedIllnessKeys.includes(normalizedIllness) &&
-      normalizedInput !== '' &&
-      normalizedIllness.includes(normalizedInput)
-    )
-  })
-  const showSuggestions = matchingSuggestions.length > 0
+        return (
+          !selectedIllnessKeys.includes(illnessKey) &&
+          normalizedInput !== '' &&
+          (categoryMatches || illnessMatches)
+        )
+      })
+
+      return {
+        ...category,
+        illnesses: matchingIllnesses,
+      }
+    })
+    .filter((category) => category.illnesses.length > 0)
+  const showSuggestions = matchingSuggestionGroups.length > 0
 
   function addIllness(illness) {
-    const normalizedIllness = normalizeIllness(illness)
+    const illnessKey = getIllnessKey(illness)
 
-    if (!normalizedIllness) {
+    if (!illnessKey) {
       return
     }
 
     const matchingStarterIllness = starterIllnesses.find(
-      (starterIllness) => normalizeIllness(starterIllness) === normalizedIllness,
+      (starterIllness) => getIllnessKey(starterIllness) === illnessKey,
     )
 
     onAddIllness(matchingStarterIllness || formatCustomIllness(illness))
@@ -576,20 +658,39 @@ function IllnessPicker({
             id={`${inputId}-suggestions`}
             role="listbox"
           >
-            {matchingSuggestions.map((illness) => (
-              <li key={illness} role="option">
-                <button
-                  className="suggestion-button"
-                  type="button"
-                  onClick={() => addIllness(illness)}
-                >
-                  {illness}
-                </button>
+            {matchingSuggestionGroups.map((category) => (
+              <li className="suggestion-category" key={category.name}>
+                <span className="suggestion-category-label">{category.name}</span>
+                <ul>
+                  {category.illnesses.map((illness) => (
+                    <li key={illness} role="option">
+                      <button
+                        className="suggestion-button"
+                        type="button"
+                        onClick={() => addIllness(illness)}
+                      >
+                        {illness}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>
         ) : null}
       </div>
+
+      <button
+        className="none-illness-button"
+        type="button"
+        aria-pressed={selectedIllnesses.length === 0}
+        onClick={() => {
+          onClearIllnesses()
+          onInputClear()
+        }}
+      >
+        None
+      </button>
 
       <div className="illness-picker-section">
         <p className="picker-label">Selected:</p>
@@ -722,9 +823,13 @@ function App() {
   function removeProfileIllness(illness) {
     setProfileIllnesses((currentIllnesses) =>
       currentIllnesses.filter(
-        (item) => normalizeIllness(item) !== normalizeIllness(illness),
+        (item) => getIllnessKey(item) !== getIllnessKey(illness),
       ),
     )
+  }
+
+  function clearProfileIllnesses() {
+    setProfileIllnesses([])
   }
 
   function addFamilyIllness(illness) {
@@ -736,9 +841,13 @@ function App() {
   function removeFamilyIllness(illness) {
     setSelectedIllnesses((currentIllnesses) =>
       currentIllnesses.filter(
-        (item) => normalizeIllness(item) !== normalizeIllness(illness),
+        (item) => getIllnessKey(item) !== getIllnessKey(illness),
       ),
     )
+  }
+
+  function clearFamilyIllnesses() {
+    setSelectedIllnesses([])
   }
 
   function saveProfile(event) {
@@ -892,6 +1001,7 @@ function App() {
                 onInputChange={setProfileIllnessInput}
                 onInputClear={() => setProfileIllnessInput('')}
                 onAddIllness={addProfileIllness}
+                onClearIllnesses={clearProfileIllnesses}
                 onRemoveIllness={removeProfileIllness}
                 onOpenConditionDetails={openConditionDetails}
                 selectedIllnesses={profileIllnesses}
@@ -953,6 +1063,7 @@ function App() {
                   onInputChange={setIllnessInput}
                   onInputClear={() => setIllnessInput('')}
                   onAddIllness={addFamilyIllness}
+                  onClearIllnesses={clearFamilyIllnesses}
                   onRemoveIllness={removeFamilyIllness}
                   onOpenConditionDetails={openConditionDetails}
                   selectedIllnesses={selectedIllnesses}

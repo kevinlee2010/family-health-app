@@ -117,6 +117,9 @@ export const healthCategoryDefinitions = [
       'substance use',
       'addiction',
       'schizophrenia',
+      'adhd',
+      'autism',
+      'autism spectrum',
     ],
   },
 ]
@@ -131,6 +134,7 @@ export function normalizeCategoryCondition(value) {
   return value
     .trim()
     .replace(/\u2019/g, "'")
+    .replace(/\s*\([^)]*\)/g, '')
     .replace(/\s+/g, ' ')
     .toLowerCase()
 }

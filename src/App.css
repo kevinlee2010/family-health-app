@@ -325,6 +325,33 @@ input:focus {
   cursor: not-allowed;
 }
 
+.none-illness-button {
+  width: fit-content;
+  min-height: 40px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted-strong);
+  margin-top: 10px;
+  padding: 0 14px;
+  font-weight: 850;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.none-illness-button:hover,
+.none-illness-button:focus-visible,
+.none-illness-button[aria-pressed="true"] {
+  border-color: #93cfc6;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  outline: none;
+}
+
 .illness-picker-section {
   display: grid;
   gap: 8px;
@@ -354,6 +381,32 @@ input:focus {
   border-radius: 8px;
   background: var(--surface);
   box-shadow: 0 16px 36px rgba(23, 35, 31, 0.14);
+}
+
+.suggestion-category {
+  display: grid;
+  gap: 4px;
+}
+
+.suggestion-category + .suggestion-category {
+  border-top: 1px solid #edf3f0;
+  padding-top: 6px;
+}
+
+.suggestion-category-label {
+  color: var(--muted);
+  padding: 4px 10px 2px;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.suggestion-category ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
 }
 
 .suggestion-button {
@@ -1593,6 +1646,10 @@ input:focus {
   .autocomplete-input,
   .add-illness-button {
     border-radius: 8px;
+  }
+
+  .none-illness-button {
+    width: 100%;
   }
 
   .suggestion-list {

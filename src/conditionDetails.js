@@ -335,6 +335,7 @@ export function normalizeConditionName(value) {
   return value
     .trim()
     .replace(/\u2019/g, "'")
+    .replace(/\s*\([^)]*\)/g, '')
     .replace(/\s+/g, ' ')
     .toLowerCase()
 }
