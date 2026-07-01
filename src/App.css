@@ -1116,7 +1116,8 @@ input:focus {
 .progress-step:focus-visible,
 .results-filter-button:focus-visible,
 .condition-button:focus-visible,
-.tree-node-select-button:focus-visible {
+.tier-toggle:focus-visible,
+.tree-node-card:focus-visible {
   outline: 3px solid rgba(15, 118, 110, 0.22);
   outline-offset: 2px;
 }
@@ -1327,147 +1328,269 @@ input:focus {
   background: var(--status-red);
 }
 
-.family-tree {
+.family-tree-workspace {
   display: grid;
-  gap: 22px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.family-tree {
+  position: relative;
+  display: grid;
+  gap: 30px;
+  padding: 8px 0;
 }
 
 .tree-tier {
   position: relative;
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .tree-tier + .tree-tier {
-  padding-top: 14px;
-  border-top: 1px solid #e8f0ed;
+  padding-top: 18px;
 }
 
 .tree-tier + .tree-tier::before {
   content: "";
   position: absolute;
-  top: -12px;
+  top: -18px;
   left: 50%;
-  width: 1px;
-  height: 24px;
-  background: #cfded7;
+  width: 2px;
+  height: 34px;
+  background: linear-gradient(180deg, transparent 0%, #bfd5cf 38%, #bfd5cf 100%);
+}
+
+.tree-tier.collapsed {
+  gap: 8px;
 }
 
 .tier-label {
-  text-align: center;
+  display: grid;
+  place-items: center;
 }
 
-.tier-label h2 {
-  font-size: 1.05rem;
+.tier-toggle {
+  min-height: 38px;
+  border: 1px solid #c8dcd6;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.tier-toggle::before {
+  content: "−";
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  display: inline-grid;
+  place-items: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.tier-toggle[aria-expanded="false"]::before {
+  content: "+";
+}
+
+.tier-toggle strong {
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--muted-strong);
+  padding: 4px 8px;
+  font-size: 0.78rem;
+}
+
+.tier-toggle:hover,
+.tier-toggle:focus-visible {
+  border-color: #93cfc6;
+  background: var(--accent-soft);
+  outline: none;
+  transform: translateY(-1px);
 }
 
 .tree-node-list {
+  position: relative;
   list-style: none;
   margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 14px;
+  padding: 18px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+.tree-node-list::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  background: #bfd5cf;
 }
 
 .tree-node {
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  position: relative;
+  width: min(100%, 226px);
   display: block;
-  min-height: 132px;
-  overflow: hidden;
+}
+
+.tree-node::before {
+  content: "";
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  width: 2px;
+  height: 18px;
+  background: #bfd5cf;
+}
+
+.tree-tier-grandparents .tree-node-list::before,
+.tree-tier-grandparents .tree-node::before {
+  display: none;
+}
+
+.tree-node-card {
+  --node-border: var(--status-green-border);
+  --node-bg: linear-gradient(180deg, #ffffff 0%, var(--status-green) 100%);
+  width: 100%;
+  min-height: 178px;
+  border: 1px solid var(--node-border);
+  border-radius: 8px;
+  background: var(--node-bg);
+  color: inherit;
   box-shadow: var(--shadow-soft);
-}
-
-.tree-node.selected {
-  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.16);
-}
-
-.tree-node-action {
-  width: 100%;
-  min-height: 132px;
-  color: inherit;
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  align-content: space-between;
+  gap: 14px;
+  padding: 15px;
   text-align: left;
-}
-
-.tree-node-select-button {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: inherit;
   cursor: pointer;
-  display: grid;
-  gap: 12px;
-  padding: 0;
-  text-align: left;
+  transition:
+    box-shadow 180ms ease,
+    transform 180ms ease,
+    border-color 180ms ease;
 }
 
-.tree-node-select-button:focus-visible {
-  outline-offset: 3px;
+.tree-node-card:hover,
+.tree-node-card:focus-visible,
+.tree-node.selected .tree-node-card {
+  outline: none;
+  box-shadow: 0 18px 34px rgba(28, 55, 86, 0.14);
+  transform: translateY(-4px);
+}
+
+.tree-node.selected .tree-node-card {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 4px rgba(15, 118, 110, 0.15),
+    0 18px 34px rgba(28, 55, 86, 0.14);
+}
+
+.tree-node-none .tree-node-card {
+  --node-border: var(--status-green-border);
+  --node-bg: linear-gradient(180deg, #ffffff 0%, var(--status-green) 100%);
+}
+
+.tree-node-one .tree-node-card {
+  --node-border: var(--status-yellow-border);
+  --node-bg: linear-gradient(180deg, #ffffff 0%, var(--status-yellow) 100%);
+}
+
+.tree-node-two .tree-node-card {
+  --node-border: var(--status-orange-border);
+  --node-bg: linear-gradient(180deg, #ffffff 0%, var(--status-orange) 100%);
+}
+
+.tree-node-three-plus .tree-node-card {
+  --node-border: var(--status-red-border);
+  --node-bg: linear-gradient(180deg, #ffffff 0%, var(--status-red) 100%);
 }
 
 .tree-node-self {
-  grid-column: 1 / -1;
-  width: min(100%, 340px);
-  justify-self: center;
+  width: min(100%, 270px);
 }
 
-.tree-node-none {
-  border-color: var(--status-green-border);
-  background: linear-gradient(180deg, #f8fffb 0%, var(--status-green) 100%);
-}
-
-.tree-node-one {
-  border-color: var(--status-yellow-border);
-  background: linear-gradient(180deg, #fffdf0 0%, var(--status-yellow) 100%);
-}
-
-.tree-node-two {
-  border-color: var(--status-orange-border);
-  background: linear-gradient(180deg, #fff8ef 0%, var(--status-orange) 100%);
-}
-
-.tree-node-three-plus {
-  border-color: var(--status-red-border);
-  background: linear-gradient(180deg, #fff5f4 0%, var(--status-red) 100%);
-}
-
-.tree-node-header {
+.tree-node-topline,
+.tree-node-footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  align-items: flex-start;
 }
 
-.tree-node-header strong {
-  color: var(--ink);
-  font-size: 1.08rem;
+.tree-avatar {
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ffffff 0%, rgba(234, 241, 255, 0.92) 100%);
+  color: var(--accent-dark);
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  font-weight: 950;
+  box-shadow: 0 8px 18px rgba(28, 55, 86, 0.1);
 }
 
-.tree-node-title-block {
-  min-width: 0;
+.tree-avatar.large {
+  width: 58px;
+  height: 58px;
+  font-size: 1.1rem;
+}
+
+.tree-status-label,
+.tree-condition-count {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.68);
+  color: #3e4a46;
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.tree-node-body {
   display: grid;
   gap: 4px;
 }
 
-.tree-profile-meta {
+.tree-person-name {
+  color: var(--ink);
+  font-size: 1.12rem;
+  font-weight: 950;
+}
+
+.tree-profile-meta,
+.tree-condition-preview {
   display: block;
   color: #53615d;
   font-size: 0.86rem;
-  font-weight: 700;
+  font-weight: 750;
 }
 
-.tree-condition-count {
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.62);
-  color: #3e4a46;
-  padding: 4px 8px;
-  font-size: 0.78rem;
-  font-weight: 850;
+.tree-condition-preview,
+.tree-no-illnesses {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tree-illness-list {
@@ -1526,18 +1649,33 @@ input:focus {
 }
 
 .tree-detail-panel {
-  margin-top: 22px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+  box-shadow: var(--shadow-soft);
   display: grid;
-  gap: 10px;
+  gap: 16px;
   padding: 18px;
+}
+
+.tree-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .tree-detail-meta {
   color: var(--muted);
   font-weight: 750;
+}
+
+.tree-edit-block {
+  border: 1px solid #e8f0ed;
+  border-radius: 8px;
+  background: #f8fbfa;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
 }
 
 .app-disclaimer {
@@ -1900,6 +2038,105 @@ input:focus {
   font-weight: 750;
 }
 
+.family-patterns-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 16px;
+  margin: 18px 0;
+  padding: 20px;
+}
+
+.pattern-disclaimer {
+  border: 1px solid #c7d8ee;
+  border-radius: 8px;
+  background: var(--blue-soft);
+  color: #244569;
+  padding: 12px 14px;
+  font-weight: 750;
+}
+
+.pattern-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.pattern-insight-list {
+  display: grid;
+  gap: 12px;
+}
+
+.pattern-card,
+.common-condition-panel {
+  border: 1px solid #e4edf3;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow-soft);
+}
+
+.pattern-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.pattern-card h3,
+.common-condition-panel h3 {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.pattern-card p {
+  color: var(--muted-strong);
+  font-weight: 650;
+}
+
+.pattern-condition-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.common-condition-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.common-condition-panel ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.common-condition-panel li {
+  border: 1px solid #e8f0ed;
+  border-radius: 8px;
+  background: #f8fbfa;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.common-condition-panel strong {
+  color: var(--ink);
+}
+
+.common-condition-panel span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .risk-section-heading {
   border-top: 1px solid #e8f0ed;
   margin-bottom: 18px;
@@ -2184,6 +2421,8 @@ input:focus {
   .overall-summary-card,
   .results-toolbar,
   .result-detail-grid,
+  .family-tree-workspace,
+  .pattern-layout,
   .report-grid,
   .prevention-grid {
     grid-template-columns: 1fr;
@@ -2312,7 +2551,27 @@ input:focus {
   }
 
   .tree-node-list {
+    display: grid;
     grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .tree-node {
+    width: 100%;
+  }
+
+  .tree-node-list::before,
+  .tree-node::before,
+  .tree-tier + .tree-tier::before {
+    display: none;
+  }
+
+  .tree-node-card {
+    min-height: 154px;
+  }
+
+  .tree-detail-header {
+    align-items: flex-start;
   }
 
   .results-filter-group {
@@ -2379,12 +2638,7 @@ input:focus {
     min-height: 0;
   }
 
-  .tree-node-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .tree-node-header span {
-    width: fit-content;
+  .family-patterns-panel {
+    padding: 16px;
   }
 }

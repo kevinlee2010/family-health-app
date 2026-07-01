@@ -3,6 +3,7 @@ import './App.css'
 import { calculateRisk } from './riskRules'
 import { getConditionDetails } from './conditionDetails'
 import { buildFamilyHealthSummary } from './healthCategories'
+import { buildFamilyHealthPatterns } from './familyPatterns'
 
 const relationships = ['Mother', 'Father', 'Sibling', 'Grandparent']
 
@@ -351,6 +352,47 @@ function getTreeMeta(member) {
   return member.name ? member.relationship : ''
 }
 
+function getInitialsFromName(value) {
+  const words = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (words.length === 0) {
+    return '?'
+  }
+
+  return words
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase()
+}
+
+function getTreeInitials(member) {
+  if (member.isPlaceholder) {
+    return 'Y'
+  }
+
+  return getInitialsFromName(member.name || member.relationship)
+}
+
+function getTreeStatusLabel(illnessCount) {
+  if (illnessCount === 0) {
+    return 'Clear'
+  }
+
+  if (illnessCount === 1) {
+    return 'Watch'
+  }
+
+  if (illnessCount === 2) {
+    return 'Review'
+  }
+
+  return 'Priority'
+}
+
 function ConditionButton({
   conditionName,
   onOpenConditionDetails,
@@ -660,6 +702,83 @@ function HealthCategoryDetailsModal({
   )
 }
 
+function FamilyHealthPatterns({ patterns }) {
+  const hasInsights = patterns.insights.length > 0
+
+  return (
+    <section
+      className="family-patterns-panel"
+      aria-labelledby="family-patterns-title"
+    >
+      <div className="section-heading-row">
+        <div>
+          <p className="eyebrow">Pattern Detection</p>
+          <h2 id="family-patterns-title">Family Health Patterns</h2>
+        </div>
+        <span className="privacy-pill">Awareness only</span>
+      </div>
+
+      <p className="pattern-disclaimer">
+        These patterns are for awareness only and are not medical advice or a
+        diagnosis. Talk to a healthcare professional about personal risk.
+      </p>
+
+      {hasInsights ? (
+        <div className="pattern-layout">
+          <div className="pattern-insight-list">
+            {patterns.insights.map((insight) => (
+              <article className="pattern-card" key={insight.id}>
+                <h3>{insight.text}</h3>
+                <p>{insight.detail}</p>
+                {insight.conditionNames.length > 0 ? (
+                  <ul className="pattern-condition-list">
+                    {insight.conditionNames.slice(0, 4).map((conditionName) => (
+                      <li key={conditionName}>
+                        <ConditionTag conditionName={conditionName} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </article>
+            ))}
+          </div>
+
+          <aside className="common-condition-panel">
+            <h3>Most common conditions</h3>
+            {patterns.commonConditions.length > 0 ? (
+              <ol>
+                {patterns.commonConditions.map((condition) => (
+                  <li key={condition.conditionName}>
+                    <strong>{condition.conditionName}</strong>
+                    <span>
+                      {condition.count} entr{condition.count === 1 ? 'y' : 'ies'}
+                      {condition.relatives.length > 0
+                        ? ` from ${condition.relatives.join(', ')}`
+                        : ''}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="helper-text">
+                Add family history entries to see common condition patterns.
+              </p>
+            )}
+          </aside>
+        </div>
+      ) : (
+        <div className="empty-state compact-empty">
+          <strong>No family health patterns yet.</strong>
+          <span>
+            Add family members and conditions to detect repeated conditions,
+            generational patterns, and side-of-family clusters.
+          </span>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function IllnessPicker({
   inputId,
   inputValue,
@@ -844,6 +963,7 @@ function App() {
   const [resultsSearch, setResultsSearch] = useState('')
   const [resultsFilter, setResultsFilter] = useState('all')
   const [selectedTreeNodeId, setSelectedTreeNodeId] = useState(null)
+  const [collapsedTreeSections, setCollapsedTreeSections] = useState({})
   const [activeConditionName, setActiveConditionName] = useState(null)
   const [activeHealthCategoryId, setActiveHealthCategoryId] = useState(null)
 
@@ -878,6 +998,7 @@ function App() {
   const selectedTreeNode =
     treeMembers.find((member) => member.id === selectedTreeNodeId) || selfTreeNode
   const familyHealthSummary = buildFamilyHealthSummary({ familyMembers })
+  const familyHealthPatterns = buildFamilyHealthPatterns(familyMembers)
   const activeHealthCategory =
     familyHealthSummary.categories.find(
       (category) => category.id === activeHealthCategoryId,
@@ -1082,6 +1203,30 @@ function App() {
     setFamilyMembers((currentMembers) =>
       currentMembers.filter((member) => member.id !== memberId),
     )
+
+    if (selectedTreeNodeId === memberId) {
+      setSelectedTreeNodeId(null)
+    }
+  }
+
+  function updateFamilyMemberRelationship(memberId, nextRelationship) {
+    setFamilyMembers((currentMembers) =>
+      currentMembers.map((member) =>
+        member.id === memberId
+          ? {
+              ...member,
+              relationship: nextRelationship,
+            }
+          : member,
+      ),
+    )
+  }
+
+  function toggleTreeSection(tierId) {
+    setCollapsedTreeSections((currentSections) => ({
+      ...currentSections,
+      [tierId]: !currentSections[tierId],
+    }))
   }
 
   function handleStartOver() {
@@ -1106,6 +1251,7 @@ function App() {
     setResultsSearch('')
     setResultsFilter('all')
     setSelectedTreeNodeId(null)
+    setCollapsedTreeSections({})
     setActiveConditionName(null)
     setActiveHealthCategoryId(null)
   }
@@ -1628,99 +1774,190 @@ function App() {
             <span className="legend-item legend-three-plus">3+ conditions</span>
           </div>
 
-          <div className="family-tree">
-            {groupedFamilyMembers.map((tier) => (
-              <section className="tree-tier" key={tier.id}>
-                <div className="tier-label">
-                  <h2>{tier.label}</h2>
-                </div>
+          <div className="family-tree-workspace">
+            <div className="family-tree" aria-label="Visual family tree">
+              {groupedFamilyMembers.map((tier) => {
+                const isCollapsed = Boolean(collapsedTreeSections[tier.id])
 
-                {tier.members.length === 0 ? (
-                  <p className="empty-tier">No {tier.label.toLowerCase()} added.</p>
-                ) : (
-                  <ul className="tree-node-list">
-                    {tier.members.map((member) => {
-                      const conditionCount = getConditionCount(member.illnesses)
-                      const tone = getTreeNodeTone(conditionCount)
-                      const isSelected = selectedTreeNode.id === member.id
+                return (
+                  <section
+                    className={`tree-tier tree-tier-${tier.id}${
+                      isCollapsed ? ' collapsed' : ''
+                    }`}
+                    key={tier.id}
+                  >
+                    <div className="tier-label">
+                      <button
+                        className="tier-toggle"
+                        type="button"
+                        aria-expanded={!isCollapsed}
+                        onClick={() => toggleTreeSection(tier.id)}
+                      >
+                        <span>{tier.label}</span>
+                        <strong>{tier.members.length}</strong>
+                      </button>
+                    </div>
 
-                      return (
-                        <li
-                          className={`tree-node tree-node-${tone}${
-                            member.isSelf ? ' tree-node-self' : ''
-                          }${isSelected ? ' selected' : ''}`}
-                          key={member.id}
-                        >
-                          <div className="tree-node-action">
-                            <button
-                              className="tree-node-select-button"
-                              type="button"
-                              onClick={() => setSelectedTreeNodeId(member.id)}
+                    {isCollapsed ? null : tier.members.length === 0 ? (
+                      <p className="empty-tier">
+                        No {tier.label.toLowerCase()} added.
+                      </p>
+                    ) : (
+                      <ul className="tree-node-list">
+                        {tier.members.map((member) => {
+                          const conditionCount = getConditionCount(member.illnesses)
+                          const tone = getTreeNodeTone(conditionCount)
+                          const isSelected = selectedTreeNode.id === member.id
+
+                          return (
+                            <li
+                              className={`tree-node tree-node-${tone}${
+                                member.isSelf ? ' tree-node-self' : ''
+                              }${isSelected ? ' selected' : ''}`}
+                              key={member.id}
                             >
-                              <span className="tree-node-header">
-                                <span className="tree-node-title-block">
-                                  <strong>{getDisplayName(member)}</strong>
-                                  {getTreeMeta(member) ? (
-                                    <span className="tree-profile-meta">
-                                      {getTreeMeta(member)}
+                              <button
+                                className="tree-node-card"
+                                type="button"
+                                aria-pressed={isSelected}
+                                onClick={() => setSelectedTreeNodeId(member.id)}
+                              >
+                                <span className="tree-node-topline">
+                                  <span className="tree-avatar" aria-hidden="true">
+                                    {getTreeInitials(member)}
+                                  </span>
+                                  <span className="tree-status-label">
+                                    {getTreeStatusLabel(conditionCount)}
+                                  </span>
+                                </span>
+
+                                <span className="tree-node-body">
+                                  <span className="tree-person-name">
+                                    {getDisplayName(member)}
+                                  </span>
+                                  <span className="tree-profile-meta">
+                                    {getTreeMeta(member) || member.relationship}
+                                  </span>
+                                </span>
+
+                                <span className="tree-node-footer">
+                                  <span className="tree-condition-count">
+                                    {getConditionSummary(conditionCount)}
+                                  </span>
+                                  {member.illnesses.length > 0 ? (
+                                    <span className="tree-condition-preview">
+                                      {member.illnesses.slice(0, 2).join(', ')}
+                                      {member.illnesses.length > 2 ? ' +' : ''}
                                     </span>
-                                  ) : null}
+                                  ) : (
+                                    <span className="tree-no-illnesses">
+                                      No illnesses selected
+                                    </span>
+                                  )}
                                 </span>
-                                <span className="tree-condition-count">
-                                  {getConditionSummary(conditionCount)}
-                                </span>
-                              </span>
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </section>
+                )
+              })}
+            </div>
 
-                              {member.illnesses.length === 0 ? (
-                                <span className="tree-no-illnesses">
-                                  No illnesses selected.
-                                </span>
-                              ) : null}
-                            </button>
+            <aside className="tree-detail-panel" aria-live="polite">
+              <div className="tree-detail-header">
+                <span className="tree-avatar large" aria-hidden="true">
+                  {getTreeInitials(selectedTreeNode)}
+                </span>
+                <div>
+                  <p className="eyebrow">Person details</p>
+                  <h2>{getDisplayName(selectedTreeNode)}</h2>
+                  <p className="tree-detail-meta">
+                    {selectedTreeNode.relationship} ·{' '}
+                    {getConditionSummary(
+                      getConditionCount(selectedTreeNode.illnesses),
+                    )}
+                  </p>
+                </div>
+              </div>
 
-                            {member.illnesses.length > 0 ? (
-                              <ul className="tree-illness-list">
-                                {member.illnesses.map((illness) => (
-                                  <li key={illness}>
-                                    <ConditionTag
-                                      className="tree-condition-pill"
-                                      conditionName={illness}
-                                    />
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : null}
-                          </div>
-                        </li>
+              {selectedTreeNode.isPlaceholder ? (
+                <div className="tree-edit-block">
+                  <p className="helper-text">
+                    Add your profile in the My Profile tab to replace this
+                    placeholder.
+                  </p>
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    onClick={() => changeView('profile')}
+                  >
+                    Edit My Profile
+                  </button>
+                </div>
+              ) : selectedTreeNode.isSelf ? (
+                <div className="tree-edit-block">
+                  <p className="helper-text">
+                    This node uses your saved profile information.
+                  </p>
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    onClick={() => changeView('profile')}
+                  >
+                    Edit My Profile
+                  </button>
+                </div>
+              ) : (
+                <label className="field-group" htmlFor="tree-relationship-edit">
+                  Relationship
+                  <select
+                    id="tree-relationship-edit"
+                    value={selectedTreeNode.relationship}
+                    onChange={(event) =>
+                      updateFamilyMemberRelationship(
+                        selectedTreeNode.id,
+                        event.target.value,
                       )
-                    })}
-                  </ul>
-                )}
-              </section>
-            ))}
-          </div>
+                    }
+                  >
+                    {relationships.map((relationshipOption) => (
+                      <option
+                        key={relationshipOption}
+                        value={relationshipOption}
+                      >
+                        {relationshipOption}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
-          <aside className="tree-detail-panel" aria-live="polite">
-            <p className="eyebrow">Selected person</p>
-            <h2>{getDisplayName(selectedTreeNode)}</h2>
-            <p className="tree-detail-meta">{selectedTreeNode.relationship}</p>
-            {selectedTreeNode.isPlaceholder ? (
-              <p className="helper-text">
-                Add your profile in the My Profile tab to replace this placeholder.
-              </p>
-            ) : null}
-            {selectedTreeNode.illnesses.length > 0 ? (
-              <ul className="illness-list">
-                {selectedTreeNode.illnesses.map((illness) => (
-                  <li key={illness}>
-                    <ConditionTag conditionName={illness} />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="no-illnesses">No illnesses selected.</p>
-            )}
-          </aside>
+              {selectedTreeNode.illnesses.length > 0 ? (
+                <ul className="illness-list">
+                  {selectedTreeNode.illnesses.map((illness) => (
+                    <li key={illness}>
+                      <ConditionTag conditionName={illness} />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="no-illnesses">No illnesses selected.</p>
+              )}
+
+              {!selectedTreeNode.isSelf && !selectedTreeNode.isPlaceholder ? (
+                <button
+                  className="danger-action"
+                  type="button"
+                  onClick={() => removeFamilyMember(selectedTreeNode.id)}
+                >
+                  Remove from tree
+                </button>
+              ) : null}
+            </aside>
+          </div>
         </section>
       ) : null}
 
@@ -1735,6 +1972,8 @@ function App() {
             summary={familyHealthSummary}
             onOpenCategoryDetails={openHealthCategoryDetails}
           />
+
+          <FamilyHealthPatterns patterns={familyHealthPatterns} />
 
           <div className="risk-section-heading">
             <p className="eyebrow">Detailed cards</p>
