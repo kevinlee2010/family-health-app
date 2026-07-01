@@ -1135,6 +1135,22 @@ function App() {
     ...step,
     isActive: step.id === activeDashboardStep?.id,
   }))
+  const workflowStepIds = workflowSteps.map((step) => step.id)
+  const activeWorkflowStepIndex = workflowStepIds.indexOf(activeView)
+  const isWorkflowView = activeWorkflowStepIndex >= 0
+  const previousWorkflowStep =
+    activeWorkflowStepIndex > 0
+      ? workflowSteps[activeWorkflowStepIndex - 1]
+      : null
+  const nextWorkflowStep =
+    activeWorkflowStepIndex >= 0 &&
+    activeWorkflowStepIndex < workflowSteps.length - 1
+      ? workflowSteps[activeWorkflowStepIndex + 1]
+      : null
+  const continueTarget = isWorkflowView
+    ? nextWorkflowStep?.id
+    : activeDashboardStep?.id
+  const finishTarget = activeView === 'prevention' ? 'dashboard' : null
 
   useEffect(() => {
     if (!activeConditionName && !activeHealthCategoryId) {
@@ -1361,19 +1377,26 @@ function App() {
               <span aria-hidden="true">→</span>
             </button>
             <div className="hero-secondary-actions">
+              {isWorkflowView ? (
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={() =>
+                    changeView(previousWorkflowStep?.id || 'dashboard')
+                  }
+                >
+                  <span aria-hidden="true">←</span>
+                  {previousWorkflowStep ? 'Back' : 'Back to Dashboard'}
+                </button>
+              ) : null}
+
               <button
                 className="secondary-action"
                 type="button"
-                onClick={() => changeView('history')}
+                onClick={() => changeView(finishTarget || continueTarget)}
               >
-                Continue <span aria-hidden="true">→</span>
-              </button>
-              <button
-                className="secondary-action"
-                type="button"
-                onClick={() => changeView('tree')}
-              >
-                View Family Tree <span aria-hidden="true">→</span>
+                {finishTarget ? 'Finish' : 'Continue'}
+                <span aria-hidden="true">→</span>
               </button>
             </div>
           </div>
@@ -1522,7 +1545,7 @@ function App() {
                   type="button"
                   onClick={() => changeView('prevention')}
                 >
-                  Continue <span aria-hidden="true">→</span>
+                  View Tips <span aria-hidden="true">→</span>
                 </button>
               </div>
 
