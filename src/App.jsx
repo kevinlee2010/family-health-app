@@ -114,59 +114,74 @@ const illnessCategories = [
 const starterIllnesses = illnessCategories.flatMap((category) => category.illnesses)
 
 const appPages = [
-  { id: 'dashboard', label: 'Dashboard', showInSidebar: true },
+  { id: 'dashboard', label: 'Dashboard', icon: '📊', showInSidebar: true },
   {
     id: 'profile',
     label: 'My Profile',
+    icon: '👤',
     progressLabel: 'My Profile',
     showInSidebar: true,
   },
   {
     id: 'history',
     label: 'Family History',
+    icon: '👨‍👩‍👧',
     progressLabel: 'Family History',
     showInSidebar: true,
   },
-  { id: 'tree', label: 'Family Tree', showInSidebar: true },
+  {
+    id: 'tree',
+    label: 'Family Tree',
+    icon: '🌳',
+    progressLabel: 'Family Tree',
+    showInSidebar: true,
+  },
   {
     id: 'risk',
     label: 'Risk Assessment',
+    icon: '📊',
     progressLabel: 'Risk Assessment',
     showInSidebar: true,
   },
   {
     id: 'results',
     label: 'Results',
+    icon: '📈',
     progressLabel: 'Results',
     showInSidebar: true,
   },
   {
     id: 'prevention',
     label: 'Prevention & Tips',
+    icon: '🩺',
     progressLabel: 'Prevention Tips',
     showInSidebar: true,
   },
-  { id: 'reports', label: 'Reports', showInSidebar: true },
+  { id: 'reports', label: 'Reports', icon: '📄', showInSidebar: true },
 ]
 
 const viewTabs = appPages
   .filter((page) => page.showInSidebar)
-  .map(({ id, label }) => ({ id, label }))
+  .map(({ id, icon, label }) => ({ id, icon, label }))
 
 const defaultPreventionTips = [
   {
+    icon: '🩺',
     title: 'Discuss screening',
     text: 'Review your personal and family history with a healthcare professional.',
   },
   {
+    icon: '🏃',
     title: 'Stay active',
     text: 'Aim for regular movement that fits your health, schedule, and abilities.',
   },
   {
+    icon: '📄',
     title: 'Track changes',
     text: 'Update symptoms, diagnoses, and family history when something changes.',
   },
   {
+    icon: '🚭',
     title: 'Avoid tobacco',
     text: 'Avoid tobacco and secondhand smoke to support heart, lung, and cancer prevention.',
   },
@@ -193,7 +208,17 @@ const initialProfileForm = {
 
 const workflowSteps = appPages
   .filter((page) => page.progressLabel)
-  .map(({ id, progressLabel }) => ({ id, label: progressLabel }))
+  .map(({ id, icon, progressLabel }) => ({ id, icon, label: progressLabel }))
+
+const healthCategoryIcons = {
+  cardiovascular: '❤️',
+  metabolic: '🩸',
+  cancer: '🧬',
+  neurological: '🧠',
+  respiratory: '🫁',
+  kidney: '🩺',
+  mental: '🧠',
+}
 
 function createId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -293,6 +318,10 @@ function getRiskClass(riskLevel) {
 
 function getHealthCategoryRiskClass(riskLevel) {
   return `category-${riskLevel.toLowerCase()}`
+}
+
+function getHealthCategoryIcon(categoryId) {
+  return healthCategoryIcons[categoryId] || '🩺'
 }
 
 function getUniqueIllnesses(entries) {
@@ -572,7 +601,12 @@ function FamilyHealthSummaryDashboard({ summary, onOpenCategoryDetails }) {
                 type="button"
                 onClick={() => onOpenCategoryDetails(category.id)}
               >
-                <span>{category.name}</span>
+                <span className="category-name-with-icon">
+                  <span aria-hidden="true">
+                    {getHealthCategoryIcon(category.id)}
+                  </span>
+                  <span>{category.name}</span>
+                </span>
                 <strong>{category.riskLevel}</strong>
               </button>
             </li>
@@ -591,7 +625,12 @@ function FamilyHealthSummaryDashboard({ summary, onOpenCategoryDetails }) {
             onClick={() => onOpenCategoryDetails(category.id)}
           >
             <span className="category-card-topline">
-              <span>{category.name}</span>
+              <span className="category-name-with-icon">
+                <span aria-hidden="true">
+                  {getHealthCategoryIcon(category.id)}
+                </span>
+                <span>{category.name}</span>
+              </span>
               <strong>{category.riskLevel}</strong>
             </span>
             <span className="category-card-explanation">
@@ -1028,11 +1067,13 @@ function App() {
   ).length
   const dashboardSummaryCards = [
     {
+      icon: '👨‍👩‍👧',
       label: 'Family Members',
       value: familyMembers.length,
       detail: userProfile ? 'Profile included in tree' : 'Add your profile next',
     },
     {
+      icon: '🧬',
       label: 'Conditions Tracked',
       value: trackedConditions.length,
       detail:
@@ -1043,6 +1084,7 @@ function App() {
           : 'Start with profile or family history',
     },
     {
+      icon: '📊',
       label: 'Risk Insights',
       value: riskAssessments.length,
       detail:
@@ -1051,6 +1093,7 @@ function App() {
           : `${increasedRiskCount} increased awareness`,
     },
     {
+      icon: '👤',
       label: 'Profile Completion',
       value: `${profileCompletion}%`,
       detail: profileCompletion === 100 ? 'Profile ready' : 'Keep building it',
@@ -1074,17 +1117,24 @@ function App() {
     const isComplete =
       (step.id === 'profile' && Boolean(userProfile)) ||
       (step.id === 'history' && familyMembers.length > 0) ||
+      (step.id === 'tree' && treeEntryCount > 0) ||
       (step.id === 'risk' && riskAssessments.length > 0) ||
       (step.id === 'results' && resultRiskAssessments.length > 0) ||
       (step.id === 'prevention' && riskAssessments.length > 0)
 
     return {
       ...step,
-      isActive: activeView === step.id,
       isComplete,
       number: index + 1,
     }
   })
+  const activeDashboardStep =
+    workflowProgress.find((step) => !step.isComplete) ||
+    workflowProgress[workflowProgress.length - 1]
+  const dashboardWorkflowProgress = workflowProgress.map((step) => ({
+    ...step,
+    isActive: step.id === activeDashboardStep?.id,
+  }))
 
   useEffect(() => {
     if (!activeConditionName && !activeHealthCategoryId) {
@@ -1261,7 +1311,7 @@ function App() {
       <aside className="app-sidebar" aria-label="Family health dashboard">
         <div className="sidebar-brand">
           <span className="brand-mark" aria-hidden="true">
-            +
+            🩺
           </span>
           <div>
             <strong>Health History</strong>
@@ -1277,7 +1327,10 @@ function App() {
               type="button"
               onClick={() => changeView(tab.id)}
             >
-              {tab.label}
+              <span className="nav-icon" aria-hidden="true">
+                {tab.icon}
+              </span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </nav>
@@ -1292,14 +1345,67 @@ function App() {
               <span>Take Control of Your Health.</span>
             </h1>
             <p className="app-subtitle">
-              Turn your family's medical history into personalized health
-              insights, prevention guidance, and educational resources.
+              Build your family health profile to discover inherited health
+              patterns, understand potential risks, and receive personalized
+              educational insights.
             </p>
           </div>
 
-          <div className="hero-card" aria-label="Privacy note">
-            <span>Your data stays on your device.</span>
-            <strong>{treeEntryCount} people tracked</strong>
+          <div className="hero-actions">
+            <button
+              className="primary-action hero-primary-action"
+              type="button"
+              onClick={() => changeView('risk')}
+            >
+              Analyze My Family History
+              <span aria-hidden="true">→</span>
+            </button>
+            <div className="hero-secondary-actions">
+              <button
+                className="secondary-action"
+                type="button"
+                onClick={() => changeView('history')}
+              >
+                Continue <span aria-hidden="true">→</span>
+              </button>
+              <button
+                className="secondary-action"
+                type="button"
+                onClick={() => changeView('tree')}
+              >
+                View Family Tree <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="trust-indicators" aria-label="Trust indicators">
+            <article className="trust-badge">
+              <span className="trust-icon" aria-hidden="true">
+                🔒
+              </span>
+              <div>
+                <strong>Private</strong>
+                <p>Your data stays on your device.</p>
+              </div>
+            </article>
+            <article className="trust-badge">
+              <span className="trust-icon" aria-hidden="true">
+                📚
+              </span>
+              <div>
+                <strong>Educational</strong>
+                <p>Based on family history and educational health information.</p>
+              </div>
+            </article>
+            <article className="trust-badge">
+              <span className="trust-icon" aria-hidden="true">
+                🧬
+              </span>
+              <div>
+                <strong>Personalized</strong>
+                <p>Insights tailored to your family's health history.</p>
+              </div>
+            </article>
           </div>
         </header>
 
@@ -1316,25 +1422,6 @@ function App() {
           </button>
         </section>
 
-        <section className="progress-panel" aria-label="Setup progress">
-          <ol className="progress-steps">
-            {workflowProgress.map((step) => (
-              <li key={step.id}>
-                <button
-                  className={`progress-step${
-                    step.isComplete ? ' complete' : ''
-                  }${step.isActive ? ' active' : ''}`}
-                  type="button"
-                  onClick={() => changeView(step.id)}
-                >
-                  <span className="progress-number">{step.number}</span>
-                  <span>{step.label}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
-        </section>
-
       {activeView === 'dashboard' ? (
         <section className="dashboard-panel" aria-labelledby="dashboard-title">
           <div className="page-heading dashboard-heading">
@@ -1345,10 +1432,40 @@ function App() {
             <span className="privacy-pill">Your data stays on your device.</span>
           </div>
 
+          <section
+            className="progress-panel dashboard-progress-panel"
+            aria-label="Setup progress"
+          >
+            <ol className="progress-steps">
+              {dashboardWorkflowProgress.map((step) => (
+                <li key={step.id}>
+                  <button
+                    className={`progress-step${
+                      step.isComplete ? ' complete' : ''
+                    }${step.isActive ? ' active' : ''}`}
+                    type="button"
+                    onClick={() => changeView(step.id)}
+                  >
+                    <span className="progress-number">{step.number}</span>
+                    <span className="progress-label">
+                      <span aria-hidden="true">{step.icon}</span>
+                      <span>{step.label}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </section>
+
           <div className="dashboard-summary-grid">
             {dashboardSummaryCards.map((card) => (
               <article className="dashboard-summary-card" key={card.label}>
-                <span>{card.label}</span>
+                <span className="card-topline">
+                  <span className="card-icon" aria-hidden="true">
+                    {card.icon}
+                  </span>
+                  <span>{card.label}</span>
+                </span>
                 <strong>{card.value}</strong>
                 <p>{card.detail}</p>
               </article>
@@ -1367,7 +1484,7 @@ function App() {
                   type="button"
                   onClick={() => changeView('risk')}
                 >
-                  View risks
+                  Learn More <span aria-hidden="true">→</span>
                 </button>
               </div>
 
@@ -1381,7 +1498,12 @@ function App() {
                       type="button"
                       onClick={() => openHealthCategoryDetails(category.id)}
                     >
-                      <span>{category.name}</span>
+                      <span className="category-name-with-icon">
+                        <span aria-hidden="true">
+                          {getHealthCategoryIcon(category.id)}
+                        </span>
+                        <span>{category.name}</span>
+                      </span>
                       <strong>{category.riskLevel}</strong>
                     </button>
                   </li>
@@ -1400,7 +1522,7 @@ function App() {
                   type="button"
                   onClick={() => changeView('prevention')}
                 >
-                  View tips
+                  Continue <span aria-hidden="true">→</span>
                 </button>
               </div>
 
@@ -1520,7 +1642,7 @@ function App() {
                       type="button"
                       onClick={() => openConditionDetails(risk.conditionName)}
                     >
-                      Learn More
+                      Learn More <span aria-hidden="true">→</span>
                     </button>
                   </div>
 
@@ -1635,7 +1757,7 @@ function App() {
             </fieldset>
 
             <button className="primary-action" type="submit">
-              Save my profile
+              Save my profile <span aria-hidden="true">→</span>
             </button>
           </form>
 
@@ -1703,7 +1825,7 @@ function App() {
                 <span aria-hidden="true" className="button-icon">
                   +
                 </span>
-                Add family member
+                Add family member <span aria-hidden="true">→</span>
               </button>
             </form>
           </section>
@@ -1894,7 +2016,7 @@ function App() {
                     type="button"
                     onClick={() => changeView('profile')}
                   >
-                    Edit My Profile
+                    Edit Profile <span aria-hidden="true">→</span>
                   </button>
                 </div>
               ) : selectedTreeNode.isSelf ? (
@@ -1907,7 +2029,7 @@ function App() {
                     type="button"
                     onClick={() => changeView('profile')}
                   >
-                    Edit My Profile
+                    Edit Profile <span aria-hidden="true">→</span>
                   </button>
                 </div>
               ) : (
@@ -2046,7 +2168,7 @@ function App() {
           <div className="prevention-grid">
             {defaultPreventionTips.map((tip) => (
               <article className="prevention-tip-card" key={tip.title}>
-                <span aria-hidden="true">+</span>
+                <span aria-hidden="true">{tip.icon}</span>
                 <h2>{tip.title}</h2>
                 <p>{tip.text}</p>
               </article>
@@ -2096,12 +2218,22 @@ function App() {
 
           <div className="report-grid">
             <article className="report-card">
-              <span>Family health snapshot</span>
+              <span className="card-topline">
+                <span className="card-icon" aria-hidden="true">
+                  👨‍👩‍👧
+                </span>
+                <span>Family health snapshot</span>
+              </span>
               <strong>{familyMembers.length} family members</strong>
               <p>{trackedConditions.length} unique conditions tracked.</p>
             </article>
             <article className="report-card">
-              <span>Risk overview</span>
+              <span className="card-topline">
+                <span className="card-icon" aria-hidden="true">
+                  📊
+                </span>
+                <span>Risk overview</span>
+              </span>
               <strong>{highRiskCount} high awareness</strong>
               <p>
                 {increasedRiskCount} increased and {currentConditionCount} current
@@ -2109,7 +2241,12 @@ function App() {
               </p>
             </article>
             <article className="report-card">
-              <span>Profile status</span>
+              <span className="card-topline">
+                <span className="card-icon" aria-hidden="true">
+                  👤
+                </span>
+                <span>Profile status</span>
+              </span>
               <strong>{profileCompletion}% complete</strong>
               <p>Profile information helps place you in the family tree.</p>
             </article>
