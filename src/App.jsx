@@ -324,6 +324,122 @@ function getHealthCategoryIcon(categoryId) {
   return healthCategoryIcons[categoryId] || '🩺'
 }
 
+function getElevatedCategoryNames(categories) {
+  return categories
+    .filter((category) => category.riskLevel !== 'Average')
+    .map((category) => category.name.toLowerCase())
+}
+
+function formatReadableList(items) {
+  if (items.length <= 1) {
+    return items[0] || ''
+  }
+
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`
+  }
+
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
+}
+
+function hasRiskCondition(riskAssessments, keywords) {
+  return riskAssessments.some((risk) => {
+    const conditionName = normalizeIllness(risk.conditionName)
+    const hasSignal =
+      risk.riskLevel === 'High' ||
+      risk.riskLevel === 'Increased' ||
+      risk.riskLevel === 'Current Condition'
+
+    return (
+      hasSignal &&
+      keywords.some((keyword) => conditionName.includes(normalizeIllness(keyword)))
+    )
+  })
+}
+
+function getCategoryById(categories, categoryId) {
+  return categories.find((category) => category.id === categoryId)
+}
+
+function buildPersonalizedPreventionPlan({
+  familyHealthSummary,
+  riskAssessments,
+  trackedConditions,
+}) {
+  const elevatedCategoryNames = getElevatedCategoryNames(
+    familyHealthSummary.categories,
+  )
+  const cardiovascularCategory = getCategoryById(
+    familyHealthSummary.categories,
+    'cardiovascular',
+  )
+  const metabolicCategory = getCategoryById(
+    familyHealthSummary.categories,
+    'metabolic',
+  )
+  const cancerCategory = getCategoryById(familyHealthSummary.categories, 'cancer')
+  const hasCardiovascularSignal =
+    cardiovascularCategory?.riskLevel !== 'Average' ||
+    hasRiskCondition(riskAssessments, [
+      'heart',
+      'stroke',
+      'blood pressure',
+      'hypertension',
+      'cholesterol',
+    ])
+  const hasDiabetesSignal =
+    hasRiskCondition(riskAssessments, ['diabetes', 'obesity']) ||
+    metabolicCategory?.riskLevel === 'High'
+  const hasCancerSignal =
+    cancerCategory?.riskLevel !== 'Average' ||
+    hasRiskCondition(riskAssessments, ['cancer', 'melanoma'])
+  const currentConditionCount = riskAssessments.filter(
+    (risk) => risk.riskLevel === 'Current Condition',
+  ).length
+
+  if (trackedConditions.length === 0) {
+    return 'No family health patterns have been entered yet, so this plan starts with the basics: maintain regular physical activity, eat a balanced diet, keep up with routine health checkups, and update your profile as you learn more about your personal and family health history. As you add conditions, this section will focus more on screening conversations and prevention topics that match your family history.'
+  }
+
+  const opening =
+    elevatedCategoryNames.length > 0
+      ? `Based on the family history entered so far, the strongest areas to review are ${formatReadableList(elevatedCategoryNames.slice(0, 3))}.`
+      : 'Based on the family history entered so far, no single health category stands out strongly yet.'
+  const focusParts = []
+
+  if (hasCardiovascularSignal) {
+    focusParts.push(
+      'Because cardiovascular conditions appear in the family history, it may be especially helpful to focus on heart health, regular physical activity, avoiding tobacco, and checking blood pressure and cholesterol during routine visits.',
+    )
+  }
+
+  if (hasDiabetesSignal) {
+    focusParts.push(
+      'Because diabetes or metabolic concerns appear in the family history, healthy weight, balanced meals, regular movement, and asking about blood sugar screening are practical prevention topics to discuss.',
+    )
+  }
+
+  if (hasCancerSignal) {
+    focusParts.push(
+      'Because cancer appears in the family history, consider asking a healthcare professional whether any screening should start earlier or happen more often based on which relatives were affected.',
+    )
+  }
+
+  if (focusParts.length === 0) {
+    focusParts.push(
+      'A steady prevention routine is still valuable: stay active, eat a balanced diet, keep preventive visits on the calendar, and use checkups to review any new symptoms or family history changes.',
+    )
+  }
+
+  if (currentConditionCount > 0) {
+    focusParts.push(
+      'For conditions already listed in your own profile, continue using this information as a conversation starter with your care team rather than as a diagnosis or treatment plan.',
+    )
+  }
+
+  return `${opening} ${focusParts.join(' ')} Over time, keep monitoring changes in your personal and family health history so your screening conversations and prevention priorities stay up to date.`
+}
+
 function getUniqueIllnesses(entries) {
   const illnessMap = new Map()
 
@@ -1065,6 +1181,11 @@ function App() {
   const currentConditionCount = riskAssessments.filter(
     (risk) => risk.riskLevel === 'Current Condition',
   ).length
+  const personalizedPreventionPlan = buildPersonalizedPreventionPlan({
+    familyHealthSummary,
+    riskAssessments,
+    trackedConditions,
+  })
   const dashboardSummaryCards = [
     {
       icon: '👨‍👩‍👧',
@@ -2188,46 +2309,32 @@ function App() {
             <h1 id="prevention-title">Prevention & Tips</h1>
           </div>
 
-          <div className="prevention-grid">
-            {defaultPreventionTips.map((tip) => (
-              <article className="prevention-tip-card" key={tip.title}>
-                <span aria-hidden="true">{tip.icon}</span>
-                <h2>{tip.title}</h2>
-                <p>{tip.text}</p>
-              </article>
-            ))}
-          </div>
-
-          <section className="insight-panel personalized-tip-panel">
-            <div className="section-heading-row">
+          <section
+            className="personalized-prevention-plan"
+            aria-labelledby="personalized-prevention-title"
+          >
+            <div className="personalized-prevention-heading">
               <div>
                 <p className="eyebrow">From your entries</p>
-                <h2>Personalized prevention prompts</h2>
+                <h2 id="personalized-prevention-title">
+                  Personalized Prevention Plan
+                </h2>
               </div>
-              <span className="member-count">{riskAssessments.length} cards</span>
+              <span className="member-count">
+                {trackedConditions.length} tracked condition
+                {trackedConditions.length === 1 ? '' : 's'}
+              </span>
             </div>
 
-            {riskAssessments.length === 0 ? (
-              <div className="empty-state compact-empty">
-                <strong>No personalized prompts yet.</strong>
-                <span>Add profile or family conditions to generate prompts.</span>
-              </div>
-            ) : (
-              <div className="prevention-prompt-list">
-                {riskAssessments.map((risk) => (
-                  <article className="prevention-prompt-card" key={risk.conditionName}>
-                    <h3>
-                      {risk.conditionName}
-                    </h3>
-                    <ul className="prevention-list">
-                      {risk.suggestions.map((suggestion) => (
-                        <li key={suggestion}>{suggestion}</li>
-                      ))}
-                    </ul>
-                  </article>
-                ))}
-              </div>
-            )}
+            <p className="personalized-prevention-copy">
+              {personalizedPreventionPlan}
+            </p>
+
+            <p className="prevention-disclaimer">
+              This information is educational and is not a medical diagnosis.
+              Please consult a qualified healthcare professional for
+              personalized medical advice.
+            </p>
           </section>
         </section>
       ) : null}

@@ -627,6 +627,47 @@ body {
   padding: 14px;
 }
 
+.personalized-prevention-plan {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at top right, rgba(225, 245, 241, 0.75), transparent 32%),
+    linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 20px;
+  padding: clamp(20px, 4vw, 30px);
+}
+
+.personalized-prevention-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.personalized-prevention-heading h2 {
+  font-size: clamp(1.45rem, 3vw, 2rem);
+}
+
+.personalized-prevention-copy {
+  max-width: 920px;
+  color: var(--muted-strong);
+  font-size: clamp(1rem, 2vw, 1.16rem);
+  font-weight: 650;
+  line-height: 1.75;
+}
+
+.prevention-disclaimer {
+  border: 1px solid #c7d8ee;
+  border-radius: 8px;
+  background: var(--blue-soft);
+  color: #244569;
+  padding: 13px 15px;
+  font-size: 0.92rem;
+  font-weight: 750;
+}
+
 .report-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -2579,7 +2620,8 @@ input:focus {
   }
 
   .dashboard-heading,
-  .section-heading-row {
+  .section-heading-row,
+  .personalized-prevention-heading {
     align-items: stretch;
     flex-direction: column;
   }
