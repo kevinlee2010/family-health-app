@@ -458,8 +458,16 @@ body {
 .report-grid,
 .prevention-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
+}
+
+.dashboard-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.report-grid,
+.prevention-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .dashboard-summary-card,

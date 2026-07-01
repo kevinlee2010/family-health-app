@@ -1269,12 +1269,6 @@ function App() {
           ? `${highRiskCount} high awareness`
           : `${increasedRiskCount} increased awareness`,
     },
-    {
-      icon: '👤',
-      label: 'Profile Completion',
-      value: `${profileCompletion}%`,
-      detail: profileCompletion === 100 ? 'Profile ready' : 'Keep building it',
-    },
   ]
   const workflowProgress = workflowSteps.map((step, index) => {
     const isComplete =
