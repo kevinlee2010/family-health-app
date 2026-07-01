@@ -180,17 +180,6 @@ const defaultPreventionTips = [
   },
 ]
 
-const resultFilters = [
-  { id: 'all', label: 'All' },
-  { id: 'high', label: 'High Risk', riskLevel: 'High' },
-  { id: 'increased', label: 'Increased Risk', riskLevel: 'Increased' },
-  {
-    id: 'current',
-    label: 'Current Conditions',
-    riskLevel: 'Current Condition',
-  },
-]
-
 const resultsRiskLevels = ['Increased', 'High', 'Current Condition']
 
 const initialProfileForm = {
@@ -211,6 +200,16 @@ const healthCategoryIcons = {
   respiratory: '🫁',
   kidney: '🩺',
   mental: '🧠',
+}
+
+const summaryCategoryLabels = {
+  cardiovascular: 'cardiovascular health',
+  metabolic: 'diabetes and metabolic health',
+  cancer: 'cancer history',
+  neurological: 'neurological health',
+  respiratory: 'respiratory health',
+  kidney: 'kidney health',
+  mental: 'mental health',
 }
 
 function createId() {
@@ -354,6 +353,62 @@ function getCategoryById(categories, categoryId) {
   return categories.find((category) => category.id === categoryId)
 }
 
+function getSummaryCategoryLabel(category) {
+  return summaryCategoryLabels[category.id] || category.name.toLowerCase()
+}
+
+function buildOverallHealthSummaryText({
+  familyHealthSummary,
+  familyHealthPatterns,
+  familyMembers,
+  trackedConditions,
+  userProfile,
+}) {
+  const presentCategories = familyHealthSummary.categories.filter(
+    (category) => category.observationCount > 0,
+  )
+  const elevatedCategories = presentCategories.filter(
+    (category) => category.riskLevel !== 'Average',
+  )
+  const categoryNames = presentCategories.map(getSummaryCategoryLabel)
+
+  if (familyMembers.length === 0) {
+    if (userProfile && trackedConditions.length > 0) {
+      return 'Your personal profile has been started, but no family members have been added yet. Add relatives and their conditions to reveal family health patterns, inherited risk signals, and prevention topics that fit your family history.'
+    }
+
+    return 'No family health history has been entered yet. Add relatives and any known conditions to build a clearer picture of your family patterns and prevention priorities.'
+  }
+
+  const familyText = `${familyMembers.length} family member${
+    familyMembers.length === 1 ? ' has' : 's have'
+  } been added`
+  const conditionText =
+    trackedConditions.length > 0
+      ? `with ${trackedConditions.length} unique condition${
+          trackedConditions.length === 1 ? '' : 's'
+        } tracked across your profile and family history`
+      : 'with no conditions selected so far'
+  const categoryText =
+    categoryNames.length > 0
+      ? `The family history includes ${formatReadableList(categoryNames.slice(0, 4))}${
+          categoryNames.length > 4 ? ', and other health areas' : ''
+        }.`
+      : 'No major health category stands out in the family history yet.'
+  const riskText =
+    elevatedCategories.length > 0
+      ? `The strongest family-history signals are in ${formatReadableList(
+          elevatedCategories.map(getSummaryCategoryLabel).slice(0, 3),
+        )}.`
+      : 'The current entries are limited enough that no category stands out strongly yet.'
+  const patternText =
+    familyHealthPatterns.insights.length > 0
+      ? 'The patterns below highlight repeated conditions, close-relative patterns, and side-of-family clusters where they appear.'
+      : 'As more family members are added, this page will look for repeated conditions, close-relative patterns, and maternal or paternal clusters.'
+
+  return `${familyText} ${conditionText}. ${categoryText} ${riskText} ${patternText}`
+}
+
 function buildPersonalizedPreventionPlan({
   familyHealthSummary,
   riskAssessments,
@@ -391,13 +446,15 @@ function buildPersonalizedPreventionPlan({
   ).length
 
   if (trackedConditions.length === 0) {
-    return 'No family health patterns have been entered yet, so this plan starts with the basics: maintain regular physical activity, eat a balanced diet, keep up with routine health checkups, and update your profile as you learn more about your personal and family health history. As you add conditions, this section will focus more on screening conversations and prevention topics that match your family history.'
+    return 'No family health patterns have been entered yet, so this plan starts with the basics: maintain regular physical activity, balanced nutrition, a healthy weight, routine health checkups, and discussing your family history with a healthcare professional as it grows. As you add conditions, this section will focus more on screening conversations and prevention topics that match your family history.'
   }
 
   const opening =
     elevatedCategoryNames.length > 0
       ? `Based on the family history entered so far, the strongest areas to review are ${formatReadableList(elevatedCategoryNames.slice(0, 3))}.`
       : 'Based on the family history entered so far, no single health category stands out strongly yet.'
+  const foundation =
+    'A strong prevention foundation includes regular physical activity, balanced nutrition, maintaining a healthy weight, routine healthcare visits, and sharing your family history with a healthcare professional.'
   const focusParts = []
 
   if (hasCardiovascularSignal) {
@@ -430,7 +487,7 @@ function buildPersonalizedPreventionPlan({
     )
   }
 
-  return `${opening} ${focusParts.join(' ')} Over time, keep monitoring changes in your personal and family health history so your screening conversations and prevention priorities stay up to date.`
+  return `${opening} ${foundation} ${focusParts.join(' ')} Over time, keep monitoring changes in your personal and family health history so your screening conversations and prevention priorities stay up to date.`
 }
 
 function getUniqueIllnesses(entries) {
@@ -1108,8 +1165,6 @@ function App() {
   const [selectedIllnesses, setSelectedIllnesses] = useState([])
   const [illnessInput, setIllnessInput] = useState('')
   const [error, setError] = useState('')
-  const [resultsSearch, setResultsSearch] = useState('')
-  const [resultsFilter, setResultsFilter] = useState('all')
   const [selectedTreeNodeId, setSelectedTreeNodeId] = useState(null)
   const [collapsedTreeSections, setCollapsedTreeSections] = useState({})
   const [activeConditionName, setActiveConditionName] = useState(null)
@@ -1165,6 +1220,14 @@ function App() {
   const resultRiskAssessments = riskAssessments.filter((risk) =>
     resultsRiskLevels.includes(risk.riskLevel),
   )
+  const overallHealthSummaryText = buildOverallHealthSummaryText({
+    familyHealthSummary,
+    familyHealthPatterns,
+    familyMembers,
+    trackedConditions,
+    userProfile,
+  })
+  const resultsPatternInsights = familyHealthPatterns.insights.slice(0, 6)
   const highRiskCount = riskAssessments.filter(
     (risk) => risk.riskLevel === 'High',
   ).length
@@ -1213,20 +1276,6 @@ function App() {
       detail: profileCompletion === 100 ? 'Profile ready' : 'Keep building it',
     },
   ]
-  const activeResultsFilter = resultFilters.find(
-    (filter) => filter.id === resultsFilter,
-  )
-  const normalizedResultsSearch = normalizeIllness(resultsSearch)
-  const filteredRiskResults = resultRiskAssessments.filter((risk) => {
-    const matchesSearch =
-      normalizedResultsSearch === '' ||
-      normalizeIllness(risk.conditionName).includes(normalizedResultsSearch)
-    const matchesFilter =
-      !activeResultsFilter?.riskLevel ||
-      risk.riskLevel === activeResultsFilter.riskLevel
-
-    return matchesSearch && matchesFilter
-  })
   const workflowProgress = workflowSteps.map((step, index) => {
     const isComplete =
       (step.id === 'profile' && Boolean(userProfile)) ||
@@ -1405,7 +1454,7 @@ function App() {
 
   function handleStartOver() {
     const confirmed = window.confirm(
-      'Start over and clear your profile, family history, results, and filters?',
+      'Start over and clear your profile, family history, and results?',
     )
 
     if (!confirmed) {
@@ -1422,8 +1471,6 @@ function App() {
     setSelectedIllnesses([])
     setIllnessInput('')
     setError('')
-    setResultsSearch('')
-    setResultsFilter('all')
     setSelectedTreeNodeId(null)
     setCollapsedTreeSections({})
     setActiveConditionName(null)
@@ -2169,133 +2216,53 @@ function App() {
           >
             <div>
               <p className="eyebrow">Overall Health Summary</p>
-              <h2>Risk level overview</h2>
-            </div>
-
-            <div className="results-summary-grid">
-              <div className="results-summary-item summary-high">
-                <strong>{highRiskCount}</strong>
-                <span>High Risk</span>
-              </div>
-              <div className="results-summary-item summary-increased">
-                <strong>{increasedRiskCount}</strong>
-                <span>Increased Risk</span>
-              </div>
-              <div className="results-summary-item summary-current">
-                <strong>{currentConditionCount}</strong>
-                <span>Current Conditions</span>
-              </div>
+              <h2>What your family history shows</h2>
+              <p className="summary-copy">{overallHealthSummaryText}</p>
             </div>
           </section>
 
-          <section className="merged-results-section" aria-label="Risk results">
-            <div className="results-toolbar">
-              <label
-                className="field-group results-search"
-                htmlFor="results-search"
-              >
-                Search conditions
-                <input
-                  id="results-search"
-                  type="search"
-                  value={resultsSearch}
-                  onChange={(event) => setResultsSearch(event.target.value)}
-                  placeholder="Search by condition name"
-                />
-              </label>
-
-              <div className="results-filter-group" aria-label="Filter results">
-                {resultFilters.map((filter) => (
-                  <button
-                    className={
-                      resultsFilter === filter.id
-                        ? 'results-filter-button active'
-                        : 'results-filter-button'
-                    }
-                    key={filter.id}
-                    type="button"
-                    onClick={() => setResultsFilter(filter.id)}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
+          <section
+            className="results-summary-section"
+            aria-labelledby="results-patterns-title"
+          >
+            <div className="section-heading-row">
+              <div>
+                <p className="eyebrow">Pattern Detection</p>
+                <h2 id="results-patterns-title">Family Health Patterns</h2>
               </div>
+              {resultsPatternInsights.length > 0 ? (
+                <span className="member-count">
+                  {resultsPatternInsights.length} insight
+                  {resultsPatternInsights.length === 1 ? '' : 's'}
+                </span>
+              ) : null}
             </div>
 
-            <p className="results-disclaimer">
-              This tool is for educational purposes only and is not a medical
-              diagnosis. Talk to a healthcare professional for medical advice.
-            </p>
-
-            {resultRiskAssessments.length === 0 ? (
-              <div className="empty-state">
-                <strong>No results yet.</strong>
-                <span>
-                  Add your profile or family history to see increased, high, or
-                  current condition results.
-                </span>
-              </div>
-            ) : filteredRiskResults.length === 0 ? (
-              <div className="empty-state compact-empty">
-                <strong>No matching results.</strong>
-                <span>Try a different search or filter.</span>
-              </div>
-            ) : (
-              <div className="results-card-list">
-                {filteredRiskResults.map((risk) => (
-                  <article
-                    className={`result-card ${getRiskClass(risk.riskLevel)}`}
-                    key={risk.conditionName}
-                  >
-                    <div className="result-card-header">
-                      <div>
-                        <h2>
-                          <ConditionButton
-                            className="condition-heading-button"
-                            conditionName={risk.conditionName}
-                            onOpenConditionDetails={openConditionDetails}
-                          />
-                        </h2>
-                        <span className="result-risk-badge">
-                          {risk.riskLevel}
-                        </span>
-                      </div>
-                      <button
-                        className="secondary-action learn-more-button"
-                        type="button"
-                        onClick={() => openConditionDetails(risk.conditionName)}
-                      >
-                        Learn More <span aria-hidden="true">→</span>
-                      </button>
+            {resultsPatternInsights.length > 0 ? (
+              <ul className="summary-insight-list">
+                {resultsPatternInsights.map((insight) => (
+                  <li className="summary-insight-item" key={insight.id}>
+                    <span className="summary-insight-icon" aria-hidden="true">
+                      {insight.id.includes('maternal') ||
+                      insight.id.includes('paternal')
+                        ? '👨‍👩‍👧'
+                        : '🧬'}
+                    </span>
+                    <div>
+                      <strong>{insight.text}</strong>
+                      <p>{insight.detail}</p>
                     </div>
-
-                    <p className="result-reason">{risk.reason}</p>
-
-                    <div className="result-detail-grid">
-                      <section>
-                        <h3>Relatives contributing</h3>
-                        <ul className="risk-pill-list">
-                          {risk.relatives.length > 0 ? (
-                            risk.relatives.map((relative) => (
-                              <li key={relative}>{relative}</li>
-                            ))
-                          ) : (
-                            <li>No relatives contributed to this risk level</li>
-                          )}
-                        </ul>
-                      </section>
-
-                      <section>
-                        <h3>Educational prevention suggestions</h3>
-                        <ul className="prevention-list">
-                          {risk.suggestions.slice(0, 3).map((suggestion) => (
-                            <li key={suggestion}>{suggestion}</li>
-                          ))}
-                        </ul>
-                      </section>
-                    </div>
-                  </article>
+                  </li>
                 ))}
+              </ul>
+            ) : (
+              <div className="empty-state compact-empty">
+                <strong>No family health patterns yet.</strong>
+                <span>
+                  Add family members and conditions to detect repeated
+                  conditions, close-relative patterns, and side-of-family
+                  clusters.
+                </span>
               </div>
             )}
           </section>
@@ -2320,13 +2287,13 @@ function App() {
             <p className="personalized-prevention-copy">
               {personalizedPreventionPlan}
             </p>
-
-            <p className="prevention-disclaimer">
-              This information is educational and is not a medical diagnosis.
-              Please consult a qualified healthcare professional for
-              personalized medical advice.
-            </p>
           </section>
+
+          <p className="prevention-disclaimer">
+            This information is provided for educational purposes only and is not
+            a medical diagnosis. Please consult a qualified healthcare
+            professional for personalized medical advice.
+          </p>
         </section>
       ) : null}
 

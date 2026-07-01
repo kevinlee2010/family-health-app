@@ -671,9 +671,66 @@ body {
   gap: 22px;
 }
 
-.merged-results-section {
+.overall-summary-card,
+.results-summary-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+  box-shadow: var(--shadow-soft);
   display: grid;
-  gap: 0;
+  gap: 18px;
+  padding: clamp(20px, 4vw, 30px);
+}
+
+.overall-summary-card h2 {
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
+.summary-copy {
+  max-width: 940px;
+  color: var(--muted-strong);
+  font-size: clamp(1rem, 2vw, 1.12rem);
+  font-weight: 650;
+  line-height: 1.75;
+}
+
+.summary-insight-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.summary-insight-item {
+  border: 1px solid #e4edf3;
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px;
+}
+
+.summary-insight-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  display: inline-grid;
+  place-items: center;
+  font-size: 1.1rem;
+}
+
+.summary-insight-item strong {
+  color: var(--ink);
+}
+
+.summary-insight-item p {
+  color: var(--muted-strong);
+  font-weight: 650;
+  line-height: 1.55;
+  margin-top: 4px;
 }
 
 .report-grid {
@@ -682,217 +739,6 @@ body {
 
 .compact-empty {
   min-height: 150px;
-}
-
-.overall-summary-card {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
-  box-shadow: var(--shadow-soft);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
-  gap: 18px;
-  align-items: center;
-  padding: 20px;
-}
-
-.overall-summary-card h2 {
-  font-size: clamp(1.35rem, 3vw, 1.8rem);
-}
-
-.results-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.results-summary-item {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  padding: 14px 10px;
-  text-align: center;
-}
-
-.results-summary-item strong {
-  color: var(--ink);
-  font-size: 1.9rem;
-  line-height: 1;
-}
-
-.results-summary-item span {
-  color: var(--muted-strong);
-  font-size: 0.82rem;
-  font-weight: 900;
-}
-
-.summary-average {
-  border-color: var(--status-gray-border);
-  background: var(--status-gray);
-}
-
-.summary-increased {
-  border-color: var(--status-yellow-border);
-  background: var(--status-yellow);
-}
-
-.summary-high {
-  border-color: var(--status-red-border);
-  background: var(--status-red);
-}
-
-.summary-current {
-  border-color: var(--status-blue-border);
-  background: var(--status-blue);
-}
-
-.results-toolbar {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
-  gap: 14px;
-  align-items: end;
-  margin-top: 18px;
-}
-
-.results-search input {
-  background: #ffffff;
-}
-
-.results-filter-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.results-filter-button {
-  min-height: 42px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: #ffffff;
-  color: var(--muted-strong);
-  padding: 0 13px;
-  font-size: 0.9rem;
-  font-weight: 850;
-  cursor: pointer;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.results-filter-button:hover,
-.results-filter-button.active {
-  border-color: #93cfc6;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-}
-
-.results-disclaimer {
-  border: 1px solid #c7d8ee;
-  border-radius: 8px;
-  background: var(--blue-soft);
-  color: #244569;
-  margin: 18px 0;
-  padding: 14px 16px;
-  font-weight: 750;
-}
-
-.results-card-list {
-  display: grid;
-  gap: 16px;
-}
-
-.result-card {
-  --result-border: var(--status-gray-border);
-  border: 1px solid var(--line);
-  border-left: 8px solid var(--result-border);
-  border-radius: 8px;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
-  box-shadow: var(--shadow-soft);
-  display: grid;
-  gap: 16px;
-  padding: 18px;
-}
-
-.result-card.risk-average {
-  --result-border: var(--status-gray-border);
-}
-
-.result-card.risk-increased {
-  --result-border: var(--status-yellow-border);
-}
-
-.result-card.risk-high {
-  --result-border: var(--status-red-border);
-}
-
-.result-card.risk-current {
-  --result-border: var(--status-blue-border);
-}
-
-.result-card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-}
-
-.result-card-header > div {
-  min-width: 0;
-  display: grid;
-  gap: 8px;
-}
-
-.result-card-header h2 {
-  font-size: 1.35rem;
-}
-
-.result-risk-badge {
-  width: fit-content;
-  border-radius: 999px;
-  background: var(--status-gray);
-  color: #26352f;
-  padding: 7px 11px;
-  font-size: 0.84rem;
-  font-weight: 900;
-}
-
-.risk-increased .result-risk-badge {
-  background: var(--status-yellow);
-}
-
-.risk-high .result-risk-badge {
-  background: var(--status-red);
-}
-
-.risk-current .result-risk-badge {
-  background: var(--status-blue);
-  color: #234c84;
-}
-
-.learn-more-button {
-  flex: 0 0 auto;
-}
-
-.result-reason {
-  color: var(--muted-strong);
-  font-weight: 650;
-}
-
-.result-detail-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  gap: 18px;
-}
-
-.result-detail-grid h3 {
-  color: #26352f;
-  font-size: 0.95rem;
-  margin-bottom: 10px;
 }
 
 .eyebrow {
@@ -1258,7 +1104,6 @@ input:focus {
 .secondary-action:focus-visible,
 .danger-action:focus-visible,
 .progress-step:focus-visible,
-.results-filter-button:focus-visible,
 .condition-button:focus-visible,
 .tier-toggle:focus-visible,
 .tree-node-card:focus-visible {
@@ -2569,9 +2414,6 @@ input:focus {
   }
 
   .dashboard-content-grid,
-  .overall-summary-card,
-  .results-toolbar,
-  .result-detail-grid,
   .family-tree-workspace,
   .pattern-layout,
   .report-grid,
@@ -2655,8 +2497,7 @@ input:focus {
     width: fit-content;
   }
 
-  .dashboard-summary-grid,
-  .results-summary-grid {
+  .dashboard-summary-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2732,18 +2573,8 @@ input:focus {
     align-items: flex-start;
   }
 
-  .results-filter-group {
-    justify-content: flex-start;
-  }
-
-  .result-card-header,
   .risk-card-header {
     flex-direction: column;
-  }
-
-  .learn-more-button,
-  .results-filter-button {
-    width: 100%;
   }
 
   .risk-level {
