@@ -216,7 +216,6 @@ body {
 }
 
 .dashboard-panel,
-.results-panel,
 .profile-panel,
 .family-form-panel,
 .family-list-panel,
@@ -231,7 +230,6 @@ body {
 }
 
 .dashboard-panel,
-.results-panel,
 .profile-panel,
 .family-form-panel,
 .family-list-panel,
@@ -666,6 +664,16 @@ body {
   padding: 13px 15px;
   font-size: 0.92rem;
   font-weight: 750;
+}
+
+.results-tips-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.merged-results-section {
+  display: grid;
+  gap: 0;
 }
 
 .report-grid {
@@ -2653,7 +2661,6 @@ input:focus {
   }
 
   .dashboard-panel,
-  .results-panel,
   .profile-panel,
   .family-form-panel,
   .family-list-panel,

@@ -144,17 +144,10 @@ const appPages = [
     showInSidebar: true,
   },
   {
-    id: 'results',
-    label: 'Results',
-    icon: '📈',
-    progressLabel: 'Results',
-    showInSidebar: true,
-  },
-  {
     id: 'prevention',
-    label: 'Prevention & Tips',
+    label: 'Results & Tips',
     icon: '🩺',
-    progressLabel: 'Prevention Tips',
+    progressLabel: 'Results & Tips',
     showInSidebar: true,
   },
   { id: 'reports', label: 'Reports', icon: '📄', showInSidebar: true },
@@ -1240,8 +1233,7 @@ function App() {
       (step.id === 'history' && familyMembers.length > 0) ||
       (step.id === 'tree' && treeEntryCount > 0) ||
       (step.id === 'risk' && riskAssessments.length > 0) ||
-      (step.id === 'results' && resultRiskAssessments.length > 0) ||
-      (step.id === 'prevention' && riskAssessments.length > 0)
+      (step.id === 'prevention' && resultRiskAssessments.length > 0)
 
     return {
       ...step,
@@ -1249,29 +1241,24 @@ function App() {
       number: index + 1,
     }
   })
-  const activeDashboardStep =
-    workflowProgress.find((step) => !step.isComplete) ||
-    workflowProgress[workflowProgress.length - 1]
-  const dashboardWorkflowProgress = workflowProgress.map((step) => ({
-    ...step,
-    isActive: step.id === activeDashboardStep?.id,
-  }))
   const workflowStepIds = workflowSteps.map((step) => step.id)
   const activeWorkflowStepIndex = workflowStepIds.indexOf(activeView)
   const isWorkflowView = activeWorkflowStepIndex >= 0
+  const currentWorkflowIndex = isWorkflowView ? activeWorkflowStepIndex : -1
   const previousWorkflowStep =
-    activeWorkflowStepIndex > 0
-      ? workflowSteps[activeWorkflowStepIndex - 1]
+    currentWorkflowIndex > 0
+      ? workflowSteps[currentWorkflowIndex - 1]
       : null
   const nextWorkflowStep =
-    activeWorkflowStepIndex >= 0 &&
-    activeWorkflowStepIndex < workflowSteps.length - 1
-      ? workflowSteps[activeWorkflowStepIndex + 1]
+    currentWorkflowIndex < workflowSteps.length - 1
+      ? workflowSteps[currentWorkflowIndex + 1]
       : null
-  const continueTarget = isWorkflowView
-    ? nextWorkflowStep?.id
-    : activeDashboardStep?.id
+  const continueTarget = nextWorkflowStep?.id || 'dashboard'
   const finishTarget = activeView === 'prevention' ? 'dashboard' : null
+  const dashboardWorkflowProgress = workflowProgress.map((step, index) => ({
+    ...step,
+    isActive: index === 0,
+  }))
 
   useEffect(() => {
     if (!activeConditionName && !activeHealthCategoryId) {
@@ -1659,14 +1646,14 @@ function App() {
               <div className="section-heading-row">
                 <div>
                   <p className="eyebrow">Next steps</p>
-                  <h2>Prevention focus</h2>
+                  <h2>Results & Tips</h2>
                 </div>
                 <button
                   className="secondary-action"
                   type="button"
                   onClick={() => changeView('prevention')}
                 >
-                  View Tips <span aria-hidden="true">→</span>
+                  View Results & Tips <span aria-hidden="true">→</span>
                 </button>
               </div>
 
@@ -1680,145 +1667,6 @@ function App() {
               </ul>
             </section>
           </div>
-        </section>
-      ) : null}
-
-      {activeView === 'results' ? (
-        <section className="results-panel" aria-labelledby="results-title">
-          <div className="page-heading dashboard-heading">
-            <div>
-              <p className="eyebrow">Personalized results</p>
-              <h1 id="results-title">Results Dashboard</h1>
-            </div>
-            <span className="privacy-pill">Your data stays on your device.</span>
-          </div>
-
-          <section className="overall-summary-card" aria-label="Overall Health Summary">
-            <div>
-              <p className="eyebrow">Overall Health Summary</p>
-              <h2>Risk level overview</h2>
-            </div>
-
-            <div className="results-summary-grid">
-              <div className="results-summary-item summary-high">
-                <strong>{highRiskCount}</strong>
-                <span>High Risk</span>
-              </div>
-              <div className="results-summary-item summary-increased">
-                <strong>{increasedRiskCount}</strong>
-                <span>Increased Risk</span>
-              </div>
-              <div className="results-summary-item summary-current">
-                <strong>{currentConditionCount}</strong>
-                <span>Current Conditions</span>
-              </div>
-            </div>
-          </section>
-
-          <div className="results-toolbar">
-            <label className="field-group results-search" htmlFor="results-search">
-              Search conditions
-              <input
-                id="results-search"
-                type="search"
-                value={resultsSearch}
-                onChange={(event) => setResultsSearch(event.target.value)}
-                placeholder="Search by condition name"
-              />
-            </label>
-
-            <div className="results-filter-group" aria-label="Filter results">
-              {resultFilters.map((filter) => (
-                <button
-                  className={
-                    resultsFilter === filter.id
-                      ? 'results-filter-button active'
-                      : 'results-filter-button'
-                  }
-                  key={filter.id}
-                  type="button"
-                  onClick={() => setResultsFilter(filter.id)}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <p className="results-disclaimer">
-            This tool is for educational purposes only and is not a medical
-            diagnosis. Talk to a healthcare professional for medical advice.
-          </p>
-
-          {resultRiskAssessments.length === 0 ? (
-            <div className="empty-state">
-              <strong>No results yet.</strong>
-              <span>
-                Add your profile or family history to see increased, high, or
-                current condition results.
-              </span>
-            </div>
-          ) : filteredRiskResults.length === 0 ? (
-            <div className="empty-state compact-empty">
-              <strong>No matching results.</strong>
-              <span>Try a different search or filter.</span>
-            </div>
-          ) : (
-            <div className="results-card-list">
-              {filteredRiskResults.map((risk) => (
-                <article
-                  className={`result-card ${getRiskClass(risk.riskLevel)}`}
-                  key={risk.conditionName}
-                >
-                  <div className="result-card-header">
-                    <div>
-                      <h2>
-                        <ConditionButton
-                          className="condition-heading-button"
-                          conditionName={risk.conditionName}
-                          onOpenConditionDetails={openConditionDetails}
-                        />
-                      </h2>
-                      <span className="result-risk-badge">{risk.riskLevel}</span>
-                    </div>
-                    <button
-                      className="secondary-action learn-more-button"
-                      type="button"
-                      onClick={() => openConditionDetails(risk.conditionName)}
-                    >
-                      Learn More <span aria-hidden="true">→</span>
-                    </button>
-                  </div>
-
-                  <p className="result-reason">{risk.reason}</p>
-
-                  <div className="result-detail-grid">
-                    <section>
-                      <h3>Relatives contributing</h3>
-                      <ul className="risk-pill-list">
-                        {risk.relatives.length > 0 ? (
-                          risk.relatives.map((relative) => (
-                            <li key={relative}>{relative}</li>
-                          ))
-                        ) : (
-                          <li>No relatives contributed to this risk level</li>
-                        )}
-                      </ul>
-                    </section>
-
-                    <section>
-                      <h3>Educational prevention suggestions</h3>
-                      <ul className="prevention-list">
-                        {risk.suggestions.slice(0, 3).map((suggestion) => (
-                          <li key={suggestion}>{suggestion}</li>
-                        ))}
-                      </ul>
-                    </section>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
         </section>
       ) : null}
 
@@ -2303,11 +2151,154 @@ function App() {
       ) : null}
 
       {activeView === 'prevention' ? (
-        <section className="prevention-panel" aria-labelledby="prevention-title">
-          <div className="page-heading">
-            <p className="eyebrow">Prevention & Tips</p>
-            <h1 id="prevention-title">Prevention & Tips</h1>
+        <section
+          className="prevention-panel results-tips-panel"
+          aria-labelledby="prevention-title"
+        >
+          <div className="page-heading dashboard-heading">
+            <div>
+              <p className="eyebrow">Results & Tips</p>
+              <h1 id="prevention-title">Results & Tips</h1>
+            </div>
+            <span className="privacy-pill">Your data stays on your device.</span>
           </div>
+
+          <section
+            className="overall-summary-card"
+            aria-label="Overall Health Summary"
+          >
+            <div>
+              <p className="eyebrow">Overall Health Summary</p>
+              <h2>Risk level overview</h2>
+            </div>
+
+            <div className="results-summary-grid">
+              <div className="results-summary-item summary-high">
+                <strong>{highRiskCount}</strong>
+                <span>High Risk</span>
+              </div>
+              <div className="results-summary-item summary-increased">
+                <strong>{increasedRiskCount}</strong>
+                <span>Increased Risk</span>
+              </div>
+              <div className="results-summary-item summary-current">
+                <strong>{currentConditionCount}</strong>
+                <span>Current Conditions</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="merged-results-section" aria-label="Risk results">
+            <div className="results-toolbar">
+              <label
+                className="field-group results-search"
+                htmlFor="results-search"
+              >
+                Search conditions
+                <input
+                  id="results-search"
+                  type="search"
+                  value={resultsSearch}
+                  onChange={(event) => setResultsSearch(event.target.value)}
+                  placeholder="Search by condition name"
+                />
+              </label>
+
+              <div className="results-filter-group" aria-label="Filter results">
+                {resultFilters.map((filter) => (
+                  <button
+                    className={
+                      resultsFilter === filter.id
+                        ? 'results-filter-button active'
+                        : 'results-filter-button'
+                    }
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setResultsFilter(filter.id)}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <p className="results-disclaimer">
+              This tool is for educational purposes only and is not a medical
+              diagnosis. Talk to a healthcare professional for medical advice.
+            </p>
+
+            {resultRiskAssessments.length === 0 ? (
+              <div className="empty-state">
+                <strong>No results yet.</strong>
+                <span>
+                  Add your profile or family history to see increased, high, or
+                  current condition results.
+                </span>
+              </div>
+            ) : filteredRiskResults.length === 0 ? (
+              <div className="empty-state compact-empty">
+                <strong>No matching results.</strong>
+                <span>Try a different search or filter.</span>
+              </div>
+            ) : (
+              <div className="results-card-list">
+                {filteredRiskResults.map((risk) => (
+                  <article
+                    className={`result-card ${getRiskClass(risk.riskLevel)}`}
+                    key={risk.conditionName}
+                  >
+                    <div className="result-card-header">
+                      <div>
+                        <h2>
+                          <ConditionButton
+                            className="condition-heading-button"
+                            conditionName={risk.conditionName}
+                            onOpenConditionDetails={openConditionDetails}
+                          />
+                        </h2>
+                        <span className="result-risk-badge">
+                          {risk.riskLevel}
+                        </span>
+                      </div>
+                      <button
+                        className="secondary-action learn-more-button"
+                        type="button"
+                        onClick={() => openConditionDetails(risk.conditionName)}
+                      >
+                        Learn More <span aria-hidden="true">→</span>
+                      </button>
+                    </div>
+
+                    <p className="result-reason">{risk.reason}</p>
+
+                    <div className="result-detail-grid">
+                      <section>
+                        <h3>Relatives contributing</h3>
+                        <ul className="risk-pill-list">
+                          {risk.relatives.length > 0 ? (
+                            risk.relatives.map((relative) => (
+                              <li key={relative}>{relative}</li>
+                            ))
+                          ) : (
+                            <li>No relatives contributed to this risk level</li>
+                          )}
+                        </ul>
+                      </section>
+
+                      <section>
+                        <h3>Educational prevention suggestions</h3>
+                        <ul className="prevention-list">
+                          {risk.suggestions.slice(0, 3).map((suggestion) => (
+                            <li key={suggestion}>{suggestion}</li>
+                          ))}
+                        </ul>
+                      </section>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
 
           <section
             className="personalized-prevention-plan"
