@@ -611,6 +611,24 @@ function ConditionTag({ conditionName, className = 'illness-pill' }) {
   return <span className={`condition-tag ${className}`}>{conditionName}</span>
 }
 
+function ClickableConditionTag({
+  conditionName,
+  onOpenConditionDetails,
+  className = 'illness-pill',
+}) {
+  if (!onOpenConditionDetails) {
+    return <ConditionTag className={className} conditionName={conditionName} />
+  }
+
+  return (
+    <ConditionButton
+      className={className}
+      conditionName={conditionName}
+      onOpenConditionDetails={onOpenConditionDetails}
+    />
+  )
+}
+
 function ConditionDetailList({ items, title }) {
   return (
     <section className="condition-detail-section">
@@ -907,7 +925,7 @@ function HealthCategoryDetailsModal({
   )
 }
 
-function FamilyHealthPatterns({ patterns }) {
+function FamilyHealthPatterns({ onOpenConditionDetails, patterns }) {
   const hasInsights = patterns.insights.length > 0
 
   return (
@@ -939,7 +957,10 @@ function FamilyHealthPatterns({ patterns }) {
                   <ul className="pattern-condition-list">
                     {insight.conditionNames.slice(0, 4).map((conditionName) => (
                       <li key={conditionName}>
-                        <ConditionTag conditionName={conditionName} />
+                        <ClickableConditionTag
+                          conditionName={conditionName}
+                          onOpenConditionDetails={onOpenConditionDetails}
+                        />
                       </li>
                     ))}
                   </ul>
@@ -991,6 +1012,7 @@ function IllnessPicker({
   onInputClear,
   onAddIllness,
   onClearIllnesses,
+  onOpenConditionDetails,
   onRemoveIllness,
   selectedIllnesses,
 }) {
@@ -1130,9 +1152,10 @@ function IllnessPicker({
             {selectedIllnesses.map((illness) => (
               <li key={illness}>
                 <div className="selected-illness-pill">
-                  <ConditionTag
+                  <ClickableConditionTag
                     className="selected-illness-name"
                     conditionName={illness}
+                    onOpenConditionDetails={onOpenConditionDetails}
                   />
                   <button
                     className="selected-illness-remove"
@@ -1784,6 +1807,7 @@ function App() {
                 onInputClear={() => setProfileIllnessInput('')}
                 onAddIllness={addProfileIllness}
                 onClearIllnesses={clearProfileIllnesses}
+                onOpenConditionDetails={openConditionDetails}
                 onRemoveIllness={removeProfileIllness}
                 selectedIllnesses={profileIllnesses}
               />
@@ -1845,6 +1869,7 @@ function App() {
                   onInputClear={() => setIllnessInput('')}
                   onAddIllness={addFamilyIllness}
                   onClearIllnesses={clearFamilyIllnesses}
+                  onOpenConditionDetails={openConditionDetails}
                   onRemoveIllness={removeFamilyIllness}
                   selectedIllnesses={selectedIllnesses}
                 />
@@ -1897,7 +1922,10 @@ function App() {
                       <ul className="illness-list">
                         {member.illnesses.map((illness) => (
                           <li key={illness}>
-                            <ConditionTag conditionName={illness} />
+                            <ClickableConditionTag
+                              conditionName={illness}
+                              onOpenConditionDetails={openConditionDetails}
+                            />
                           </li>
                         ))}
                       </ul>
@@ -2094,7 +2122,10 @@ function App() {
                 <ul className="illness-list">
                   {selectedTreeNode.illnesses.map((illness) => (
                     <li key={illness}>
-                      <ConditionTag conditionName={illness} />
+                      <ClickableConditionTag
+                        conditionName={illness}
+                        onOpenConditionDetails={openConditionDetails}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -2128,7 +2159,10 @@ function App() {
             onOpenCategoryDetails={openHealthCategoryDetails}
           />
 
-          <FamilyHealthPatterns patterns={familyHealthPatterns} />
+          <FamilyHealthPatterns
+            onOpenConditionDetails={openConditionDetails}
+            patterns={familyHealthPatterns}
+          />
 
           <div className="risk-section-heading">
             <p className="eyebrow">Detailed cards</p>
@@ -2352,7 +2386,10 @@ function App() {
               <ul className="illness-list">
                 {trackedConditions.map((condition) => (
                   <li key={condition}>
-                    <ConditionTag conditionName={condition} />
+                    <ClickableConditionTag
+                      conditionName={condition}
+                      onOpenConditionDetails={openConditionDetails}
+                    />
                   </li>
                 ))}
               </ul>

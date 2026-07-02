@@ -331,6 +331,403 @@ const conditionAliases = {
   'cardiovascular disease': 'heart disease',
 }
 
+const conditionCategoryFallbacks = [
+  {
+    name: 'Cardiovascular condition',
+    keywords: [
+      'heart',
+      'stroke',
+      'blood pressure',
+      'hypertension',
+      'cholesterol',
+      'cardiovascular',
+    ],
+    overview:
+      'This condition is related to the heart or blood vessels. Family history can be a useful clue for prevention conversations, especially when close relatives are affected.',
+    symptoms: [
+      'Some cardiovascular conditions have no symptoms until checked by a clinician.',
+      'Warning signs can include chest discomfort, shortness of breath, sudden weakness, dizziness, or unusual fatigue.',
+      'Sudden stroke-like symptoms or severe chest pain should be treated as an emergency.',
+    ],
+    riskFactors: [
+      'Family history of heart disease, stroke, high blood pressure, or high cholesterol.',
+      'High blood pressure, high cholesterol, diabetes, smoking, and physical inactivity.',
+      'Age, diet, sleep, stress, and weight can also affect cardiovascular risk.',
+    ],
+    preventionTips: [
+      'Discuss blood pressure, cholesterol, and blood sugar checks with a healthcare professional.',
+      'Stay physically active, avoid tobacco, and choose heart-supportive eating patterns.',
+      'Share family history details with your clinician, especially if relatives were diagnosed early.',
+    ],
+    screening:
+      'Common prevention checks include blood pressure, cholesterol, blood sugar, weight, and lifestyle review. A clinician can recommend timing based on personal and family history.',
+    resources: [
+      {
+        label: 'American Heart Association: Health Topics',
+        url: 'https://www.heart.org/en/health-topics',
+      },
+      {
+        label: 'CDC: Heart Disease',
+        url: 'https://www.cdc.gov/heart-disease/index.html',
+      },
+      {
+        label: 'MedlinePlus: Heart and Circulation',
+        url: 'https://medlineplus.gov/heartandcirculation.html',
+      },
+    ],
+  },
+  {
+    name: 'Diabetes or metabolic condition',
+    keywords: ['diabetes', 'obesity', 'metabolic'],
+    overview:
+      'This condition is related to blood sugar, body weight, hormones, or how the body uses energy. Family history can help guide screening conversations.',
+    symptoms: [
+      'Some metabolic conditions develop slowly and may not cause obvious symptoms at first.',
+      'Possible signs can include fatigue, increased thirst, frequent urination, weight changes, or changes in energy.',
+      'Symptoms vary by condition and should be discussed with a healthcare professional.',
+    ],
+    riskFactors: [
+      'Family history of diabetes, obesity, or metabolic disease.',
+      'Physical inactivity, eating patterns, sleep, stress, and weight can affect risk.',
+      'Blood pressure, cholesterol, and other health conditions can also matter.',
+    ],
+    preventionTips: [
+      'Ask about blood sugar, cholesterol, blood pressure, and weight-related screening.',
+      'Build habits around regular movement, balanced nutrition, and healthy weight support.',
+      'Track family history changes and bring them to preventive care visits.',
+    ],
+    screening:
+      'Screening may include blood glucose, A1C, cholesterol, blood pressure, and weight-related measures. Timing depends on age, symptoms, and risk factors.',
+    resources: [
+      {
+        label: 'CDC: Diabetes',
+        url: 'https://www.cdc.gov/diabetes/index.html',
+      },
+      {
+        label: 'MedlinePlus: Diabetes',
+        url: 'https://medlineplus.gov/diabetes.html',
+      },
+      {
+        label: 'NIH: Obesity',
+        url: 'https://www.niddk.nih.gov/health-information/weight-management/adult-overweight-obesity',
+      },
+    ],
+  },
+  {
+    name: 'Cancer',
+    keywords: ['cancer', 'melanoma', 'tumor', 'tumour'],
+    overview:
+      'Cancer happens when cells grow out of control. Family history can be important, especially when several relatives have cancer or diagnoses happened at younger ages.',
+    symptoms: [
+      'Symptoms vary widely by cancer type and may not appear early.',
+      'Possible warning signs include new lumps, unusual bleeding, unexplained weight loss, persistent pain, or changes in skin, bowel, or urinary habits.',
+      'New or persistent changes should be discussed with a healthcare professional.',
+    ],
+    riskFactors: [
+      'Family history of cancer, especially in close relatives.',
+      'Inherited gene changes can raise risk for some cancers.',
+      'Age, tobacco, alcohol, sun exposure, infections, and lifestyle factors can also contribute.',
+    ],
+    preventionTips: [
+      'Discuss whether family history suggests earlier or different screening.',
+      'Avoid tobacco, limit alcohol, use sun protection, stay active, and keep up with routine care.',
+      'Ask whether genetic counseling is appropriate if cancer appears repeatedly in the family.',
+    ],
+    screening:
+      'Screening depends on cancer type, age, sex, symptoms, and family history. A healthcare professional can help decide which screenings are appropriate.',
+    resources: [
+      {
+        label: 'American Cancer Society: Cancer A-Z',
+        url: 'https://www.cancer.org/cancer/types.html',
+      },
+      {
+        label: 'National Cancer Institute: Cancer Types',
+        url: 'https://www.cancer.gov/types',
+      },
+      {
+        label: 'CDC: Cancer',
+        url: 'https://www.cdc.gov/cancer/index.htm',
+      },
+    ],
+  },
+  {
+    name: 'Neurological condition',
+    keywords: ['alzheimer', 'parkinson', 'neurological', 'dementia'],
+    overview:
+      'This condition affects the brain, nerves, movement, memory, or thinking. Family history may be one clue, but many neurological conditions have multiple causes.',
+    symptoms: [
+      'Symptoms can include memory changes, movement changes, tremor, weakness, numbness, or changes in balance.',
+      'Mood, sleep, speech, thinking, or daily function may also change depending on the condition.',
+      'New neurological symptoms should be discussed with a healthcare professional.',
+    ],
+    riskFactors: [
+      'Family history can matter for some neurological conditions.',
+      'Age, vascular health, head injury history, sleep, and other health conditions may contribute.',
+      'Risk factors vary widely by condition.',
+    ],
+    preventionTips: [
+      'Discuss family history and new symptoms with a healthcare professional.',
+      'Support brain health through physical activity, blood pressure management, sleep, and social connection.',
+      'Track changes over time so they can be shared during visits.',
+    ],
+    screening:
+      'Screening and evaluation depend on symptoms. A clinician may use history, exam, cognitive or movement testing, lab work, imaging, or specialist referral.',
+    resources: [
+      {
+        label: 'National Institute of Neurological Disorders and Stroke',
+        url: 'https://www.ninds.nih.gov/health-information/disorders',
+      },
+      {
+        label: 'MedlinePlus: Brain and Nerves',
+        url: 'https://medlineplus.gov/brainandnerves.html',
+      },
+    ],
+  },
+  {
+    name: 'Respiratory condition',
+    keywords: ['asthma', 'copd', 'lung', 'respiratory'],
+    overview:
+      'This condition affects the lungs or breathing. Family history, environment, allergies, infections, and smoke exposure can all play a role depending on the condition.',
+    symptoms: [
+      'Shortness of breath, wheezing, cough, or chest tightness.',
+      'Symptoms may be triggered by activity, infections, allergens, smoke, or air pollution.',
+      'Severe breathing trouble should be treated as urgent.',
+    ],
+    riskFactors: [
+      'Family history of asthma, allergies, or lung disease.',
+      'Smoking, secondhand smoke, air pollution, workplace exposures, or repeated lung infections.',
+      'Allergies and obesity can also affect some breathing conditions.',
+    ],
+    preventionTips: [
+      'Avoid tobacco smoke and known breathing triggers when possible.',
+      'Ask about lung function testing if symptoms or family history suggest it.',
+      'Follow an action plan or medications if prescribed by a clinician.',
+    ],
+    screening:
+      'Evaluation may include symptom review, physical exam, oxygen measurement, and lung function tests such as spirometry.',
+    resources: [
+      {
+        label: 'American Lung Association: Lung Health & Diseases',
+        url: 'https://www.lung.org/lung-health-diseases',
+      },
+      {
+        label: 'CDC: Asthma',
+        url: 'https://www.cdc.gov/asthma/index.html',
+      },
+      {
+        label: 'MedlinePlus: Lung Diseases',
+        url: 'https://medlineplus.gov/lungdiseases.html',
+      },
+    ],
+  },
+  {
+    name: 'Bone, joint, or autoimmune condition',
+    keywords: [
+      'osteoporosis',
+      'arthritis',
+      'rheumatoid',
+      'lupus',
+      'crohn',
+      'ulcerative',
+      'celiac',
+      'autoimmune',
+    ],
+    overview:
+      'This condition may affect bones, joints, digestion, inflammation, or the immune system. Some of these conditions can run in families.',
+    symptoms: [
+      'Symptoms vary but can include pain, swelling, stiffness, fatigue, digestive changes, rashes, or flares that come and go.',
+      'Some conditions are silent early and are found through screening or lab tests.',
+      'Persistent or worsening symptoms should be discussed with a healthcare professional.',
+    ],
+    riskFactors: [
+      'Family history of autoimmune, inflammatory, bone, or joint conditions.',
+      'Sex, age, hormones, nutrition, smoking, infections, and other immune factors can contribute.',
+      'Risk factors depend on the specific condition.',
+    ],
+    preventionTips: [
+      'Track symptoms, flares, and family history details over time.',
+      'Discuss screening or specialist referral if several relatives have related conditions.',
+      'Support overall health with activity, balanced nutrition, sleep, and avoiding tobacco.',
+    ],
+    screening:
+      'Evaluation may include medical history, physical exam, blood tests, imaging, bone density testing, or condition-specific testing.',
+    resources: [
+      {
+        label: 'MedlinePlus: Autoimmune Diseases',
+        url: 'https://medlineplus.gov/autoimmunediseases.html',
+      },
+      {
+        label: 'NIH NIAMS: Health Topics',
+        url: 'https://www.niams.nih.gov/health-topics',
+      },
+      {
+        label: 'MedlinePlus: Bone, Joint and Muscle Disorders',
+        url: 'https://medlineplus.gov/bonesjointsandmuscles.html',
+      },
+    ],
+  },
+  {
+    name: 'Kidney or endocrine condition',
+    keywords: ['kidney', 'renal', 'thyroid', 'endocrine'],
+    overview:
+      'This condition is related to the kidneys, hormones, or glands. Family history can be useful for deciding what to monitor over time.',
+    symptoms: [
+      'Symptoms vary and may include fatigue, swelling, urination changes, weight changes, temperature sensitivity, or changes in heart rate.',
+      'Some kidney or thyroid conditions may have few symptoms early.',
+      'Lab tests are often important for detection and monitoring.',
+    ],
+    riskFactors: [
+      'Family history of kidney disease, thyroid disease, or endocrine disorders.',
+      'High blood pressure, diabetes, autoimmune disease, and some inherited conditions can affect kidney or hormone health.',
+      'Risk factors depend on the specific condition.',
+    ],
+    preventionTips: [
+      'Ask about blood pressure, blood sugar, kidney function, urine, or thyroid testing when relevant.',
+      'Manage blood pressure and diabetes risks with a healthcare professional.',
+      'Track family history changes, especially inherited kidney conditions.',
+    ],
+    screening:
+      'Screening may include blood pressure, blood tests, urine tests, thyroid labs, imaging, or specialist evaluation depending on the condition.',
+    resources: [
+      {
+        label: 'National Kidney Foundation: Kidney Disease',
+        url: 'https://www.kidney.org/kidney-topics/chronic-kidney-disease-ckd',
+      },
+      {
+        label: 'MedlinePlus: Kidney Diseases',
+        url: 'https://medlineplus.gov/kidneydiseases.html',
+      },
+      {
+        label: 'MedlinePlus: Thyroid Diseases',
+        url: 'https://medlineplus.gov/thyroiddiseases.html',
+      },
+    ],
+  },
+  {
+    name: 'Vision condition',
+    keywords: ['glaucoma', 'macular', 'vision', 'eye'],
+    overview:
+      'This condition affects the eyes or vision. Some eye diseases can run in families and may be easier to manage when found early.',
+    symptoms: [
+      'Some eye conditions cause no symptoms in early stages.',
+      'Possible signs include blurry vision, loss of side vision, distorted central vision, eye pain, or trouble seeing in low light.',
+      'Sudden vision loss or severe eye pain needs urgent care.',
+    ],
+    riskFactors: [
+      'Family history of glaucoma, macular degeneration, or other eye disease.',
+      'Age, diabetes, high blood pressure, smoking, and eye injury history can affect risk.',
+      'Risk factors vary by condition.',
+    ],
+    preventionTips: [
+      'Schedule regular comprehensive eye exams, especially with family history.',
+      'Manage blood pressure, diabetes, and tobacco exposure.',
+      'Protect eyes from injury and discuss vision changes promptly.',
+    ],
+    screening:
+      'Eye screening may include a dilated eye exam, eye pressure measurement, retinal exam, visual field testing, or imaging depending on risk.',
+    resources: [
+      {
+        label: 'National Eye Institute: Eye Conditions',
+        url: 'https://www.nei.nih.gov/learn-about-eye-health/eye-conditions-and-diseases',
+      },
+      {
+        label: 'MedlinePlus: Eye Diseases',
+        url: 'https://medlineplus.gov/eyediseases.html',
+      },
+    ],
+  },
+  {
+    name: 'Mental or behavioral health condition',
+    keywords: [
+      'depression',
+      'anxiety',
+      'bipolar',
+      'schizophrenia',
+      'adhd',
+      'autism',
+      'mental',
+    ],
+    overview:
+      'This condition affects mood, thinking, attention, behavior, or daily functioning. Family history can be one helpful clue, but support and treatment are highly individual.',
+    symptoms: [
+      'Symptoms vary and can include mood changes, anxiety, trouble focusing, sleep changes, social or communication differences, or changes in daily function.',
+      'Warning signs can also include withdrawal, severe distress, or thoughts of self-harm.',
+      'If someone may harm themselves or others, seek emergency help right away.',
+    ],
+    riskFactors: [
+      'Family history of mental or behavioral health conditions.',
+      'Stress, trauma, sleep, substance use, medical conditions, and environment can also contribute.',
+      'Risk factors vary by condition and person.',
+    ],
+    preventionTips: [
+      'Discuss symptoms and family history with a qualified healthcare or mental health professional.',
+      'Support mental health with sleep, social connection, movement, and stress-management routines.',
+      'Track symptoms and seek help early if distress or daily functioning worsens.',
+    ],
+    screening:
+      'Screening may include questionnaires, clinical interviews, developmental evaluation, or referral to a mental health specialist.',
+    resources: [
+      {
+        label: 'NIMH: Health Topics',
+        url: 'https://www.nimh.nih.gov/health/topics',
+      },
+      {
+        label: 'MedlinePlus: Mental Health',
+        url: 'https://medlineplus.gov/mentalhealth.html',
+      },
+      {
+        label: '988 Suicide & Crisis Lifeline',
+        url: 'https://988lifeline.org/',
+      },
+    ],
+  },
+  {
+    name: 'Inherited blood or genetic condition',
+    keywords: [
+      'sickle',
+      'thalassemia',
+      'hemophilia',
+      'cystic fibrosis',
+      'inherited',
+      'genetic',
+      'blood disorder',
+    ],
+    overview:
+      'This condition may be inherited through genes. Family history can be especially important for understanding carrier status, testing options, and reproductive planning.',
+    symptoms: [
+      'Symptoms depend on the condition and may include anemia, pain episodes, bleeding problems, lung or digestive symptoms, or frequent infections.',
+      'Some people may be carriers without symptoms.',
+      'Known family history is important to share with healthcare professionals.',
+    ],
+    riskFactors: [
+      'Having biological relatives with the condition or carrier status.',
+      'Ancestry can affect the likelihood of some inherited blood disorders.',
+      'Both parents may need to carry certain gene changes for a child to be affected.',
+    ],
+    preventionTips: [
+      'Ask whether genetic counseling or carrier screening is appropriate.',
+      'Keep a clear family history record and share it with clinicians.',
+      'Follow condition-specific care plans if a diagnosis is known.',
+    ],
+    screening:
+      'Testing may include newborn screening, blood tests, carrier screening, genetic testing, or referral to a genetics professional.',
+    resources: [
+      {
+        label: 'MedlinePlus Genetics',
+        url: 'https://medlineplus.gov/genetics/',
+      },
+      {
+        label: 'CDC: Genomics and Precision Health',
+        url: 'https://www.cdc.gov/genomics/index.htm',
+      },
+      {
+        label: 'NIH: Genetic and Rare Diseases Information Center',
+        url: 'https://rarediseases.info.nih.gov/',
+      },
+    ],
+  },
+]
+
 export function normalizeConditionName(value) {
   return value
     .trim()
@@ -343,6 +740,22 @@ export function normalizeConditionName(value) {
 export function getConditionDetails(conditionName) {
   const normalizedName = normalizeConditionName(conditionName)
   const detailKey = conditionAliases[normalizedName] || normalizedName
+  const exactDetails = conditionDetails[detailKey]
 
-  return conditionDetails[detailKey] || null
+  if (exactDetails) {
+    return exactDetails
+  }
+
+  const fallback = conditionCategoryFallbacks.find(({ keywords }) =>
+    keywords.some((keyword) => detailKey.includes(keyword)),
+  )
+
+  if (!fallback) {
+    return null
+  }
+
+  return {
+    ...fallback,
+    name: conditionName,
+  }
 }
