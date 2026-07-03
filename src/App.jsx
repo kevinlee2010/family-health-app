@@ -192,7 +192,35 @@ const initialProfileForm = {
   name: '',
   age: '',
   sex: '',
+  heightFeet: '',
+  heightInches: '',
+  weight: '',
+  smokingStatus: '',
+  alcoholUse: '',
+  exercise: '',
+  dietQuality: '',
+  sleep: '',
 }
+
+const smokingOptions = ['Never', 'Former', 'Current']
+
+const alcoholOptions = ['Never', 'Occasionally', 'Weekly', 'Daily']
+
+const exerciseOptions = [
+  'Rarely',
+  '1-2 days/week',
+  '3-5 days/week',
+  'Nearly every day',
+]
+
+const dietQualityOptions = ['Poor', 'Fair', 'Good', 'Excellent']
+
+const sleepOptions = [
+  'Less than 6 hours',
+  '6-7 hours',
+  '7-9 hours',
+  'More than 9 hours',
+]
 
 const workflowSteps = appPages
   .filter((page) => page.progressLabel)
@@ -407,6 +435,39 @@ function getConditionCount(illnesses) {
   return illnesses.filter((illness) => !isNoIllness(illness)).length
 }
 
+function calculateBmi({ heightFeet, heightInches, weight }) {
+  const feet = Number(heightFeet)
+  const inches = Number(heightInches)
+  const pounds = Number(weight)
+  const totalInches = feet * 12 + inches
+
+  if (!pounds || !totalInches || pounds <= 0 || totalInches <= 0) {
+    return null
+  }
+
+  return Number(((pounds / (totalInches * totalInches)) * 703).toFixed(1))
+}
+
+function getBmiCategory(bmi) {
+  if (!bmi) {
+    return 'Add height and weight to calculate BMI.'
+  }
+
+  if (bmi < 18.5) {
+    return 'Below the typical adult range'
+  }
+
+  if (bmi < 25) {
+    return 'Typical adult range'
+  }
+
+  if (bmi < 30) {
+    return 'Above the typical adult range'
+  }
+
+  return 'Well above the typical adult range'
+}
+
 function addIllnessToList(currentIllnesses, illness) {
   const illnessKey = getIllnessKey(illness)
 
@@ -599,6 +660,65 @@ function getCategoryById(categories, categoryId) {
   return categories.find((category) => category.id === categoryId)
 }
 
+function buildLifestyleInsightParts(userProfile) {
+  if (!userProfile) {
+    return []
+  }
+
+  const lifestyleParts = []
+
+  if (userProfile.smokingStatus === 'Current') {
+    lifestyleParts.push(
+      'Because current smoking was listed, avoiding tobacco and asking about quit-support resources may be one of the highest-impact prevention steps.',
+    )
+  } else if (userProfile.smokingStatus === 'Former') {
+    lifestyleParts.push(
+      'Because former smoking was listed, continuing to avoid tobacco supports heart, lung, and cancer prevention.',
+    )
+  }
+
+  if (userProfile.alcoholUse === 'Daily') {
+    lifestyleParts.push(
+      'Because daily alcohol use was listed, it may be worth discussing safer alcohol limits with a healthcare professional.',
+    )
+  }
+
+  if (
+    userProfile.exercise === 'Rarely' ||
+    userProfile.exercise === '1-2 days/week'
+  ) {
+    lifestyleParts.push(
+      'Because activity is currently limited, starting with short walks or other low-pressure movement can be a practical next step.',
+    )
+  }
+
+  if (
+    userProfile.dietQuality === 'Poor' ||
+    userProfile.dietQuality === 'Fair'
+  ) {
+    lifestyleParts.push(
+      'Because diet quality was marked lower, simple nutrition goals like more fiber-rich foods, fruits, vegetables, and fewer highly processed foods may be useful.',
+    )
+  }
+
+  if (
+    userProfile.sleep === 'Less than 6 hours' ||
+    userProfile.sleep === 'More than 9 hours'
+  ) {
+    lifestyleParts.push(
+      'Because sleep duration is outside the typical 7-9 hour range, sleep habits may be another helpful topic to review during routine care.',
+    )
+  }
+
+  if (userProfile.bmi && userProfile.bmi >= 25) {
+    lifestyleParts.push(
+      'Because BMI is above the typical adult range, healthy weight support may be relevant for prevention conversations, especially for heart and metabolic health.',
+    )
+  }
+
+  return lifestyleParts
+}
+
 function getSummaryCategoryLabel(category) {
   return summaryCategoryLabels[category.id] || category.name.toLowerCase()
 }
@@ -659,6 +779,7 @@ function buildPersonalizedPreventionPlan({
   familyHealthSummary,
   riskAssessments,
   trackedConditions,
+  userProfile,
 }) {
   const elevatedCategoryNames = getElevatedCategoryNames(
     familyHealthSummary.categories,
@@ -732,6 +853,8 @@ function buildPersonalizedPreventionPlan({
       'For conditions already listed in your own profile, continue using this information as a conversation starter with your care team rather than as a diagnosis or treatment plan.',
     )
   }
+
+  focusParts.push(...buildLifestyleInsightParts(userProfile))
 
   return `${opening} ${foundation} ${focusParts.join(' ')} Over time, keep monitoring changes in your personal and family health history so your screening conversations and prevention priorities stay up to date.`
 }
@@ -1489,6 +1612,7 @@ function App() {
     ...familyMembers,
     ...(userProfile ? [userProfile] : []),
   ])
+  const profileBmi = calculateBmi(profileForm)
   const profileCompletion = getProfileCompletion(profileForm, profileIllnesses)
   const resultRiskAssessments = riskAssessments.filter((risk) =>
     resultsRiskLevels.includes(risk.riskLevel),
@@ -1514,6 +1638,7 @@ function App() {
     familyHealthSummary,
     riskAssessments,
     trackedConditions,
+    userProfile,
   })
   const wellnessLocationLabel = getLocationLabel({
     manualLocation,
@@ -1718,6 +1843,15 @@ function App() {
       name: profileForm.name.trim(),
       age: profileForm.age,
       sex: profileForm.sex,
+      heightFeet: profileForm.heightFeet,
+      heightInches: profileForm.heightInches,
+      weight: profileForm.weight,
+      bmi: profileBmi,
+      smokingStatus: profileForm.smokingStatus,
+      alcoholUse: profileForm.alcoholUse,
+      exercise: profileForm.exercise,
+      dietQuality: profileForm.dietQuality,
+      sleep: profileForm.sleep,
       illnesses: profileIllnesses,
       isSelf: true,
     })
@@ -2047,69 +2181,254 @@ function App() {
       {activeView === 'profile' ? (
         <section className="profile-panel" aria-labelledby="profile-title">
           <div className="page-heading">
-            <p className="eyebrow">My Profile</p>
-            <h1 id="profile-title">My Profile</h1>
+            <p className="eyebrow">Optional profile</p>
+            <h1 id="profile-title">Lifestyle & Health Profile</h1>
           </div>
 
           <form className="profile-form" onSubmit={saveProfile} noValidate>
-            <div className="profile-grid">
-              <label className="field-group" htmlFor="profile-name">
-                Name
-                <input
-                  id="profile-name"
-                  type="text"
-                  value={profileForm.name}
-                  onChange={(event) =>
-                    setProfileForm((currentProfile) => ({
-                      ...currentProfile,
-                      name: event.target.value,
-                    }))
-                  }
-                  placeholder="Your name"
-                />
-              </label>
+            <section className="profile-form-section">
+              <div>
+                <p className="eyebrow">Basic Information</p>
+                <h2>About you</h2>
+              </div>
 
-              <label className="field-group" htmlFor="profile-age">
-                Age
-                <input
-                  id="profile-age"
-                  type="number"
-                  min="0"
-                  value={profileForm.age}
-                  onChange={(event) =>
-                    setProfileForm((currentProfile) => ({
-                      ...currentProfile,
-                      age: event.target.value,
-                    }))
-                  }
-                  placeholder="Age"
-                />
-              </label>
+              <div className="profile-grid">
+                <label className="field-group" htmlFor="profile-name">
+                  Name
+                  <input
+                    id="profile-name"
+                    type="text"
+                    value={profileForm.name}
+                    onChange={(event) =>
+                      setProfileForm((currentProfile) => ({
+                        ...currentProfile,
+                        name: event.target.value,
+                      }))
+                    }
+                    placeholder="Your name"
+                  />
+                </label>
 
-              <label className="field-group" htmlFor="profile-sex">
-                Sex
-                <select
-                  id="profile-sex"
-                  value={profileForm.sex}
-                  onChange={(event) =>
-                    setProfileForm((currentProfile) => ({
-                      ...currentProfile,
-                      sex: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Choose one</option>
-                  {sexOptions.map((sexOption) => (
-                    <option key={sexOption} value={sexOption}>
-                      {sexOption}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+                <label className="field-group" htmlFor="profile-age">
+                  Age
+                  <input
+                    id="profile-age"
+                    type="number"
+                    min="0"
+                    value={profileForm.age}
+                    onChange={(event) =>
+                      setProfileForm((currentProfile) => ({
+                        ...currentProfile,
+                        age: event.target.value,
+                      }))
+                    }
+                    placeholder="Age"
+                  />
+                </label>
 
-            <fieldset className="illness-fieldset">
-              <legend>Illnesses or conditions</legend>
+                <label className="field-group" htmlFor="profile-sex">
+                  Biological sex
+                  <select
+                    id="profile-sex"
+                    value={profileForm.sex}
+                    onChange={(event) =>
+                      setProfileForm((currentProfile) => ({
+                        ...currentProfile,
+                        sex: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Choose one</option>
+                    {sexOptions.map((sexOption) => (
+                      <option key={sexOption} value={sexOption}>
+                        {sexOption}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="body-measure-grid">
+                <label className="field-group" htmlFor="profile-height-feet">
+                  Height feet
+                  <input
+                    id="profile-height-feet"
+                    type="number"
+                    min="0"
+                    value={profileForm.heightFeet}
+                    onChange={(event) =>
+                      setProfileForm((currentProfile) => ({
+                        ...currentProfile,
+                        heightFeet: event.target.value,
+                      }))
+                    }
+                    placeholder="5"
+                  />
+                </label>
+
+                <label className="field-group" htmlFor="profile-height-inches">
+                  Height inches
+                  <input
+                    id="profile-height-inches"
+                    type="number"
+                    min="0"
+                    max="11"
+                    value={profileForm.heightInches}
+                    onChange={(event) =>
+                      setProfileForm((currentProfile) => ({
+                        ...currentProfile,
+                        heightInches: event.target.value,
+                      }))
+                    }
+                    placeholder="8"
+                  />
+                </label>
+
+                <label className="field-group" htmlFor="profile-weight">
+                  Weight
+                  <input
+                    id="profile-weight"
+                    type="number"
+                    min="0"
+                    value={profileForm.weight}
+                    onChange={(event) =>
+                      setProfileForm((currentProfile) => ({
+                        ...currentProfile,
+                        weight: event.target.value,
+                      }))
+                    }
+                    placeholder="Pounds"
+                  />
+                </label>
+
+                <div className="bmi-card" aria-live="polite">
+                  <span>BMI</span>
+                  <strong>{profileBmi || '--'}</strong>
+                  <p>{getBmiCategory(profileBmi)}</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="profile-form-section">
+              <div>
+                <p className="eyebrow">Lifestyle Questions</p>
+                <h2>Daily habits</h2>
+              </div>
+
+              <div className="lifestyle-grid">
+                <label className="field-group" htmlFor="profile-smoking">
+                  Smoking status
+                  <select
+                    id="profile-smoking"
+                    value={profileForm.smokingStatus}
+                    onChange={(event) =>
+                      setProfileForm((currentProfile) => ({
+                        ...currentProfile,
+                        smokingStatus: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Choose one</option>
+                    {smokingOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field-group" htmlFor="profile-alcohol">
+                  Alcohol use
+                  <select
+                    id="profile-alcohol"
+                    value={profileForm.alcoholUse}
+                    onChange={(event) =>
+                      setProfileForm((currentProfile) => ({
+                        ...currentProfile,
+                        alcoholUse: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Choose one</option>
+                    {alcoholOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field-group" htmlFor="profile-exercise">
+                  Exercise
+                  <select
+                    id="profile-exercise"
+                    value={profileForm.exercise}
+                    onChange={(event) =>
+                      setProfileForm((currentProfile) => ({
+                        ...currentProfile,
+                        exercise: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Choose one</option>
+                    {exerciseOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field-group" htmlFor="profile-diet">
+                  Diet quality
+                  <select
+                    id="profile-diet"
+                    value={profileForm.dietQuality}
+                    onChange={(event) =>
+                      setProfileForm((currentProfile) => ({
+                        ...currentProfile,
+                        dietQuality: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Choose one</option>
+                    {dietQualityOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field-group" htmlFor="profile-sleep">
+                  Sleep
+                  <select
+                    id="profile-sleep"
+                    value={profileForm.sleep}
+                    onChange={(event) =>
+                      setProfileForm((currentProfile) => ({
+                        ...currentProfile,
+                        sleep: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Choose one</option>
+                    {sleepOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </section>
+
+            <fieldset className="illness-fieldset profile-form-section">
+              <legend>Current Health</legend>
+              <p className="helper-text">
+                Do you currently have any of these conditions? Choose None if no
+                current conditions apply.
+              </p>
               <IllnessPicker
                 inputId="profile-illness-search"
                 inputValue={profileIllnessInput}
@@ -2122,6 +2441,11 @@ function App() {
                 selectedIllnesses={profileIllnesses}
               />
             </fieldset>
+
+            <p className="profile-disclaimer">
+              This optional profile is used only to personalize educational
+              insights and prevention suggestions. It is not a medical diagnosis.
+            </p>
 
             <button className="primary-action" type="submit">
               Save my profile <span aria-hidden="true">→</span>
@@ -2136,6 +2460,9 @@ function App() {
                   .filter(Boolean)
                   .join(' · ') || 'Profile saved'}
               </span>
+              {userProfile.bmi ? (
+                <span>BMI {userProfile.bmi} · {getBmiCategory(userProfile.bmi)}</span>
+              ) : null}
             </div>
           ) : null}
         </section>
