@@ -222,6 +222,221 @@ const sleepOptions = [
   'More than 9 hours',
 ]
 
+const storageKey = 'family-health-app-state-v1'
+
+const defaultSavedState = {
+  activeView: 'dashboard',
+  userProfile: null,
+  profileForm: initialProfileForm,
+  profileIllnesses: [],
+  profileIllnessInput: '',
+  familyMembers: [],
+  relationship: '',
+  selectedIllnesses: [],
+  illnessInput: '',
+  selectedTreeNodeId: null,
+  collapsedTreeSections: {},
+  manualLocation: '',
+  userCoordinates: null,
+  locationStatus: 'idle',
+  locationMessage: '',
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function asString(value, fallback = '') {
+  return typeof value === 'string' ? value : fallback
+}
+
+function asStringArray(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.filter((item) => typeof item === 'string')
+}
+
+function sanitizeProfileForm(value) {
+  if (!isPlainObject(value)) {
+    return initialProfileForm
+  }
+
+  return Object.keys(initialProfileForm).reduce(
+    (profileForm, key) => ({
+      ...profileForm,
+      [key]: asString(value[key]),
+    }),
+    { ...initialProfileForm },
+  )
+}
+
+function sanitizeUserProfile(value) {
+  if (!isPlainObject(value)) {
+    return null
+  }
+
+  return {
+    id: asString(value.id, 'self'),
+    relationship: 'Self',
+    name: asString(value.name),
+    age: asString(value.age),
+    sex: asString(value.sex),
+    heightFeet: asString(value.heightFeet),
+    heightInches: asString(value.heightInches),
+    weight: asString(value.weight),
+    bmi: typeof value.bmi === 'number' ? value.bmi : '',
+    smokingStatus: asString(value.smokingStatus),
+    alcoholUse: asString(value.alcoholUse),
+    exercise: asString(value.exercise),
+    dietQuality: asString(value.dietQuality),
+    sleep: asString(value.sleep),
+    illnesses: asStringArray(value.illnesses || value.conditions),
+    isSelf: true,
+  }
+}
+
+function sanitizeFamilyMembers(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter(isPlainObject)
+    .map((member) => ({
+      id: asString(member.id, createId()),
+      name: asString(member.name),
+      relationship: asString(member.relationship),
+      illnesses: asStringArray(member.illnesses || member.conditions),
+    }))
+    .filter((member) => relationships.includes(member.relationship))
+}
+
+function sanitizeCoordinates(value) {
+  if (
+    !isPlainObject(value) ||
+    typeof value.latitude !== 'number' ||
+    typeof value.longitude !== 'number'
+  ) {
+    return null
+  }
+
+  return {
+    latitude: value.latitude,
+    longitude: value.longitude,
+  }
+}
+
+function sanitizeCollapsedSections(value) {
+  if (!isPlainObject(value)) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => familyTreeTiers.some((tier) => tier.id === key))
+      .map(([key, collapsed]) => [key, Boolean(collapsed)]),
+  )
+}
+
+function sanitizeActiveView(value) {
+  return appPages.some((page) => page.id === value) ? value : 'dashboard'
+}
+
+function sanitizeLocationStatus(value) {
+  return ['idle', 'success', 'error', 'manual'].includes(value)
+    ? value
+    : 'idle'
+}
+
+function normalizeSavedState(value) {
+  if (!isPlainObject(value)) {
+    return defaultSavedState
+  }
+
+  const userProfile = sanitizeUserProfile(value.userProfile)
+  const profileForm = isPlainObject(value.profileForm)
+    ? sanitizeProfileForm(value.profileForm)
+    : sanitizeProfileForm(userProfile)
+  const profileIllnesses = Array.isArray(value.profileIllnesses)
+    ? asStringArray(value.profileIllnesses)
+    : asStringArray(userProfile?.illnesses)
+  const locationStatus = sanitizeLocationStatus(value.locationStatus)
+
+  return {
+    activeView: sanitizeActiveView(value.activeView),
+    userProfile,
+    profileForm,
+    profileIllnesses,
+    profileIllnessInput: asString(value.profileIllnessInput),
+    familyMembers: sanitizeFamilyMembers(value.familyMembers),
+    relationship: relationships.includes(value.relationship)
+      ? value.relationship
+      : '',
+    selectedIllnesses: asStringArray(value.selectedIllnesses),
+    illnessInput: asString(value.illnessInput),
+    selectedTreeNodeId:
+      typeof value.selectedTreeNodeId === 'string'
+        ? value.selectedTreeNodeId
+        : null,
+    collapsedTreeSections: sanitizeCollapsedSections(value.collapsedTreeSections),
+    manualLocation: asString(value.manualLocation),
+    userCoordinates: sanitizeCoordinates(value.userCoordinates),
+    locationStatus,
+    locationMessage:
+      locationStatus === 'idle' ? '' : asString(value.locationMessage),
+  }
+}
+
+function loadSavedAppState() {
+  if (typeof window === 'undefined') {
+    return defaultSavedState
+  }
+
+  try {
+    const savedState = window.localStorage.getItem(storageKey)
+
+    if (!savedState) {
+      return defaultSavedState
+    }
+
+    return normalizeSavedState(JSON.parse(savedState))
+  } catch {
+    return defaultSavedState
+  }
+}
+
+function saveAppState(nextState) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        ...nextState,
+        version: 1,
+      }),
+    )
+  } catch {
+    // Local storage can be unavailable in private browsing or restricted modes.
+  }
+}
+
+function clearSavedAppState() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.removeItem(storageKey)
+  } catch {
+    // Ignore storage cleanup failures so Start Over still clears in-memory state.
+  }
+}
+
 const workflowSteps = appPages
   .filter((page) => page.progressLabel)
   .map(({ id, icon, progressLabel }) => ({ id, icon, label: progressLabel }))
@@ -1584,24 +1799,45 @@ function IllnessPicker({
 }
 
 function App() {
-  const [activeView, setActiveView] = useState('dashboard')
-  const [userProfile, setUserProfile] = useState(null)
-  const [profileForm, setProfileForm] = useState(initialProfileForm)
-  const [profileIllnesses, setProfileIllnesses] = useState([])
-  const [profileIllnessInput, setProfileIllnessInput] = useState('')
-  const [familyMembers, setFamilyMembers] = useState([])
-  const [relationship, setRelationship] = useState('')
-  const [selectedIllnesses, setSelectedIllnesses] = useState([])
-  const [illnessInput, setIllnessInput] = useState('')
+  const [savedAppState] = useState(loadSavedAppState)
+  const [activeView, setActiveView] = useState(savedAppState.activeView)
+  const [userProfile, setUserProfile] = useState(savedAppState.userProfile)
+  const [profileForm, setProfileForm] = useState(savedAppState.profileForm)
+  const [profileIllnesses, setProfileIllnesses] = useState(
+    savedAppState.profileIllnesses,
+  )
+  const [profileIllnessInput, setProfileIllnessInput] = useState(
+    savedAppState.profileIllnessInput,
+  )
+  const [familyMembers, setFamilyMembers] = useState(
+    savedAppState.familyMembers,
+  )
+  const [relationship, setRelationship] = useState(savedAppState.relationship)
+  const [selectedIllnesses, setSelectedIllnesses] = useState(
+    savedAppState.selectedIllnesses,
+  )
+  const [illnessInput, setIllnessInput] = useState(savedAppState.illnessInput)
   const [error, setError] = useState('')
-  const [selectedTreeNodeId, setSelectedTreeNodeId] = useState(null)
-  const [collapsedTreeSections, setCollapsedTreeSections] = useState({})
+  const [selectedTreeNodeId, setSelectedTreeNodeId] = useState(
+    savedAppState.selectedTreeNodeId,
+  )
+  const [collapsedTreeSections, setCollapsedTreeSections] = useState(
+    savedAppState.collapsedTreeSections,
+  )
   const [activeConditionName, setActiveConditionName] = useState(null)
   const [activeHealthCategoryId, setActiveHealthCategoryId] = useState(null)
-  const [manualLocation, setManualLocation] = useState('')
-  const [userCoordinates, setUserCoordinates] = useState(null)
-  const [locationStatus, setLocationStatus] = useState('idle')
-  const [locationMessage, setLocationMessage] = useState('')
+  const [manualLocation, setManualLocation] = useState(
+    savedAppState.manualLocation,
+  )
+  const [userCoordinates, setUserCoordinates] = useState(
+    savedAppState.userCoordinates,
+  )
+  const [locationStatus, setLocationStatus] = useState(
+    savedAppState.locationStatus,
+  )
+  const [locationMessage, setLocationMessage] = useState(
+    savedAppState.locationMessage,
+  )
 
   const selfTreeNode = userProfile
     ? {
@@ -1751,6 +1987,42 @@ function App() {
     ...step,
     isActive: index === 0,
   }))
+
+  useEffect(() => {
+    saveAppState({
+      activeView,
+      userProfile,
+      profileForm,
+      profileIllnesses,
+      profileIllnessInput,
+      familyMembers,
+      relationship,
+      selectedIllnesses,
+      illnessInput,
+      selectedTreeNodeId,
+      collapsedTreeSections,
+      manualLocation,
+      userCoordinates,
+      locationStatus,
+      locationMessage,
+    })
+  }, [
+    activeView,
+    userProfile,
+    profileForm,
+    profileIllnesses,
+    profileIllnessInput,
+    familyMembers,
+    relationship,
+    selectedIllnesses,
+    illnessInput,
+    selectedTreeNodeId,
+    collapsedTreeSections,
+    manualLocation,
+    userCoordinates,
+    locationStatus,
+    locationMessage,
+  ])
 
   useEffect(() => {
     if (!activeConditionName && !activeHealthCategoryId) {
@@ -1950,6 +2222,7 @@ function App() {
       return
     }
 
+    clearSavedAppState()
     setActiveView('dashboard')
     setUserProfile(null)
     setProfileForm(initialProfileForm)
