@@ -246,170 +246,232 @@ const summaryCategoryLabels = {
   mental: 'mental health',
 }
 
-const wellnessActionGroups = [
-  {
-    id: 'cardiovascular',
-    label: 'Heart health',
-    keywords: [
-      'heart',
-      'stroke',
-      'blood pressure',
-      'hypertension',
-      'cholesterol',
-    ],
-    recommendations: [
-      {
-        name: 'Nearby walking trails',
-        category: 'Walking trails',
-        searchQuery: 'walking trails',
-        distance: '~1-3 mi',
-        explanation:
-          'Regular walking can support heart health, blood pressure, cholesterol, and overall endurance.',
-      },
-      {
-        name: 'Local parks',
-        category: 'Parks',
-        searchQuery: 'parks',
-        distance: '~1-4 mi',
-        explanation:
-          'Parks make it easier to build low-cost movement into a weekly routine.',
-      },
-      {
-        name: 'Blood pressure screening nearby',
-        category: 'Screening locations',
-        searchQuery: 'blood pressure screening pharmacy',
-        distance: '~1-5 mi',
-        explanation:
-          'Blood pressure checks can be a practical conversation starter for cardiovascular prevention.',
-      },
-      {
-        name: 'Fitness centers',
-        category: 'Fitness centers',
-        searchQuery: 'fitness centers',
-        distance: '~2-6 mi',
-        explanation:
-          'A gym or fitness center can help with consistent cardio and strength activity.',
-      },
-    ],
-  },
-  {
-    id: 'metabolic',
-    label: 'Diabetes and metabolic health',
-    keywords: ['diabetes', 'obesity', 'metabolic'],
-    recommendations: [
-      {
-        name: 'Farmers markets',
-        category: 'Nutrition',
-        searchQuery: 'farmers markets',
-        distance: '~2-8 mi',
-        explanation:
-          'Fresh produce and simple meal planning can support blood sugar, weight, and heart health goals.',
-      },
-      {
-        name: 'Healthy grocery stores',
-        category: 'Healthy food',
-        searchQuery: 'healthy grocery stores',
-        distance: '~1-5 mi',
-        explanation:
-          'Having nearby healthy grocery options can make balanced meals easier to maintain.',
-      },
-      {
-        name: 'Diabetes prevention programs',
-        category: 'Education programs',
-        searchQuery: 'diabetes prevention program',
-        distance: '~3-10 mi',
-        explanation:
-          'Structured prevention programs can help people build sustainable movement and nutrition habits.',
-      },
-      {
-        name: 'Beginner walking routes',
-        category: 'Walking routes',
-        searchQuery: 'walking routes',
-        distance: '~1-3 mi',
-        explanation:
-          'Walking is a practical first step for metabolic health and healthy weight support.',
-      },
-    ],
-  },
-  {
-    id: 'mental',
-    label: 'Mental wellness',
-    keywords: ['depression', 'anxiety'],
-    recommendations: [
-      {
-        name: 'Quiet parks and green spaces',
-        category: 'Parks',
-        searchQuery: 'quiet parks',
-        distance: '~1-4 mi',
-        explanation:
-          'Gentle outdoor time and walking may support stress relief and mental wellness routines.',
-      },
-      {
-        name: 'Community wellness programs',
-        category: 'Community wellness',
-        searchQuery: 'community wellness programs',
-        distance: '~2-8 mi',
-        explanation:
-          'Community programs can provide structure, social connection, and approachable wellness activities.',
-      },
-      {
-        name: 'Mindfulness classes',
-        category: 'Mindfulness',
-        searchQuery: 'mindfulness classes',
-        distance: '~2-8 mi',
-        explanation:
-          'Mindfulness or stress-management classes may be useful for anxiety, stress, and emotional regulation.',
-      },
-      {
-        name: 'Mental health resources',
-        category: 'Mental health resources',
-        searchQuery: 'mental health resources',
-        distance: '~2-10 mi',
-        explanation:
-          'Local resources can help users find support options before concerns feel urgent.',
-      },
-    ],
-  },
-  {
-    id: 'respiratory',
-    label: 'Breathing-friendly activity',
-    keywords: ['asthma', 'copd', 'respiratory', 'lung'],
-    recommendations: [
-      {
-        name: 'Indoor recreation centers',
-        category: 'Indoor activity',
-        searchQuery: 'indoor recreation centers',
-        distance: '~2-7 mi',
-        explanation:
-          'Indoor spaces can be helpful when weather, pollen, smoke, or air quality makes outdoor exercise harder.',
-      },
-      {
-        name: 'Swimming facilities',
-        category: 'Low-impact exercise',
-        searchQuery: 'indoor swimming pool',
-        distance: '~2-8 mi',
-        explanation:
-          'Swimming and water exercise can be low impact and easier to pace for some people.',
-      },
-      {
-        name: 'Air quality guidance',
-        category: 'Air quality',
-        searchQuery: 'air quality index',
-        distance: 'Local',
-        explanation:
-          'Checking air quality can help plan lower-risk times for outdoor walking or exercise.',
-      },
-      {
-        name: 'Low-intensity exercise classes',
-        category: 'Gentle fitness',
-        searchQuery: 'low intensity exercise classes',
-        distance: '~2-8 mi',
-        explanation:
-          'Gentle classes can support movement while letting users pace their breathing and effort.',
-      },
-    ],
-  },
-]
+const categoryActionGroups = {
+  cardiovascular: [
+    {
+      type: 'Walking trails',
+      searchQuery: 'walking trails',
+      explanation:
+        'Walking is a practical way to support heart health, blood pressure, cholesterol, and endurance.',
+    },
+    {
+      type: 'Parks',
+      searchQuery: 'parks',
+      explanation:
+        'Parks can make regular, low-cost movement easier to build into a weekly routine.',
+    },
+    {
+      type: 'Recreation centers or gyms',
+      searchQuery: 'recreation centers gyms',
+      explanation:
+        'A recreation center or gym can support consistent cardio and strength activity.',
+    },
+    {
+      type: 'Pharmacies for blood pressure checks',
+      searchQuery: 'pharmacy blood pressure check',
+      explanation:
+        'Blood pressure checks can be a helpful starting point for heart-health conversations.',
+    },
+    {
+      type: 'Farmers markets or heart-healthy grocery stores',
+      searchQuery: 'farmers markets healthy grocery stores',
+      explanation:
+        'Fresh foods and balanced meals can support cholesterol, blood pressure, and overall heart health.',
+    },
+  ],
+  metabolic: [
+    {
+      type: 'Walking paths',
+      searchQuery: 'walking paths',
+      explanation:
+        'Walking can support blood sugar, weight management, and everyday energy.',
+    },
+    {
+      type: 'Fitness centers',
+      searchQuery: 'fitness centers',
+      explanation:
+        'Fitness centers can help make strength training and regular exercise more consistent.',
+    },
+    {
+      type: 'Farmers markets',
+      searchQuery: 'farmers markets',
+      explanation:
+        'Fresh produce can make balanced meals easier when focusing on metabolic health.',
+    },
+    {
+      type: 'Healthy grocery stores',
+      searchQuery: 'healthy grocery stores',
+      explanation:
+        'Nearby grocery options can help with simple, sustainable nutrition habits.',
+    },
+    {
+      type: 'Nutrition education or diabetes prevention programs',
+      searchQuery: 'nutrition education diabetes prevention program',
+      explanation:
+        'Education programs can offer structure for movement, nutrition, and prevention goals.',
+    },
+  ],
+  cancer: [
+    {
+      type: 'Primary care clinics',
+      searchQuery: 'primary care clinics',
+      explanation:
+        'Primary care visits are a good place to discuss family history and screening questions.',
+    },
+    {
+      type: 'Hospitals or screening centers',
+      searchQuery: 'screening centers hospitals',
+      explanation:
+        'Screening centers can help users learn what preventive screenings may be appropriate to ask about.',
+    },
+    {
+      type: 'Cancer education resources',
+      searchQuery: 'cancer education resources',
+      explanation:
+        'Education resources can make family-history and screening conversations easier to understand.',
+    },
+    {
+      type: 'Smoking cessation programs',
+      searchQuery: 'smoking cessation programs',
+      explanation:
+        'Avoiding tobacco is a major prevention step for many cancers and overall health.',
+    },
+    {
+      type: 'Parks or outdoor recreation areas',
+      searchQuery: 'parks outdoor recreation areas',
+      explanation:
+        'Outdoor movement supports general wellness and can be part of a prevention-focused routine.',
+    },
+  ],
+  neurological: [
+    {
+      type: 'Walking trails',
+      searchQuery: 'walking trails',
+      explanation:
+        'Regular walking can support circulation, mobility, mood, and brain-health routines.',
+    },
+    {
+      type: 'Parks',
+      searchQuery: 'parks',
+      explanation:
+        'Green spaces can support low-pressure movement and stress reduction.',
+    },
+    {
+      type: 'Yoga or mindfulness studios',
+      searchQuery: 'yoga mindfulness studios',
+      explanation:
+        'Mindfulness and gentle movement may support stress management and balance routines.',
+    },
+    {
+      type: 'Community fitness centers',
+      searchQuery: 'community fitness centers',
+      explanation:
+        'Community fitness options can support strength, balance, and consistent movement.',
+    },
+    {
+      type: 'Brain health education resources',
+      searchQuery: 'brain health education resources',
+      explanation:
+        'Education resources can help families prepare better questions about memory and neurological health.',
+    },
+  ],
+  respiratory: [
+    {
+      type: 'Indoor recreation centers',
+      searchQuery: 'indoor recreation centers',
+      explanation:
+        'Indoor activity spaces can be useful when pollen, smoke, heat, or air quality makes outdoor movement harder.',
+    },
+    {
+      type: 'Indoor swimming pools',
+      searchQuery: 'indoor swimming pools',
+      explanation:
+        'Swimming and water exercise can be low impact and easier to pace for some people.',
+    },
+    {
+      type: 'Air quality resources',
+      searchQuery: 'air quality index',
+      explanation:
+        'Checking air quality can help plan safer times for outdoor activity.',
+    },
+    {
+      type: 'Smoking cessation programs',
+      searchQuery: 'smoking cessation programs',
+      explanation:
+        'Avoiding tobacco smoke is an important prevention topic for respiratory health.',
+    },
+    {
+      type: 'Parks when air quality is good',
+      searchQuery: 'parks',
+      explanation:
+        'Outdoor movement can be helpful when air quality and symptoms make it a good fit.',
+    },
+  ],
+  kidney: [
+    {
+      type: 'Pharmacies for blood pressure monitoring',
+      searchQuery: 'pharmacy blood pressure check',
+      explanation:
+        'Blood pressure monitoring can support kidney and cardiovascular prevention conversations.',
+    },
+    {
+      type: 'Primary care clinics',
+      searchQuery: 'primary care clinics',
+      explanation:
+        'Primary care visits are a good place to ask about kidney health, blood pressure, and routine labs.',
+    },
+    {
+      type: 'Healthy grocery stores',
+      searchQuery: 'healthy grocery stores',
+      explanation:
+        'Balanced food choices can support blood pressure, metabolic health, and kidney wellness.',
+    },
+    {
+      type: 'Walking paths',
+      searchQuery: 'walking paths',
+      explanation:
+        'Regular movement supports blood pressure, weight, and general prevention goals.',
+    },
+    {
+      type: 'Kidney health education resources',
+      searchQuery: 'kidney health education resources',
+      explanation:
+        'Education resources can help users understand kidney health questions to discuss with a clinician.',
+    },
+  ],
+  mental: [
+    {
+      type: 'Parks',
+      searchQuery: 'parks',
+      explanation:
+        'Green spaces and gentle movement can support stress relief and mood routines.',
+    },
+    {
+      type: 'Nature walking trails',
+      searchQuery: 'nature walking trails',
+      explanation:
+        'Walking outdoors can combine movement, fresh air, and time away from screens.',
+    },
+    {
+      type: 'Yoga or meditation studios',
+      searchQuery: 'yoga meditation studios',
+      explanation:
+        'Yoga or meditation can support stress management, breathing, and emotional regulation.',
+    },
+    {
+      type: 'Community wellness centers',
+      searchQuery: 'community wellness centers',
+      explanation:
+        'Community wellness programs can provide structure, social connection, and approachable activities.',
+    },
+    {
+      type: 'Mental health clinics',
+      searchQuery: 'mental health clinics',
+      explanation:
+        'Mental health clinics can help users find professional support options when needed.',
+    },
+  ],
+}
 
 function createId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -532,14 +594,6 @@ function getConditionSummary(illnessCount) {
   return `${illnessCount} conditions`
 }
 
-function getRiskClass(riskLevel) {
-  if (riskLevel === 'Current Condition') {
-    return 'risk-current'
-  }
-
-  return `risk-${riskLevel.toLowerCase()}`
-}
-
 function getHealthCategoryRiskClass(riskLevel) {
   return `category-${riskLevel.toLowerCase()}`
 }
@@ -581,32 +635,6 @@ function hasRiskCondition(riskAssessments, keywords) {
   })
 }
 
-function getWellnessFocusGroups(riskAssessments) {
-  const matchingGroups = wellnessActionGroups.filter((group) =>
-    hasRiskCondition(riskAssessments, group.keywords),
-  )
-
-  if (matchingGroups.length > 0) {
-    return matchingGroups
-  }
-
-  return wellnessActionGroups.slice(0, 2)
-}
-
-function getLocationLabel({ manualLocation, userCoordinates }) {
-  const cleanManualLocation = manualLocation.trim()
-
-  if (cleanManualLocation) {
-    return cleanManualLocation
-  }
-
-  if (userCoordinates) {
-    return `${userCoordinates.latitude.toFixed(3)}, ${userCoordinates.longitude.toFixed(3)}`
-  }
-
-  return ''
-}
-
 function getLocationSearchTarget({ manualLocation, userCoordinates }) {
   const cleanManualLocation = manualLocation.trim()
 
@@ -637,23 +665,32 @@ function buildGoogleMapsEmbedUrl(searchQuery, locationTarget) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`
 }
 
-function buildHealthyActionRecommendations({ locationLabel, locationTarget, riskAssessments }) {
-  return getWellnessFocusGroups(riskAssessments)
-    .flatMap((group) =>
-      group.recommendations.map((recommendation) => ({
-        ...recommendation,
-        focusLabel: group.label,
-        id: `${group.id}-${recommendation.searchQuery}`,
-        address: locationLabel
-          ? `Search near ${locationLabel}`
-          : 'Add a city, ZIP code, or location permission for nearby results.',
-        mapsUrl: buildGoogleMapsSearchUrl(
-          recommendation.searchQuery,
-          locationTarget,
-        ),
+function getHealthyActionCategoryReason(category) {
+  if (category.riskLevel === 'High') {
+    return `${category.name} is one of the top areas because multiple family history entries map to this category.`
+  }
+
+  if (category.riskLevel === 'Increased') {
+    return `${category.name} is included because at least one family history entry maps to this category.`
+  }
+
+  return `${category.name} is included as a general prevention area because it is one of the highest-ranked categories from the current entries.`
+}
+
+function buildHealthyActionCategories({ locationTarget, topAreas }) {
+  return topAreas.map((category) => {
+    const actions = categoryActionGroups[category.id] || []
+
+    return {
+      ...category,
+      reason: getHealthyActionCategoryReason(category),
+      actions: actions.slice(0, 5).map((action) => ({
+        ...action,
+        id: `${category.id}-${action.searchQuery}`,
+        mapsUrl: buildGoogleMapsSearchUrl(action.searchQuery, locationTarget),
       })),
-    )
-    .slice(0, 8)
+    }
+  })
 }
 
 function getCategoryById(categories, categoryId) {
@@ -1640,21 +1677,16 @@ function App() {
     trackedConditions,
     userProfile,
   })
-  const wellnessLocationLabel = getLocationLabel({
-    manualLocation,
-    userCoordinates,
-  })
   const wellnessLocationTarget = getLocationSearchTarget({
     manualLocation,
     userCoordinates,
   })
-  const healthyActionRecommendations = buildHealthyActionRecommendations({
-    locationLabel: wellnessLocationLabel,
+  const healthyActionCategories = buildHealthyActionCategories({
     locationTarget: wellnessLocationTarget,
-    riskAssessments,
+    topAreas: familyHealthSummary.topAreas,
   })
   const healthyActionMapQuery =
-    healthyActionRecommendations[0]?.searchQuery || 'parks'
+    healthyActionCategories[0]?.actions[0]?.searchQuery || 'parks'
   const healthyActionMapUrl = buildGoogleMapsEmbedUrl(
     healthyActionMapQuery,
     wellnessLocationTarget,
@@ -2800,65 +2832,6 @@ function App() {
             onOpenConditionDetails={openConditionDetails}
             patterns={familyHealthPatterns}
           />
-
-          <div className="risk-section-heading">
-            <p className="eyebrow">Detailed cards</p>
-            <h2>Detailed Risk Assessment</h2>
-          </div>
-
-          {riskAssessments.length === 0 ? (
-            <div className="empty-state">
-              <strong>No risk cards yet.</strong>
-              <span>Add profile or family history conditions to see educational awareness cards.</span>
-            </div>
-          ) : (
-            <div className="risk-card-list">
-              {riskAssessments.map((risk) => (
-                <article
-                  className={`risk-card ${getRiskClass(risk.riskLevel)}`}
-                  key={risk.conditionName}
-                >
-                  <div className="risk-card-header">
-                    <div>
-                      <h2>
-                        <ConditionButton
-                          className="condition-heading-button"
-                          conditionName={risk.conditionName}
-                          onOpenConditionDetails={openConditionDetails}
-                        />
-                      </h2>
-                      <p>{risk.reason}</p>
-                    </div>
-                    <span className="risk-level">{risk.riskLevel}</span>
-                  </div>
-
-                  <div className="risk-detail-grid">
-                    <div>
-                      <h3>Relatives</h3>
-                      <ul className="risk-pill-list">
-                        {risk.relatives.length > 0 ? (
-                          risk.relatives.map((relative) => (
-                            <li key={relative}>{relative}</li>
-                          ))
-                        ) : (
-                          <li>No relatives contributed to this card</li>
-                        )}
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h3>Personalized prevention</h3>
-                      <ul className="prevention-list">
-                        {risk.suggestions.map((suggestion) => (
-                          <li key={suggestion}>{suggestion}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
         </section>
       ) : null}
 
@@ -2976,8 +2949,8 @@ function App() {
             <div>
               <h2>Your next healthy step can be local.</h2>
               <p>
-                Your location is optional. Your family health history stays on
-                your device and is never shared.
+                Location is optional. Your family health history stays on your
+                device.
               </p>
             </div>
           </section>
@@ -3044,55 +3017,66 @@ function App() {
                 <div>
                   <p className="eyebrow">Personalized recommendations</p>
                   <h2 id="wellness-recommendations-title">
-                    Suggested healthy actions
+                    Top health areas to act on
                   </h2>
                 </div>
                 <span className="member-count">
-                  {healthyActionRecommendations.length} ideas
+                  {healthyActionCategories.length} focus areas
                 </span>
               </div>
 
-              {riskAssessments.length === 0 ? (
+              {familyMembers.length === 0 ? (
                 <p className="helper-text">
                   Add family history to personalize these suggestions. For now,
-                  the app shows general movement and nutrition resources.
+                  the app shows the highest-ranked general prevention areas.
                 </p>
               ) : null}
 
-              <div className="wellness-card-list">
-                {healthyActionRecommendations.map((recommendation) => (
-                  <article className="wellness-card" key={recommendation.id}>
-                    <div>
-                      <span className="wellness-category">
-                        {recommendation.category}
+              <div className="wellness-focus-list">
+                {healthyActionCategories.map((category) => (
+                  <article
+                    className={`wellness-focus-card ${getHealthCategoryRiskClass(
+                      category.riskLevel,
+                    )}`}
+                    key={category.id}
+                  >
+                    <div className="wellness-focus-header">
+                      <div>
+                        <div className="category-name-with-icon">
+                          <span aria-hidden="true">
+                            {getHealthCategoryIcon(category.id)}
+                          </span>
+                          <h3>{category.name}</h3>
+                        </div>
+                        <p>{category.reason}</p>
+                      </div>
+                      <span className="wellness-risk-badge">
+                        {category.riskLevel}
                       </span>
-                      <h3>{recommendation.name}</h3>
-                      <p>{recommendation.explanation}</p>
                     </div>
 
-                    <dl className="wellness-meta">
-                      <div>
-                        <dt>Focus</dt>
-                        <dd>{recommendation.focusLabel}</dd>
-                      </div>
-                      <div>
-                        <dt>Approx. distance</dt>
-                        <dd>{recommendation.distance}</dd>
-                      </div>
-                      <div>
-                        <dt>Address</dt>
-                        <dd>{recommendation.address}</dd>
-                      </div>
-                    </dl>
+                    <div className="wellness-action-grid">
+                      {category.actions.map((action) => (
+                        <article className="wellness-action-card" key={action.id}>
+                          <div>
+                            <span className="wellness-category">
+                              {action.type}
+                            </span>
+                            <p>{action.explanation}</p>
+                          </div>
 
-                    <a
-                      className="secondary-action map-action"
-                      href={recommendation.mapsUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open in Google Maps <span aria-hidden="true">→</span>
-                    </a>
+                          <a
+                            className="secondary-action map-action"
+                            href={action.mapsUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Open in Google Maps{' '}
+                            <span aria-hidden="true">→</span>
+                          </a>
+                        </article>
+                      ))}
+                    </div>
                   </article>
                 ))}
               </div>
