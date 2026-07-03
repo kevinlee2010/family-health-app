@@ -150,6 +150,12 @@ const appPages = [
     progressLabel: 'Results & Tips',
     showInSidebar: true,
   },
+  {
+    id: 'actions',
+    label: 'Healthy Actions Near You',
+    icon: '📍',
+    showInSidebar: true,
+  },
   { id: 'reports', label: 'Reports', icon: '📄', showInSidebar: true },
 ]
 
@@ -211,6 +217,171 @@ const summaryCategoryLabels = {
   kidney: 'kidney health',
   mental: 'mental health',
 }
+
+const wellnessActionGroups = [
+  {
+    id: 'cardiovascular',
+    label: 'Heart health',
+    keywords: [
+      'heart',
+      'stroke',
+      'blood pressure',
+      'hypertension',
+      'cholesterol',
+    ],
+    recommendations: [
+      {
+        name: 'Nearby walking trails',
+        category: 'Walking trails',
+        searchQuery: 'walking trails',
+        distance: '~1-3 mi',
+        explanation:
+          'Regular walking can support heart health, blood pressure, cholesterol, and overall endurance.',
+      },
+      {
+        name: 'Local parks',
+        category: 'Parks',
+        searchQuery: 'parks',
+        distance: '~1-4 mi',
+        explanation:
+          'Parks make it easier to build low-cost movement into a weekly routine.',
+      },
+      {
+        name: 'Blood pressure screening nearby',
+        category: 'Screening locations',
+        searchQuery: 'blood pressure screening pharmacy',
+        distance: '~1-5 mi',
+        explanation:
+          'Blood pressure checks can be a practical conversation starter for cardiovascular prevention.',
+      },
+      {
+        name: 'Fitness centers',
+        category: 'Fitness centers',
+        searchQuery: 'fitness centers',
+        distance: '~2-6 mi',
+        explanation:
+          'A gym or fitness center can help with consistent cardio and strength activity.',
+      },
+    ],
+  },
+  {
+    id: 'metabolic',
+    label: 'Diabetes and metabolic health',
+    keywords: ['diabetes', 'obesity', 'metabolic'],
+    recommendations: [
+      {
+        name: 'Farmers markets',
+        category: 'Nutrition',
+        searchQuery: 'farmers markets',
+        distance: '~2-8 mi',
+        explanation:
+          'Fresh produce and simple meal planning can support blood sugar, weight, and heart health goals.',
+      },
+      {
+        name: 'Healthy grocery stores',
+        category: 'Healthy food',
+        searchQuery: 'healthy grocery stores',
+        distance: '~1-5 mi',
+        explanation:
+          'Having nearby healthy grocery options can make balanced meals easier to maintain.',
+      },
+      {
+        name: 'Diabetes prevention programs',
+        category: 'Education programs',
+        searchQuery: 'diabetes prevention program',
+        distance: '~3-10 mi',
+        explanation:
+          'Structured prevention programs can help people build sustainable movement and nutrition habits.',
+      },
+      {
+        name: 'Beginner walking routes',
+        category: 'Walking routes',
+        searchQuery: 'walking routes',
+        distance: '~1-3 mi',
+        explanation:
+          'Walking is a practical first step for metabolic health and healthy weight support.',
+      },
+    ],
+  },
+  {
+    id: 'mental',
+    label: 'Mental wellness',
+    keywords: ['depression', 'anxiety'],
+    recommendations: [
+      {
+        name: 'Quiet parks and green spaces',
+        category: 'Parks',
+        searchQuery: 'quiet parks',
+        distance: '~1-4 mi',
+        explanation:
+          'Gentle outdoor time and walking may support stress relief and mental wellness routines.',
+      },
+      {
+        name: 'Community wellness programs',
+        category: 'Community wellness',
+        searchQuery: 'community wellness programs',
+        distance: '~2-8 mi',
+        explanation:
+          'Community programs can provide structure, social connection, and approachable wellness activities.',
+      },
+      {
+        name: 'Mindfulness classes',
+        category: 'Mindfulness',
+        searchQuery: 'mindfulness classes',
+        distance: '~2-8 mi',
+        explanation:
+          'Mindfulness or stress-management classes may be useful for anxiety, stress, and emotional regulation.',
+      },
+      {
+        name: 'Mental health resources',
+        category: 'Mental health resources',
+        searchQuery: 'mental health resources',
+        distance: '~2-10 mi',
+        explanation:
+          'Local resources can help users find support options before concerns feel urgent.',
+      },
+    ],
+  },
+  {
+    id: 'respiratory',
+    label: 'Breathing-friendly activity',
+    keywords: ['asthma', 'copd', 'respiratory', 'lung'],
+    recommendations: [
+      {
+        name: 'Indoor recreation centers',
+        category: 'Indoor activity',
+        searchQuery: 'indoor recreation centers',
+        distance: '~2-7 mi',
+        explanation:
+          'Indoor spaces can be helpful when weather, pollen, smoke, or air quality makes outdoor exercise harder.',
+      },
+      {
+        name: 'Swimming facilities',
+        category: 'Low-impact exercise',
+        searchQuery: 'indoor swimming pool',
+        distance: '~2-8 mi',
+        explanation:
+          'Swimming and water exercise can be low impact and easier to pace for some people.',
+      },
+      {
+        name: 'Air quality guidance',
+        category: 'Air quality',
+        searchQuery: 'air quality index',
+        distance: 'Local',
+        explanation:
+          'Checking air quality can help plan lower-risk times for outdoor walking or exercise.',
+      },
+      {
+        name: 'Low-intensity exercise classes',
+        category: 'Gentle fitness',
+        searchQuery: 'low intensity exercise classes',
+        distance: '~2-8 mi',
+        explanation:
+          'Gentle classes can support movement while letting users pace their breathing and effort.',
+      },
+    ],
+  },
+]
 
 function createId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -347,6 +518,81 @@ function hasRiskCondition(riskAssessments, keywords) {
       keywords.some((keyword) => conditionName.includes(normalizeIllness(keyword)))
     )
   })
+}
+
+function getWellnessFocusGroups(riskAssessments) {
+  const matchingGroups = wellnessActionGroups.filter((group) =>
+    hasRiskCondition(riskAssessments, group.keywords),
+  )
+
+  if (matchingGroups.length > 0) {
+    return matchingGroups
+  }
+
+  return wellnessActionGroups.slice(0, 2)
+}
+
+function getLocationLabel({ manualLocation, userCoordinates }) {
+  const cleanManualLocation = manualLocation.trim()
+
+  if (cleanManualLocation) {
+    return cleanManualLocation
+  }
+
+  if (userCoordinates) {
+    return `${userCoordinates.latitude.toFixed(3)}, ${userCoordinates.longitude.toFixed(3)}`
+  }
+
+  return ''
+}
+
+function getLocationSearchTarget({ manualLocation, userCoordinates }) {
+  const cleanManualLocation = manualLocation.trim()
+
+  if (cleanManualLocation) {
+    return cleanManualLocation
+  }
+
+  if (userCoordinates) {
+    return `${userCoordinates.latitude},${userCoordinates.longitude}`
+  }
+
+  return ''
+}
+
+function buildGoogleMapsSearchUrl(searchQuery, locationTarget) {
+  const query = locationTarget
+    ? `${searchQuery} near ${locationTarget}`
+    : searchQuery
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+}
+
+function buildGoogleMapsEmbedUrl(searchQuery, locationTarget) {
+  const query = locationTarget
+    ? `${searchQuery} near ${locationTarget}`
+    : searchQuery
+
+  return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`
+}
+
+function buildHealthyActionRecommendations({ locationLabel, locationTarget, riskAssessments }) {
+  return getWellnessFocusGroups(riskAssessments)
+    .flatMap((group) =>
+      group.recommendations.map((recommendation) => ({
+        ...recommendation,
+        focusLabel: group.label,
+        id: `${group.id}-${recommendation.searchQuery}`,
+        address: locationLabel
+          ? `Search near ${locationLabel}`
+          : 'Add a city, ZIP code, or location permission for nearby results.',
+        mapsUrl: buildGoogleMapsSearchUrl(
+          recommendation.searchQuery,
+          locationTarget,
+        ),
+      })),
+    )
+    .slice(0, 8)
 }
 
 function getCategoryById(categories, categoryId) {
@@ -1192,6 +1438,10 @@ function App() {
   const [collapsedTreeSections, setCollapsedTreeSections] = useState({})
   const [activeConditionName, setActiveConditionName] = useState(null)
   const [activeHealthCategoryId, setActiveHealthCategoryId] = useState(null)
+  const [manualLocation, setManualLocation] = useState('')
+  const [userCoordinates, setUserCoordinates] = useState(null)
+  const [locationStatus, setLocationStatus] = useState('idle')
+  const [locationMessage, setLocationMessage] = useState('')
 
   const selfTreeNode = userProfile
     ? {
@@ -1265,6 +1515,25 @@ function App() {
     riskAssessments,
     trackedConditions,
   })
+  const wellnessLocationLabel = getLocationLabel({
+    manualLocation,
+    userCoordinates,
+  })
+  const wellnessLocationTarget = getLocationSearchTarget({
+    manualLocation,
+    userCoordinates,
+  })
+  const healthyActionRecommendations = buildHealthyActionRecommendations({
+    locationLabel: wellnessLocationLabel,
+    locationTarget: wellnessLocationTarget,
+    riskAssessments,
+  })
+  const healthyActionMapQuery =
+    healthyActionRecommendations[0]?.searchQuery || 'parks'
+  const healthyActionMapUrl = buildGoogleMapsEmbedUrl(
+    healthyActionMapQuery,
+    wellnessLocationTarget,
+  )
   const dashboardSummaryCards = [
     {
       icon: '👨‍👩‍👧',
@@ -1365,6 +1634,43 @@ function App() {
         .querySelector('.app-shell')
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
+  }
+
+  function requestUserLocation() {
+    if (!navigator.geolocation) {
+      setLocationStatus('error')
+      setLocationMessage(
+        'Location is not available in this browser. Enter a city or ZIP code instead.',
+      )
+      return
+    }
+
+    setLocationStatus('loading')
+    setLocationMessage('Waiting for location permission...')
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserCoordinates({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        })
+        setLocationStatus('success')
+        setLocationMessage(
+          'Location added. Only nearby search terms use this location; family health data stays on your device.',
+        )
+      },
+      () => {
+        setLocationStatus('error')
+        setLocationMessage(
+          'Location permission was not used. You can still enter a city or ZIP code.',
+        )
+      },
+      {
+        enableHighAccuracy: false,
+        maximumAge: 300000,
+        timeout: 10000,
+      },
+    )
   }
 
   function addProfileIllness(illness) {
@@ -1492,6 +1798,10 @@ function App() {
     setCollapsedTreeSections({})
     setActiveConditionName(null)
     setActiveHealthCategoryId(null)
+    setManualLocation('')
+    setUserCoordinates(null)
+    setLocationStatus('idle')
+    setLocationMessage('')
   }
 
   return (
@@ -2322,6 +2632,165 @@ function App() {
             a medical diagnosis. Please consult a qualified healthcare
             professional for personalized medical advice.
           </p>
+        </section>
+      ) : null}
+
+      {activeView === 'actions' ? (
+        <section className="wellness-panel" aria-labelledby="wellness-title">
+          <div className="page-heading dashboard-heading">
+            <div>
+              <p className="eyebrow">Local wellness</p>
+              <h1 id="wellness-title">Healthy Actions Near You</h1>
+            </div>
+            <span className="privacy-pill">Location optional</span>
+          </div>
+
+          <section className="wellness-privacy-card" aria-label="Privacy">
+            <div>
+              <h2>Your next healthy step can be local.</h2>
+              <p>
+                Your location is optional. Your family health history stays on
+                your device and is never shared.
+              </p>
+            </div>
+          </section>
+
+          <section className="location-card" aria-labelledby="location-title">
+            <div>
+              <p className="eyebrow">Location</p>
+              <h2 id="location-title">Find resources near you</h2>
+              <p>
+                Use your current location, or enter a city or ZIP code. Maps
+                searches use only the activity type and location, not your family
+                history.
+              </p>
+            </div>
+
+            <div className="location-controls">
+              <button
+                className="primary-action"
+                type="button"
+                onClick={requestUserLocation}
+                disabled={locationStatus === 'loading'}
+              >
+                {locationStatus === 'loading'
+                  ? 'Requesting location...'
+                  : 'Use My Location'}
+                <span aria-hidden="true">→</span>
+              </button>
+
+              <label className="field-group location-field" htmlFor="manual-location">
+                City or ZIP code
+                <input
+                  id="manual-location"
+                  type="text"
+                  value={manualLocation}
+                  onChange={(event) => {
+                    setManualLocation(event.target.value)
+                    if (event.target.value.trim()) {
+                      setLocationMessage('Using your manually entered location.')
+                      setLocationStatus('manual')
+                    }
+                  }}
+                  placeholder="Example: Oakland, CA or 94612"
+                />
+              </label>
+            </div>
+
+            {locationMessage ? (
+              <p className={`location-message ${locationStatus}`}>
+                {locationMessage}
+              </p>
+            ) : (
+              <p className="helper-text">
+                Add a location to make Maps searches more useful.
+              </p>
+            )}
+          </section>
+
+          <div className="wellness-layout">
+            <section
+              className="wellness-recommendations"
+              aria-labelledby="wellness-recommendations-title"
+            >
+              <div className="section-heading-row">
+                <div>
+                  <p className="eyebrow">Personalized recommendations</p>
+                  <h2 id="wellness-recommendations-title">
+                    Suggested healthy actions
+                  </h2>
+                </div>
+                <span className="member-count">
+                  {healthyActionRecommendations.length} ideas
+                </span>
+              </div>
+
+              {riskAssessments.length === 0 ? (
+                <p className="helper-text">
+                  Add family history to personalize these suggestions. For now,
+                  the app shows general movement and nutrition resources.
+                </p>
+              ) : null}
+
+              <div className="wellness-card-list">
+                {healthyActionRecommendations.map((recommendation) => (
+                  <article className="wellness-card" key={recommendation.id}>
+                    <div>
+                      <span className="wellness-category">
+                        {recommendation.category}
+                      </span>
+                      <h3>{recommendation.name}</h3>
+                      <p>{recommendation.explanation}</p>
+                    </div>
+
+                    <dl className="wellness-meta">
+                      <div>
+                        <dt>Focus</dt>
+                        <dd>{recommendation.focusLabel}</dd>
+                      </div>
+                      <div>
+                        <dt>Approx. distance</dt>
+                        <dd>{recommendation.distance}</dd>
+                      </div>
+                      <div>
+                        <dt>Address</dt>
+                        <dd>{recommendation.address}</dd>
+                      </div>
+                    </dl>
+
+                    <a
+                      className="secondary-action map-action"
+                      href={recommendation.mapsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open in Google Maps <span aria-hidden="true">→</span>
+                    </a>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="wellness-map-card" aria-labelledby="wellness-map-title">
+              <div>
+                <p className="eyebrow">Map</p>
+                <h2 id="wellness-map-title">Explore nearby options</h2>
+                <p>
+                  The map opens a local search for the first recommended activity.
+                  Use each card for more specific searches.
+                </p>
+              </div>
+
+              <div className="wellness-map-frame">
+                <iframe
+                  src={healthyActionMapUrl}
+                  title="Nearby healthy actions map"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+            </section>
+          </div>
         </section>
       ) : null}
 

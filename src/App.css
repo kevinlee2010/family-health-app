@@ -222,6 +222,7 @@ body {
 .family-tree-panel,
 .risk-panel,
 .prevention-panel,
+.wellness-panel,
 .reports-panel {
   border: 1px solid rgba(220, 230, 238, 0.95);
   border-radius: 8px;
@@ -236,6 +237,7 @@ body {
 .family-tree-panel,
 .risk-panel,
 .prevention-panel,
+.wellness-panel,
 .reports-panel {
   padding: 28px;
 }
@@ -672,6 +674,176 @@ body {
   padding: 13px 15px;
   font-size: 0.92rem;
   font-weight: 750;
+}
+
+.wellness-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.wellness-privacy-card,
+.location-card,
+.wellness-recommendations,
+.wellness-map-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 16px;
+  padding: clamp(18px, 3vw, 24px);
+}
+
+.wellness-privacy-card {
+  border-color: #bfdbd4;
+  background: linear-gradient(135deg, #f2fbf8 0%, #eaf6ff 100%);
+}
+
+.wellness-privacy-card h2,
+.location-card h2,
+.wellness-map-card h2 {
+  font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+}
+
+.wellness-privacy-card p,
+.location-card p,
+.wellness-map-card p {
+  color: var(--muted-strong);
+  font-weight: 650;
+  line-height: 1.6;
+}
+
+.location-controls {
+  display: grid;
+  grid-template-columns: auto minmax(260px, 1fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.location-controls .primary-action {
+  min-width: 190px;
+}
+
+.location-message {
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-weight: 750;
+}
+
+.location-message.success,
+.location-message.manual {
+  border: 1px solid #bfdbd4;
+  background: #f2fbf8;
+  color: var(--accent-dark);
+}
+
+.location-message.error {
+  border: 1px solid #efb4ae;
+  background: #fff8f7;
+  color: var(--danger);
+}
+
+.location-message.loading {
+  border: 1px solid #c7d8ee;
+  background: var(--blue-soft);
+  color: #244569;
+}
+
+.wellness-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.wellness-card-list {
+  display: grid;
+  gap: 14px;
+}
+
+.wellness-card {
+  border: 1px solid #e4edf3;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.wellness-category {
+  width: fit-content;
+  border: 1px solid #c8ddd6;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  display: inline-flex;
+  padding: 6px 9px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.wellness-card h3 {
+  margin-top: 8px;
+  color: var(--ink);
+  font-size: 1.18rem;
+}
+
+.wellness-card p {
+  color: var(--muted-strong);
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+.wellness-meta {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.wellness-meta div {
+  display: grid;
+  grid-template-columns: minmax(112px, 0.35fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.wellness-meta dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.wellness-meta dd {
+  margin: 0;
+  color: var(--muted-strong);
+  font-weight: 700;
+}
+
+.map-action {
+  width: fit-content;
+}
+
+.wellness-map-card {
+  position: sticky;
+  top: 24px;
+}
+
+.wellness-map-frame {
+  min-height: 420px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-strong);
+}
+
+.wellness-map-frame iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: 0;
+  display: block;
 }
 
 .results-tips-panel {
@@ -2423,10 +2595,15 @@ input:focus {
 
   .dashboard-content-grid,
   .family-tree-workspace,
+  .wellness-layout,
   .pattern-layout,
   .report-grid,
   .prevention-grid {
     grid-template-columns: 1fr;
+  }
+
+  .wellness-map-card {
+    position: static;
   }
 
   .risk-detail-grid {
@@ -2484,6 +2661,20 @@ input:focus {
     flex-direction: column;
   }
 
+  .location-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .location-controls .primary-action,
+  .map-action {
+    width: 100%;
+  }
+
+  .wellness-meta div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
   .privacy-banner,
   .progress-panel {
     padding: 14px;
@@ -2516,6 +2707,7 @@ input:focus {
   .family-tree-panel,
   .risk-panel,
   .prevention-panel,
+  .wellness-panel,
   .reports-panel {
     padding: 20px;
   }
