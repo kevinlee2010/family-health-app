@@ -1121,7 +1121,7 @@ function calculatePreventionScore({ familyHealthSummary, profile }) {
     .slice(0, 5)
   const explanation =
     topPriorities.length > 0
-      ? `Your prevention score reflects both family-history awareness and the habits you reported. The biggest opportunities right now are ${toReadableList(
+      ? `Your prevention score reflects both family-history awareness and the habits you reported. Your biggest opportunities to improve your score are: ${toReadableList(
           topPriorities.map((priority) => priority.title.toLowerCase()),
         )}. This is not a diagnosis or prediction; it is a friendly way to spot practical prevention steps you can start improving.`
       : 'Your prevention score is starting from a strong place because the current entries do not show major habit gaps or high family-history signals. Keep updating your family history and lifestyle answers so the coach can stay useful over time.'
@@ -1145,6 +1145,38 @@ function calculatePreventionScore({ familyHealthSummary, profile }) {
               title: 'Routine preventive care',
             },
           ],
+  }
+}
+
+function getPreventionScoreStatus(score) {
+  if (score >= 90) {
+    return {
+      className: 'excellent',
+      label: 'Excellent',
+      tone: '#0f766e',
+    }
+  }
+
+  if (score >= 70) {
+    return {
+      className: 'good',
+      label: 'Good',
+      tone: '#16a34a',
+    }
+  }
+
+  if (score >= 40) {
+    return {
+      className: 'improving',
+      label: 'Improving',
+      tone: '#f59e0b',
+    }
+  }
+
+  return {
+    className: 'needs-attention',
+    label: 'Needs Attention',
+    tone: '#f97366',
   }
 }
 
@@ -1791,6 +1823,7 @@ function App() {
     familyHealthSummary,
     profile: preventionProfile,
   })
+  const preventionScoreStatus = getPreventionScoreStatus(preventionScore.score)
   const coachGoals = buildCoachGoals(preventionScore)
   const completedCoachGoals = coachGoals.filter((goal) => habitProgress[goal.id])
   const coachStreak = completedCoachGoals.length
@@ -3322,13 +3355,36 @@ function App() {
             <article className="score-ring-card">
               <div
                 className="score-ring"
-                style={{ '--score': `${preventionScore.score}%` }}
-                aria-label={`Prevention score ${preventionScore.score} out of 100`}
+                style={{
+                  '--score': `${preventionScore.score}%`,
+                  '--score-color': preventionScoreStatus.tone,
+                }}
+                aria-label={`Prevention score ${preventionScore.score} out of 100, ${preventionScoreStatus.label}`}
               >
                 <span>{preventionScore.score}</span>
                 <small>/100</small>
               </div>
-              <h2>Overall Prevention Score</h2>
+              <div className="score-title-stack">
+                <h2>Prevention Health Score</h2>
+                <span
+                  className={`score-status-badge ${preventionScoreStatus.className}`}
+                >
+                  {preventionScoreStatus.label}
+                </span>
+                <strong>Higher is better.</strong>
+              </div>
+              <div className="score-scale-copy">
+                <p>
+                  0 means your current prevention habits need significant
+                  improvement. 100 means your habits strongly support long-term
+                  preventive health.
+                </p>
+                <p>
+                  This score reflects prevention habits and family-history
+                  awareness. It is not a diagnosis, disease-risk percentage, or
+                  prediction.
+                </p>
+              </div>
               <p>{preventionScore.explanation}</p>
             </article>
 

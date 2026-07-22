@@ -3137,7 +3137,7 @@ select:focus-visible {
   border-radius: 999px;
   background:
     radial-gradient(circle at center, #ffffff 0 58%, transparent 59%),
-    conic-gradient(var(--accent) var(--score), #e2e8f0 0);
+    conic-gradient(var(--score-color, var(--accent)) var(--score), #e2e8f0 0);
   display: grid;
   place-items: center;
   position: relative;
@@ -3156,6 +3156,63 @@ select:focus-visible {
   top: calc(50% + 38px);
   color: var(--muted);
   font-weight: 850;
+}
+
+.score-title-stack {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.score-title-stack h2 {
+  margin: 0;
+}
+
+.score-title-stack strong {
+  color: var(--ink);
+  font-size: 0.98rem;
+}
+
+.score-status-badge {
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.score-status-badge.needs-attention {
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.score-status-badge.improving {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.score-status-badge.good {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.score-status-badge.excellent {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.score-scale-copy {
+  display: grid;
+  gap: 8px;
+  max-width: 460px;
+}
+
+.score-scale-copy p {
+  margin: 0;
+  font-size: 0.94rem;
 }
 
 .priority-list,
