@@ -1447,55 +1447,6 @@ function ProgressBar({ value }) {
   )
 }
 
-function FamilyMemberCard({
-  member,
-  onEdit,
-  onOpenConditionDetails,
-  onRemove,
-}) {
-  return (
-    <article className="flow-family-card">
-      <div>
-        <p className="eyebrow">Relative</p>
-        <h3>{member.name || member.relationship}</h3>
-        <p className="family-card-meta">
-          {member.relationship}
-          {member.diagnosisAge ? ` · Diagnosed around age ${member.diagnosisAge}` : ''}
-          {member.earlyDiagnosis ? ' · Diagnosed young' : ''}
-        </p>
-      </div>
-
-      {member.illnesses.length > 0 ? (
-        <ul className="illness-list compact">
-          {member.illnesses.map((illness) => (
-            <li key={illness}>
-              {isNoIllness(illness) ? (
-                <ConditionTag conditionName={illness} />
-              ) : (
-                <ClickableConditionTag
-                  conditionName={illness}
-                  onOpenConditionDetails={onOpenConditionDetails}
-                />
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="helper-text">No known conditions selected.</p>
-      )}
-
-      <div className="card-actions">
-        <button className="secondary-action" type="button" onClick={onEdit}>
-          Edit
-        </button>
-        <button className="danger-action" type="button" onClick={onRemove}>
-          Remove
-        </button>
-      </div>
-    </article>
-  )
-}
-
 function toReadableList(items) {
   if (items.length <= 1) {
     return items[0] || ''
@@ -2256,23 +2207,6 @@ function App() {
     setFamilyDiagnosisAge('')
     setEditingFamilyMemberId(null)
     setError('')
-  }
-
-  function editFamilyMember(member) {
-    const listedConditions = member.illnesses.filter((illness) =>
-      familyHistoryConditionOptions.some(
-        (condition) => getIllnessKey(condition) === getIllnessKey(illness),
-      ),
-    )
-
-    setFamilyMemberName(member.name || '')
-    setRelationship(member.relationship)
-    setSelectedIllnesses(listedConditions)
-    setFamilyEarlyDiagnosis(Boolean(member.earlyDiagnosis))
-    setFamilyDiagnosisAge(member.diagnosisAge || '')
-    setEditingFamilyMemberId(member.id)
-    setError('')
-    setSuccessMessage('')
   }
 
   function removeFamilyMember(memberId) {
@@ -3036,36 +2970,7 @@ function App() {
             </form>
           </section>
 
-          <section className="family-list-panel" aria-labelledby="list-title">
-            <div className="list-heading">
-              <div>
-                <h2 id="list-title">Family members</h2>
-              </div>
-              <span className="member-count">{familyMembers.length} added</span>
-            </div>
-
-            {familyMembers.length === 0 ? (
-              <div className="empty-state">
-                <strong>No family members added yet.</strong>
-                <span>Submitted entries will appear here.</span>
-              </div>
-            ) : (
-              <ul className="family-list" aria-live="polite">
-                {familyMembers.map((member) => (
-                  <li key={member.id}>
-                    <FamilyMemberCard
-                      member={member}
-                      onEdit={() => editFamilyMember(member)}
-                      onOpenConditionDetails={openConditionDetails}
-                      onRemove={() => removeFamilyMember(member.id)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-        <section className="family-tree-panel" aria-labelledby="tree-title">
+          <section className="family-tree-panel" aria-labelledby="tree-title">
           <div className="tree-heading">
             <div>
               <p className="eyebrow">Family Tree</p>
