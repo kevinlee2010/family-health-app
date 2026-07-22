@@ -4,6 +4,10 @@ import { getConditionDetails } from './conditionDetails'
 import { buildFamilyHealthSummary } from './healthCategories'
 
 const relationships = ['Mother', 'Father', 'Sibling', 'Grandparent']
+const relationshipLimitMessages = {
+  parent: 'You can add up to 2 parents.',
+  grandparent: 'You can add up to 4 grandparents.',
+}
 
 const ageRangeOptions = [
   'Under 18',
@@ -31,6 +35,30 @@ const familyHistoryConditionOptions = [
   'Depression',
   "Alzheimer's disease",
 ]
+
+function getRelationshipLimitGroup(relationship) {
+  if (relationship === 'Mother' || relationship === 'Father') {
+    return 'parent'
+  }
+
+  if (relationship === 'Grandparent') {
+    return 'grandparent'
+  }
+
+  return null
+}
+
+function getRelationshipLimit(group) {
+  if (group === 'parent') {
+    return 2
+  }
+
+  if (group === 'grandparent') {
+    return 4
+  }
+
+  return Infinity
+}
 
 const familyTreeTiers = [
   {
@@ -1869,6 +1897,43 @@ function App() {
     healthyActionMapQuery,
     wellnessLocationTarget,
   )
+  function getRelationshipCount(group, ignoredMemberId = null) {
+    return familyMembers.filter(
+      (member) =>
+        member.id !== ignoredMemberId &&
+        getRelationshipLimitGroup(member.relationship) === group,
+    ).length
+  }
+
+  function isRelationshipLimitReached(
+    relationshipOption,
+    ignoredMemberId = null,
+  ) {
+    const group = getRelationshipLimitGroup(relationshipOption)
+
+    if (!group) {
+      return false
+    }
+
+    return getRelationshipCount(group, ignoredMemberId) >= getRelationshipLimit(group)
+  }
+
+  function getRelationshipLimitMessage(ignoredMemberId = null) {
+    if (getRelationshipCount('parent', ignoredMemberId) >= getRelationshipLimit('parent')) {
+      return relationshipLimitMessages.parent
+    }
+
+    if (
+      getRelationshipCount('grandparent', ignoredMemberId) >=
+      getRelationshipLimit('grandparent')
+    ) {
+      return relationshipLimitMessages.grandparent
+    }
+
+    return ''
+  }
+
+  const relationshipLimitMessage = getRelationshipLimitMessage(editingFamilyMemberId)
   const dashboardSummaryCards = [
     {
       icon: '◎',
@@ -2145,6 +2210,12 @@ function App() {
       return
     }
 
+    if (isRelationshipLimitReached(relationship, editingFamilyMemberId)) {
+      const group = getRelationshipLimitGroup(relationship)
+      setError(relationshipLimitMessages[group])
+      return
+    }
+
     const familyConditions = getFamilyConditionsForSave()
 
     if (editingFamilyMemberId) {
@@ -2215,6 +2286,11 @@ function App() {
   }
 
   function updateFamilyMemberRelationship(memberId, nextRelationship) {
+    if (isRelationshipLimitReached(nextRelationship, memberId)) {
+      setError(relationshipLimitMessages[getRelationshipLimitGroup(nextRelationship)])
+      return
+    }
+
     setFamilyMembers((currentMembers) =>
       currentMembers.map((member) =>
         member.id === memberId
@@ -2853,11 +2929,21 @@ function App() {
                 >
                   <option value="">Choose one</option>
                   {relationships.map((relationshipOption) => (
-                    <option key={relationshipOption} value={relationshipOption}>
+                    <option
+                      disabled={isRelationshipLimitReached(
+                        relationshipOption,
+                        editingFamilyMemberId,
+                      )}
+                      key={relationshipOption}
+                      value={relationshipOption}
+                    >
                       {relationshipOption}
                     </option>
                   ))}
                 </select>
+                {relationshipLimitMessage ? (
+                  <span className="limit-message">{relationshipLimitMessage}</span>
+                ) : null}
               </label>
 
               <fieldset className="illness-fieldset">
@@ -3147,6 +3233,10 @@ function App() {
                     >
                       {relationships.map((relationshipOption) => (
                         <option
+                          disabled={isRelationshipLimitReached(
+                            relationshipOption,
+                            selectedTreeNode.id,
+                          )}
                           key={relationshipOption}
                           value={relationshipOption}
                         >

@@ -1341,6 +1341,17 @@ input:focus {
   font-weight: 650;
 }
 
+.limit-message {
+  border-radius: 12px;
+  background: #eff6ff;
+  color: var(--accent-dark);
+  display: inline-flex;
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
 .form-error {
   min-height: 20px;
   margin: -8px 0 0;
