@@ -2281,91 +2281,97 @@ function App() {
         </nav>
       </aside>
 
-      <main className="app-shell">
-        <header className="app-hero">
-          <div className="app-hero-copy">
-            <p className="eyebrow">Family health history</p>
-            <h1>
-              <span>Know Your Family History.</span>
-              <span>Take Control of Your Health.</span>
-            </h1>
-            <p className="app-subtitle">
-              Build your family health profile to discover inherited health
-              patterns, understand potential risks, and receive personalized
-              educational insights.
-            </p>
-          </div>
+      <main
+        className={
+          activeView === 'dashboard'
+            ? 'app-shell dashboard-shell'
+            : 'app-shell inner-shell'
+        }
+      >
+        {activeView === 'dashboard' ? (
+          <header className="app-hero">
+            <div className="app-hero-copy">
+              <p className="eyebrow">Family health history</p>
+              <h1>
+                <span>Know Your Family History.</span>
+                <span>Take Control of Your Health.</span>
+              </h1>
+              <p className="app-subtitle">
+                Build your family health profile to discover inherited health
+                patterns, understand potential risks, and receive personalized
+                educational insights.
+              </p>
+            </div>
 
-          <div className="hero-actions">
-            <button
-              className="primary-action hero-primary-action"
-              type="button"
-              onClick={() => changeView('family')}
-            >
-              Continue Your Assessment
-              <span aria-hidden="true">→</span>
-            </button>
-            <div className="hero-secondary-actions">
-              {isWorkflowView ? (
-                <button
-                  className="secondary-action"
-                  type="button"
-                  onClick={goToPreviousStep}
-                  disabled={!previousWorkflowStep}
-                >
-                  <span aria-hidden="true">←</span>
-                  Back
-                </button>
-              ) : null}
-
+            <div className="hero-actions">
               <button
-                className="secondary-action"
+                className="primary-action hero-primary-action"
                 type="button"
-                onClick={() => {
-                  if (finishTarget) {
-                    changeView(finishTarget)
-                    return
-                  }
-
-                  goToNextStep()
-                }}
+                onClick={() => changeView('family')}
               >
-                {finishTarget ? 'Finish' : 'Continue'}
+                Continue Your Assessment
                 <span aria-hidden="true">→</span>
               </button>
             </div>
-          </div>
 
-          <div className="trust-indicators" aria-label="Trust indicators">
-            <article className="trust-badge">
-              <span className="trust-icon" aria-hidden="true">
-                🔒
-              </span>
-              <div>
-                <strong>Private</strong>
-                <p>Your data stays on your device.</p>
-              </div>
-            </article>
-            <article className="trust-badge">
-              <span className="trust-icon" aria-hidden="true">
-                📚
-              </span>
-              <div>
-                <strong>Educational</strong>
-                <p>Based on family history and educational health information.</p>
-              </div>
-            </article>
-            <article className="trust-badge">
-              <span className="trust-icon" aria-hidden="true">
-                🧬
-              </span>
-              <div>
-                <strong>Personalized</strong>
-                <p>Insights tailored to your family's health history.</p>
-              </div>
-            </article>
-          </div>
-        </header>
+            <div className="trust-indicators" aria-label="Trust indicators">
+              <article className="trust-badge">
+                <span className="trust-icon" aria-hidden="true">
+                  🔒
+                </span>
+                <div>
+                  <strong>Private</strong>
+                  <p>Your data stays on your device.</p>
+                </div>
+              </article>
+              <article className="trust-badge">
+                <span className="trust-icon" aria-hidden="true">
+                  📚
+                </span>
+                <div>
+                  <strong>Educational</strong>
+                  <p>Based on family history and educational health information.</p>
+                </div>
+              </article>
+              <article className="trust-badge">
+                <span className="trust-icon" aria-hidden="true">
+                  🧬
+                </span>
+                <div>
+                  <strong>Personalized</strong>
+                  <p>Insights tailored to your family's health history.</p>
+                </div>
+              </article>
+            </div>
+          </header>
+        ) : null}
+
+        {activeView === 'family' ? (
+          <header className="page-intro">
+            <h1>Family Health History</h1>
+            <p>Add your family members and their health conditions.</p>
+          </header>
+        ) : null}
+
+        {activeView === 'lifestyle' ? (
+          <header className="page-intro">
+            <h1>Lifestyle Assessment</h1>
+            <p>
+              Tell us about your daily habits to personalize your prevention
+              plan.
+            </p>
+          </header>
+        ) : null}
+
+        {activeView === 'coach' ? (
+          <header className="page-intro">
+            <h1>AI Prevention Coach</h1>
+            <p>
+              Review your personalized prevention score, healthy habits, and
+              action plan.
+            </p>
+          </header>
+        ) : null}
 
         <section className="privacy-banner" aria-label="Privacy">
           <div>
@@ -2496,14 +2502,7 @@ function App() {
 
       {activeView === 'family' ? (
         <section className="profile-panel" aria-labelledby="profile-title">
-          <div className="page-heading">
-            <p className="eyebrow">Step 1</p>
-            <h1 id="profile-title">Family Health History</h1>
-            <p className="page-description">
-              Start with yourself, then add parents, grandparents, and siblings.
-              This creates the foundation for prevention-focused insights.
-            </p>
-          </div>
+          <h2 className="panel-title" id="profile-title">About you</h2>
 
           <form className="profile-form" onSubmit={saveProfile} noValidate>
             <section className="profile-form-section">
@@ -3089,15 +3088,7 @@ function App() {
       {activeView === 'lifestyle' ? (
         <>
         <section className="profile-panel" aria-labelledby="lifestyle-title">
-          <div className="page-heading">
-            <p className="eyebrow">Step 2</p>
-            <h1 id="lifestyle-title">Lifestyle Assessment</h1>
-            <p className="page-description">
-              These optional answers help the prevention coach personalize
-              encouragement, local actions, and habit goals. Responses save
-              automatically on your device.
-            </p>
-          </div>
+          <h2 className="panel-title" id="lifestyle-title">Daily habits</h2>
 
           <div className="flow-card-grid">
             <QuestionCard
@@ -3666,31 +3657,33 @@ function App() {
         </section>
       ) : null}
 
-      <div className="flow-footer-actions">
-        <button
-          className="secondary-action"
-          type="button"
-          onClick={goToPreviousStep}
-          disabled={!previousWorkflowStep}
-        >
-          <span aria-hidden="true">←</span> Back
-        </button>
-        <button
-          className="primary-action"
-          type="button"
-          onClick={() => {
-            if (finishTarget) {
-              changeView(finishTarget)
-              return
-            }
+      {activeView !== 'dashboard' ? (
+        <div className="flow-footer-actions">
+          <button
+            className="secondary-action"
+            type="button"
+            onClick={goToPreviousStep}
+            disabled={!previousWorkflowStep}
+          >
+            <span aria-hidden="true">←</span> Back
+          </button>
+          <button
+            className="primary-action"
+            type="button"
+            onClick={() => {
+              if (finishTarget) {
+                changeView(finishTarget)
+                return
+              }
 
-            goToNextStep()
-          }}
-        >
-          {finishTarget ? 'Finish' : 'Continue'}
-          <span aria-hidden="true">→</span>
-        </button>
-      </div>
+              goToNextStep()
+            }}
+          >
+            {finishTarget ? 'Finish' : 'Continue'}
+            <span aria-hidden="true">→</span>
+          </button>
+        </div>
+      ) : null}
 
       <p className="app-disclaimer">{disclaimerText}</p>
 

@@ -3735,3 +3735,88 @@ input:focus {
     min-height: 112px;
   }
 }
+
+.inner-shell {
+  gap: 14px;
+}
+
+.page-intro {
+  display: grid;
+  gap: 6px;
+  padding: 4px 2px 2px;
+}
+
+.page-intro h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.85rem, 3vw, 2.45rem);
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.page-intro p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted-strong);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.inner-shell .privacy-banner,
+.inner-shell .profile-panel,
+.inner-shell .family-tree-panel,
+.inner-shell .prevention-score-panel,
+.inner-shell .wellness-panel,
+.inner-shell .coach-panel {
+  padding: clamp(18px, 3vw, 24px);
+}
+
+.inner-shell .privacy-banner {
+  padding-block: 12px;
+}
+
+.inner-shell .profile-form,
+.inner-shell .family-form,
+.inner-shell .flow-card-grid,
+.inner-shell .wellness-focus-list {
+  gap: 16px;
+}
+
+.inner-shell .profile-form-section,
+.inner-shell .question-card,
+.inner-shell .family-generation-section {
+  padding: clamp(16px, 2.4vw, 20px);
+}
+
+.panel-title {
+  margin: 0 0 16px;
+  color: var(--ink);
+  font-size: 1.18rem;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 700px) {
+  .inner-shell {
+    gap: 12px;
+  }
+
+  .page-intro {
+    padding-top: 0;
+  }
+
+  .page-intro h1 {
+    font-size: 1.75rem;
+  }
+
+  .inner-shell .privacy-banner,
+  .inner-shell .profile-panel,
+  .inner-shell .family-tree-panel,
+  .inner-shell .prevention-score-panel,
+  .inner-shell .wellness-panel,
+  .inner-shell .coach-panel {
+    padding: 18px;
+  }
+}
