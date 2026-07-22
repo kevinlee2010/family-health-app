@@ -60,24 +60,6 @@ function getRelationshipLimit(group) {
   return Infinity
 }
 
-const familyTreeTiers = [
-  {
-    id: 'grandparents',
-    label: 'Grandparents',
-    relationships: ['Grandparent'],
-  },
-  {
-    id: 'parents',
-    label: 'Parents',
-    relationships: ['Mother', 'Father'],
-  },
-  {
-    id: 'siblings',
-    label: 'Siblings / Self',
-    relationships: ['Sibling', 'Self'],
-  },
-]
-
 const illnessCategories = [
   {
     name: 'Cardiovascular',
@@ -307,8 +289,6 @@ const defaultSavedState = {
   familyEarlyDiagnosis: false,
   familyDiagnosisAge: '',
   editingFamilyMemberId: null,
-  selectedTreeNodeId: null,
-  collapsedTreeSections: {},
   habitProgress: {},
   manualLocation: '',
   userCoordinates: null,
@@ -415,18 +395,6 @@ function sanitizeCoordinates(value) {
   }
 }
 
-function sanitizeCollapsedSections(value) {
-  if (!isPlainObject(value)) {
-    return {}
-  }
-
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([key]) => familyTreeTiers.some((tier) => tier.id === key))
-      .map(([key, collapsed]) => [key, Boolean(collapsed)]),
-  )
-}
-
 function sanitizeHabitProgress(value) {
   if (!isPlainObject(value)) {
     return {}
@@ -485,11 +453,6 @@ function normalizeSavedState(value) {
       typeof value.editingFamilyMemberId === 'string'
         ? value.editingFamilyMemberId
         : null,
-    selectedTreeNodeId:
-      typeof value.selectedTreeNodeId === 'string'
-        ? value.selectedTreeNodeId
-        : null,
-    collapsedTreeSections: sanitizeCollapsedSections(value.collapsedTreeSections),
     habitProgress: sanitizeHabitProgress(value.habitProgress),
     manualLocation: asString(value.manualLocation),
     userCoordinates: sanitizeCoordinates(value.userCoordinates),
@@ -811,10 +774,6 @@ function isNoIllness(value) {
   )
 }
 
-function getConditionCount(illnesses) {
-  return illnesses.filter((illness) => !isNoIllness(illness)).length
-}
-
 function calculateBmi({ heightFeet, heightInches, weight }) {
   const feet = Number(heightFeet)
   const inches = Number(heightInches)
@@ -882,34 +841,6 @@ function formatCustomIllness(value) {
   }
 
   return cleanValue.replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
-}
-
-function getTreeNodeTone(illnessCount) {
-  if (illnessCount === 0) {
-    return 'none'
-  }
-
-  if (illnessCount === 1) {
-    return 'one'
-  }
-
-  if (illnessCount === 2) {
-    return 'two'
-  }
-
-  return 'three-plus'
-}
-
-function getConditionSummary(illnessCount) {
-  if (illnessCount === 0) {
-    return 'No conditions'
-  }
-
-  if (illnessCount === 1) {
-    return '1 condition'
-  }
-
-  return `${illnessCount} conditions`
 }
 
 function getHealthCategoryRiskClass(riskLevel) {
@@ -1297,24 +1228,6 @@ function getDisplayName(member) {
   return member.name || member.relationship
 }
 
-function getTreeMeta(member) {
-  if (member.isPlaceholder) {
-    return 'Self'
-  }
-
-  if (member.isSelf) {
-    return [
-      member.relationship,
-      member.age ? `Age ${member.age}` : '',
-      member.sex,
-    ]
-      .filter(Boolean)
-      .join(' · ')
-  }
-
-  return member.name ? member.relationship : ''
-}
-
 function getInitialsFromName(value) {
   const words = value
     .trim()
@@ -1338,22 +1251,6 @@ function getTreeInitials(member) {
   }
 
   return getInitialsFromName(member.name || member.relationship)
-}
-
-function getTreeStatusLabel(illnessCount) {
-  if (illnessCount === 0) {
-    return 'Clear'
-  }
-
-  if (illnessCount === 1) {
-    return 'Watch'
-  }
-
-  if (illnessCount === 2) {
-    return 'Review'
-  }
-
-  return 'Priority'
 }
 
 function ConditionButton({
@@ -1758,12 +1655,6 @@ function App() {
   )
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
-  const [selectedTreeNodeId, setSelectedTreeNodeId] = useState(
-    savedAppState.selectedTreeNodeId,
-  )
-  const [collapsedTreeSections, setCollapsedTreeSections] = useState(
-    savedAppState.collapsedTreeSections,
-  )
   const [habitProgress, setHabitProgress] = useState(savedAppState.habitProgress)
   const [activeConditionName, setActiveConditionName] = useState(null)
   const [manualLocation, setManualLocation] = useState(
@@ -1779,6 +1670,8 @@ function App() {
     savedAppState.locationMessage,
   )
   const [isNavOpen, setIsNavOpen] = useState(false)
+  const [isFamilyFormOpen, setIsFamilyFormOpen] = useState(false)
+  const [activeFamilyMenuId, setActiveFamilyMenuId] = useState(null)
 
   const selfTreeNode = userProfile
     ? {
@@ -1793,23 +1686,6 @@ function App() {
         isPlaceholder: true,
         isSelf: true,
       }
-  const groupedFamilyMembers = familyTreeTiers.map((tier) => {
-    const tierMembers = familyMembers.filter((member) =>
-      tier.relationships.includes(member.relationship),
-    )
-
-    return {
-      ...tier,
-      members:
-        tier.id === 'siblings' && selfTreeNode
-          ? [selfTreeNode, ...tierMembers]
-          : tierMembers,
-    }
-  })
-  const treeEntryCount = familyMembers.length + (userProfile ? 1 : 0)
-  const treeMembers = groupedFamilyMembers.flatMap((tier) => tier.members)
-  const selectedTreeNode =
-    treeMembers.find((member) => member.id === selectedTreeNodeId) || selfTreeNode
   const familyHealthSummary = buildFamilyHealthSummary({ familyMembers })
   const profileBmi = calculateBmi(profileForm)
   const preventionProfile = userProfile || {
@@ -1885,6 +1761,50 @@ function App() {
   }
 
   const relationshipLimitMessage = getRelationshipLimitMessage(editingFamilyMemberId)
+  const grandparentMembers = familyMembers.filter(
+    (member) => member.relationship === 'Grandparent',
+  )
+  const parentMembers = familyMembers.filter(
+    (member) => member.relationship === 'Mother' || member.relationship === 'Father',
+  )
+  const siblingMembers = familyMembers.filter(
+    (member) => member.relationship === 'Sibling',
+  )
+  const familyGridSections = [
+    {
+      accent: 'purple',
+      addLabel: 'Add Grandparent',
+      countLabel: `${grandparentMembers.length} of 4 added`,
+      description: 'Up to 4 grandparents',
+      id: 'grandparents',
+      members: grandparentMembers,
+      placeholderRelationship: 'Grandparent',
+      showPlaceholder: grandparentMembers.length < 4,
+      title: 'Grandparents',
+    },
+    {
+      accent: 'teal',
+      addLabel: 'Add Parent',
+      countLabel: `${parentMembers.length} of 2 added`,
+      description: 'Up to 2 parents',
+      id: 'parents',
+      members: parentMembers,
+      placeholderRelationship: '',
+      showPlaceholder: parentMembers.length < 2,
+      title: 'Parents',
+    },
+    {
+      accent: 'orange',
+      addLabel: 'Add Sibling',
+      countLabel: `${siblingMembers.length + (userProfile ? 1 : 0)} added`,
+      description: 'You and your siblings',
+      id: 'siblings',
+      members: [selfTreeNode, ...siblingMembers],
+      placeholderRelationship: 'Sibling',
+      showPlaceholder: true,
+      title: 'You and Siblings',
+    },
+  ]
   const dashboardSummaryCards = [
     {
       icon: '◎',
@@ -1967,8 +1887,6 @@ function App() {
       familyEarlyDiagnosis,
       familyDiagnosisAge,
       editingFamilyMemberId,
-      selectedTreeNodeId,
-      collapsedTreeSections,
       habitProgress,
       manualLocation,
       userCoordinates,
@@ -1988,8 +1906,6 @@ function App() {
     familyEarlyDiagnosis,
     familyDiagnosisAge,
     editingFamilyMemberId,
-    selectedTreeNodeId,
-    collapsedTreeSections,
     habitProgress,
     manualLocation,
     userCoordinates,
@@ -2115,6 +2031,47 @@ function App() {
       : [noKnownConditionsLabel]
   }
 
+  function resetFamilyForm(defaultRelationship = '') {
+    setFamilyMemberName('')
+    setRelationship(defaultRelationship)
+    setSelectedIllnesses([])
+    setFamilyEarlyDiagnosis(false)
+    setFamilyDiagnosisAge('')
+    setEditingFamilyMemberId(null)
+    setError('')
+  }
+
+  function openAddFamilyMember(defaultRelationship = '') {
+    resetFamilyForm(defaultRelationship)
+    setSuccessMessage('')
+    setActiveFamilyMenuId(null)
+    setIsFamilyFormOpen(true)
+  }
+
+  function openEditFamilyMember(member) {
+    const listedConditions = member.illnesses.filter((illness) =>
+      familyHistoryConditionOptions.some(
+        (condition) => getIllnessKey(condition) === getIllnessKey(illness),
+      ),
+    )
+
+    setFamilyMemberName(member.name || '')
+    setRelationship(member.relationship)
+    setSelectedIllnesses(listedConditions)
+    setFamilyEarlyDiagnosis(Boolean(member.earlyDiagnosis))
+    setFamilyDiagnosisAge(member.diagnosisAge || '')
+    setEditingFamilyMemberId(member.id)
+    setError('')
+    setSuccessMessage('')
+    setActiveFamilyMenuId(null)
+    setIsFamilyFormOpen(true)
+  }
+
+  function closeFamilyForm() {
+    resetFamilyForm()
+    setIsFamilyFormOpen(false)
+  }
+
   function saveProfileData(message = 'Profile saved.') {
     setUserProfile({
       id: 'self',
@@ -2206,55 +2163,22 @@ function App() {
     setFamilyEarlyDiagnosis(false)
     setFamilyDiagnosisAge('')
     setEditingFamilyMemberId(null)
+    setIsFamilyFormOpen(false)
     setError('')
   }
 
   function removeFamilyMember(memberId) {
-    setFamilyMembers((currentMembers) =>
-      currentMembers.filter((member) => member.id !== memberId),
-    )
+    const confirmed = window.confirm('Remove this family member?')
 
-    if (selectedTreeNodeId === memberId) {
-      setSelectedTreeNodeId(null)
-    }
-  }
-
-  function updateFamilyMemberRelationship(memberId, nextRelationship) {
-    if (isRelationshipLimitReached(nextRelationship, memberId)) {
-      setError(relationshipLimitMessages[getRelationshipLimitGroup(nextRelationship)])
+    if (!confirmed) {
       return
     }
 
     setFamilyMembers((currentMembers) =>
-      currentMembers.map((member) =>
-        member.id === memberId
-          ? {
-              ...member,
-              relationship: nextRelationship,
-            }
-          : member,
-      ),
+      currentMembers.filter((member) => member.id !== memberId),
     )
-  }
 
-  function updateFamilyMemberEarlyDiagnosis(memberId, earlyDiagnosis) {
-    setFamilyMembers((currentMembers) =>
-      currentMembers.map((member) =>
-        member.id === memberId
-          ? {
-              ...member,
-              earlyDiagnosis,
-            }
-          : member,
-      ),
-    )
-  }
-
-  function toggleTreeSection(tierId) {
-    setCollapsedTreeSections((currentSections) => ({
-      ...currentSections,
-      [tierId]: !currentSections[tierId],
-    }))
+    setActiveFamilyMenuId(null)
   }
 
   function handleStartOver() {
@@ -2281,14 +2205,14 @@ function App() {
     setEditingFamilyMemberId(null)
     setError('')
     setSuccessMessage('')
-    setSelectedTreeNodeId(null)
-    setCollapsedTreeSections({})
     setHabitProgress({})
     setActiveConditionName(null)
     setManualLocation('')
     setUserCoordinates(null)
     setLocationStatus('idle')
     setLocationMessage('')
+    setIsFamilyFormOpen(false)
+    setActiveFamilyMenuId(null)
   }
 
   function goToNextStep() {
@@ -2829,318 +2753,226 @@ function App() {
 
       {activeView === 'family' ? (
         <>
-          <section className="family-form-panel" aria-labelledby="form-title">
-            <div className="page-heading">
-              <p className="eyebrow">Family history</p>
-              <h1 id="form-title">Add a family member</h1>
+          <section className="family-tree-panel family-grid-panel" aria-labelledby="tree-title">
+            <div className="family-grid-heading">
+              <div>
+                <p className="eyebrow">Family history</p>
+                <h1 id="tree-title">Family Health Tree</h1>
+                <p className="page-description">
+                  Add your family members and their health conditions.
+                </p>
+              </div>
+              <button
+                className="primary-action family-grid-add"
+                type="button"
+                onClick={() => openAddFamilyMember()}
+              >
+                + Add Family Member
+              </button>
             </div>
 
-            <form className="family-form" onSubmit={addFamilyMember} noValidate>
-              <label className="field-group" htmlFor="family-member-name">
-                Name or nickname
-                <input
-                  id="family-member-name"
-                  type="text"
-                  value={familyMemberName}
-                  onChange={(event) => setFamilyMemberName(event.target.value)}
-                  placeholder="Optional"
-                />
-                <span className="helper-text">
-                  Optional. Use relationship only if you prefer.
-                </span>
-              </label>
-
-              <label className="field-group" htmlFor="relationship">
-                Relationship
-                <select
-                  id="relationship"
-                  value={relationship}
-                  onChange={(event) => {
-                    setRelationship(event.target.value)
-                    setError('')
-                  }}
-                  required
+            <div className="family-grid-stack">
+              {familyGridSections.map((section) => (
+                <section
+                  className={`family-generation-section family-generation-${section.accent}`}
+                  key={section.id}
+                  aria-labelledby={`${section.id}-title`}
                 >
-                  <option value="">Choose one</option>
-                  {relationships.map((relationshipOption) => (
-                    <option
-                      disabled={isRelationshipLimitReached(
-                        relationshipOption,
-                        editingFamilyMemberId,
-                      )}
-                      key={relationshipOption}
-                      value={relationshipOption}
-                    >
-                      {relationshipOption}
-                    </option>
-                  ))}
-                </select>
-                {relationshipLimitMessage ? (
-                  <span className="limit-message">{relationshipLimitMessage}</span>
-                ) : null}
-              </label>
+                  <div className="generation-heading">
+                    <div>
+                      <h2 id={`${section.id}-title`}>{section.title}</h2>
+                      <p>{section.description}</p>
+                    </div>
+                    <span className="member-count">{section.countLabel}</span>
+                  </div>
 
-              <fieldset className="illness-fieldset">
-                <legend>Family-history conditions</legend>
-                <p className="helper-text">
-                  Mark Yes for each condition this relative has had. If none are
-                  selected, this entry will save as No known conditions.
-                </p>
-                <div className="condition-toggle-list">
-                  {familyHistoryConditionOptions.map((condition) => {
-                    const isSelected = selectedIllnesses.some(
-                      (illness) =>
-                        getIllnessKey(illness) === getIllnessKey(condition),
-                    )
+                  <div className={`family-grid family-grid-${section.id}`}>
+                    {section.members.map((member) => {
+                      const visibleConditions =
+                        member.illnesses.length > 0
+                          ? member.illnesses.slice(0, 2)
+                          : [noKnownConditionsLabel]
+                      const hiddenConditionCount = Math.max(
+                        0,
+                        member.illnesses.length - visibleConditions.length,
+                      )
+                      const cardAccent = member.isSelf ? 'blue' : section.accent
 
-                    return (
-                      <div className="condition-toggle-row" key={condition}>
-                        <span>{condition}</span>
-                        <div
-                          className="yes-no-toggle"
-                          aria-label={`${condition} condition status`}
+                      return (
+                        <article
+                          className={`family-profile-card family-profile-${cardAccent}${
+                            member.isSelf ? ' self-card' : ''
+                          }`}
+                          key={member.id}
                         >
                           <button
-                            className={isSelected ? 'active' : ''}
+                            className="family-profile-main"
                             type="button"
-                            aria-pressed={isSelected}
                             onClick={() =>
-                              setFamilyConditionSelection(condition, true)
+                              member.isSelf
+                                ? changeView('lifestyle')
+                                : openEditFamilyMember(member)
                             }
                           >
-                            Yes
+                            <span className="family-avatar" aria-hidden="true">
+                              {getTreeInitials(member)}
+                            </span>
+                            <span className="family-profile-copy">
+                              <span className="family-profile-title-row">
+                                <strong>{getDisplayName(member)}</strong>
+                                {member.isSelf ? (
+                                  <span className="you-badge">You</span>
+                                ) : null}
+                              </span>
+                              <span className="family-profile-role">
+                                {member.isSelf ? 'You' : member.relationship}
+                              </span>
+                              {member.diagnosisAge ? (
+                                <span className="family-profile-diagnosis">
+                                  Diagnosed around age {member.diagnosisAge}
+                                </span>
+                              ) : null}
+                              <span className="family-condition-row">
+                                {visibleConditions.map((illness) => (
+                                  <span className="family-condition-chip" key={illness}>
+                                    {illness}
+                                  </span>
+                                ))}
+                                {hiddenConditionCount > 0 ? (
+                                  <span className="family-condition-chip more-chip">
+                                    +{hiddenConditionCount} more
+                                  </span>
+                                ) : null}
+                              </span>
+                            </span>
                           </button>
-                          <button
-                            className={!isSelected ? 'active' : ''}
-                            type="button"
-                            aria-pressed={!isSelected}
-                            onClick={() =>
-                              setFamilyConditionSelection(condition, false)
-                            }
-                          >
-                            No
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </fieldset>
 
-              <label className="checkbox-card" htmlFor="family-early-diagnosis">
-                <input
-                  id="family-early-diagnosis"
-                  type="checkbox"
-                  checked={familyEarlyDiagnosis}
-                  onChange={(event) =>
-                    setFamilyEarlyDiagnosis(event.target.checked)
-                  }
-                />
-                <span>
-                  This relative was diagnosed at an unusually young age.
-                </span>
-              </label>
+                          <div className="family-card-menu-wrap">
+                            <button
+                              className="family-card-menu-button"
+                              type="button"
+                              aria-label={`Open actions for ${getDisplayName(member)}`}
+                              aria-expanded={activeFamilyMenuId === member.id}
+                              onClick={() =>
+                                setActiveFamilyMenuId((currentId) =>
+                                  currentId === member.id ? null : member.id,
+                                )
+                              }
+                            >
+                              ⋯
+                            </button>
+                            {activeFamilyMenuId === member.id ? (
+                              <div className="family-card-menu">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    member.isSelf
+                                      ? changeView('lifestyle')
+                                      : openEditFamilyMember(member)
+                                  }
+                                >
+                                  {member.isSelf ? 'Edit profile' : 'Edit'}
+                                </button>
+                                {!member.isSelf && !member.isPlaceholder ? (
+                                  <button
+                                    className="danger-menu-item"
+                                    type="button"
+                                    onClick={() => removeFamilyMember(member.id)}
+                                  >
+                                    Remove
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                        </article>
+                      )
+                    })}
 
-              <label className="field-group" htmlFor="family-diagnosis-age">
-                Age at diagnosis, if known
-                <input
-                  id="family-diagnosis-age"
-                  type="number"
-                  min="0"
-                  value={familyDiagnosisAge}
-                  onChange={(event) => setFamilyDiagnosisAge(event.target.value)}
-                  placeholder="Example: 42"
-                />
-                <span className="helper-text">
-                  Optional. This helps explain early family-history signals.
-                </span>
-              </label>
+                    {section.showPlaceholder ? (
+                      <button
+                        className={`family-add-placeholder family-add-${section.accent}`}
+                        type="button"
+                        onClick={() =>
+                          openAddFamilyMember(section.placeholderRelationship)
+                        }
+                      >
+                        <span aria-hidden="true">+</span>
+                        <strong>{section.addLabel}</strong>
+                      </button>
+                    ) : null}
+                  </div>
+                </section>
+              ))}
+            </div>
 
-              <p className="form-error" role="alert" aria-live="polite">
-                {error}
-              </p>
-
-              <button className="primary-action" type="submit">
-                <span aria-hidden="true" className="button-icon">
-                  +
-                </span>
-                {editingFamilyMemberId ? 'Update family member' : 'Add family member'}{' '}
-                <span aria-hidden="true">→</span>
-              </button>
-            </form>
+            <div className="family-grid-privacy">
+              <strong>Your information is private and secure</strong>
+              <span>
+                Your family health history is stored locally on your device.
+              </span>
+            </div>
           </section>
 
-          <section className="family-tree-panel" aria-labelledby="tree-title">
-          <div className="tree-heading">
-            <div>
-              <p className="eyebrow">Family Tree</p>
-              <h1 id="tree-title">Family Tree</h1>
-            </div>
-            <span className="member-count">{treeEntryCount} added</span>
-          </div>
-
-          <div className="tree-legend" aria-label="Condition color legend">
-            <span className="legend-item legend-none">0 conditions</span>
-            <span className="legend-item legend-one">1 condition</span>
-            <span className="legend-item legend-two">2 conditions</span>
-            <span className="legend-item legend-three-plus">3+ conditions</span>
-          </div>
-
-          <div className="family-tree-workspace">
-            <div className="family-tree" aria-label="Visual family tree">
-              {groupedFamilyMembers.map((tier) => {
-                const isCollapsed = Boolean(collapsedTreeSections[tier.id])
-
-                return (
-                  <section
-                    className={`tree-tier tree-tier-${tier.id}${
-                      isCollapsed ? ' collapsed' : ''
-                    }`}
-                    key={tier.id}
-                  >
-                    <div className="tier-label">
-                      <button
-                        className="tier-toggle"
-                        type="button"
-                        aria-expanded={!isCollapsed}
-                        onClick={() => toggleTreeSection(tier.id)}
-                      >
-                        <span>{tier.label}</span>
-                        <strong>{tier.members.length}</strong>
-                      </button>
-                    </div>
-
-                    {isCollapsed ? null : tier.members.length === 0 ? (
-                      <p className="empty-tier">
-                        No {tier.label.toLowerCase()} added.
-                      </p>
-                    ) : (
-                      <ul className="tree-node-list">
-                        {tier.members.map((member) => {
-                          const conditionCount = getConditionCount(member.illnesses)
-                          const tone = getTreeNodeTone(conditionCount)
-                          const isSelected = selectedTreeNode.id === member.id
-
-                          return (
-                            <li
-                              className={`tree-node tree-node-${tone}${
-                                member.isSelf ? ' tree-node-self' : ''
-                              }${isSelected ? ' selected' : ''}`}
-                              key={member.id}
-                            >
-                              <button
-                                className="tree-node-card"
-                                type="button"
-                                aria-pressed={isSelected}
-                                onClick={() => setSelectedTreeNodeId(member.id)}
-                              >
-                                <span className="tree-node-topline">
-                                  <span className="tree-avatar" aria-hidden="true">
-                                    {getTreeInitials(member)}
-                                  </span>
-                                  <span className="tree-status-label">
-                                    {getTreeStatusLabel(conditionCount)}
-                                  </span>
-                                </span>
-
-                                <span className="tree-node-body">
-                                  <span className="tree-person-name">
-                                    {getDisplayName(member)}
-                                  </span>
-                                  <span className="tree-profile-meta">
-                                    {getTreeMeta(member) || member.relationship}
-                                  </span>
-                                </span>
-
-                                <span className="tree-node-footer">
-                                  <span className="tree-condition-count">
-                                    {getConditionSummary(conditionCount)}
-                                  </span>
-                                  {member.illnesses.length > 0 ? (
-                                    <span className="tree-condition-preview">
-                                      {member.illnesses.slice(0, 2).join(', ')}
-                                      {member.illnesses.length > 2 ? ' +' : ''}
-                                    </span>
-                                  ) : (
-                                    <span className="tree-no-illnesses">
-                                      No illnesses selected
-                                    </span>
-                                  )}
-                                </span>
-                              </button>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    )}
-                  </section>
-                )
-              })}
-            </div>
-
-            <aside className="tree-detail-panel" aria-live="polite">
-              <div className="tree-detail-header">
-                <span className="tree-avatar large" aria-hidden="true">
-                  {getTreeInitials(selectedTreeNode)}
-                </span>
-                <div>
-                  <p className="eyebrow">Person details</p>
-                  <h2>{getDisplayName(selectedTreeNode)}</h2>
-                  <p className="tree-detail-meta">
-                    {selectedTreeNode.relationship} ·{' '}
-                    {getConditionSummary(
-                      getConditionCount(selectedTreeNode.illnesses),
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              {selectedTreeNode.isPlaceholder ? (
-                <div className="tree-edit-block">
-                  <p className="helper-text">
-                    Add yourself in the Family Health History step to replace this
-                    placeholder.
-                  </p>
+          {isFamilyFormOpen ? (
+            <div className="family-form-backdrop" role="presentation">
+              <aside
+                className="family-form-drawer"
+                aria-labelledby="form-title"
+                aria-modal="true"
+                role="dialog"
+              >
+                <div className="family-form-drawer-header">
+                  <div>
+                    <p className="eyebrow">Family history</p>
+                    <h2 id="form-title">
+                      {editingFamilyMemberId
+                        ? 'Edit family member'
+                        : 'Add a family member'}
+                    </h2>
+                  </div>
                   <button
-                    className="secondary-action"
+                    className="remove-button"
                     type="button"
-                    onClick={() => changeView('family')}
+                    onClick={closeFamilyForm}
+                    aria-label="Close family member form"
                   >
-                    Edit Profile <span aria-hidden="true">→</span>
+                    &times;
                   </button>
                 </div>
-              ) : selectedTreeNode.isSelf ? (
-                <div className="tree-edit-block">
-                  <p className="helper-text">
-                    This node uses your saved profile information.
-                  </p>
-                  <button
-                    className="secondary-action"
-                    type="button"
-                    onClick={() => changeView('family')}
-                  >
-                    Edit Profile <span aria-hidden="true">→</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="tree-edit-block">
-                  <label className="field-group" htmlFor="tree-relationship-edit">
+
+                <form className="family-form" onSubmit={addFamilyMember} noValidate>
+                  <label className="field-group" htmlFor="family-member-name">
+                    Name or nickname
+                    <input
+                      id="family-member-name"
+                      type="text"
+                      value={familyMemberName}
+                      onChange={(event) => setFamilyMemberName(event.target.value)}
+                      placeholder="Optional"
+                    />
+                    <span className="helper-text">
+                      Optional. Use relationship only if you prefer.
+                    </span>
+                  </label>
+
+                  <label className="field-group" htmlFor="relationship">
                     Relationship
                     <select
-                      id="tree-relationship-edit"
-                      value={selectedTreeNode.relationship}
-                      onChange={(event) =>
-                        updateFamilyMemberRelationship(
-                          selectedTreeNode.id,
-                          event.target.value,
-                        )
-                      }
+                      id="relationship"
+                      value={relationship}
+                      onChange={(event) => {
+                        setRelationship(event.target.value)
+                        setError('')
+                      }}
+                      required
                     >
+                      <option value="">Choose one</option>
                       {relationships.map((relationshipOption) => (
                         <option
                           disabled={isRelationshipLimitReached(
                             relationshipOption,
-                            selectedTreeNode.id,
+                            editingFamilyMemberId,
                           )}
                           key={relationshipOption}
                           value={relationshipOption}
@@ -3149,61 +2981,108 @@ function App() {
                         </option>
                       ))}
                     </select>
+                    {relationshipLimitMessage ? (
+                      <span className="limit-message">
+                        {relationshipLimitMessage}
+                      </span>
+                    ) : null}
                   </label>
 
-                  <label
-                    className="checkbox-card compact"
-                    htmlFor="tree-early-diagnosis-edit"
-                  >
-                    <input
-                      id="tree-early-diagnosis-edit"
-                      type="checkbox"
-                      checked={Boolean(selectedTreeNode.earlyDiagnosis)}
-                      onChange={(event) =>
-                        updateFamilyMemberEarlyDiagnosis(
-                          selectedTreeNode.id,
-                          event.target.checked,
+                  <fieldset className="illness-fieldset">
+                    <legend>Family-history conditions</legend>
+                    <p className="helper-text">
+                      Mark Yes for each condition this relative has had. If none
+                      are selected, this entry will save as No known conditions.
+                    </p>
+                    <div className="condition-toggle-list">
+                      {familyHistoryConditionOptions.map((condition) => {
+                        const isSelected = selectedIllnesses.some(
+                          (illness) =>
+                            getIllnessKey(illness) === getIllnessKey(condition),
                         )
+
+                        return (
+                          <div className="condition-toggle-row" key={condition}>
+                            <span>{condition}</span>
+                            <div
+                              className="yes-no-toggle"
+                              aria-label={`${condition} condition status`}
+                            >
+                              <button
+                                className={isSelected ? 'active' : ''}
+                                type="button"
+                                aria-pressed={isSelected}
+                                onClick={() =>
+                                  setFamilyConditionSelection(condition, true)
+                                }
+                              >
+                                Yes
+                              </button>
+                              <button
+                                className={!isSelected ? 'active' : ''}
+                                type="button"
+                                aria-pressed={!isSelected}
+                                onClick={() =>
+                                  setFamilyConditionSelection(condition, false)
+                                }
+                              >
+                                No
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </fieldset>
+
+                  <label className="checkbox-card" htmlFor="family-early-diagnosis">
+                    <input
+                      id="family-early-diagnosis"
+                      type="checkbox"
+                      checked={familyEarlyDiagnosis}
+                      onChange={(event) =>
+                        setFamilyEarlyDiagnosis(event.target.checked)
                       }
                     />
                     <span>
-                      Diagnosed at an unusually young age
+                      This relative was diagnosed at an unusually young age.
                     </span>
                   </label>
-                </div>
-              )}
 
-              {selectedTreeNode.illnesses.length > 0 ? (
-                <ul className="illness-list">
-                  {selectedTreeNode.illnesses.map((illness) => (
-                    <li key={illness}>
-                      {isNoIllness(illness) ? (
-                        <ConditionTag conditionName={illness} />
-                      ) : (
-                        <ClickableConditionTag
-                          conditionName={illness}
-                          onOpenConditionDetails={openConditionDetails}
-                        />
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="no-illnesses">No illnesses selected.</p>
-              )}
+                  <label className="field-group" htmlFor="family-diagnosis-age">
+                    Age at diagnosis, if known
+                    <input
+                      id="family-diagnosis-age"
+                      type="number"
+                      min="0"
+                      value={familyDiagnosisAge}
+                      onChange={(event) =>
+                        setFamilyDiagnosisAge(event.target.value)
+                      }
+                      placeholder="Example: 42"
+                    />
+                    <span className="helper-text">
+                      Optional. This helps explain early family-history signals.
+                    </span>
+                  </label>
 
-              {!selectedTreeNode.isSelf && !selectedTreeNode.isPlaceholder ? (
-                <button
-                  className="danger-action"
-                  type="button"
-                  onClick={() => removeFamilyMember(selectedTreeNode.id)}
-                >
-                  Remove from tree
-                </button>
-              ) : null}
-            </aside>
-          </div>
-        </section>
+                  <p className="form-error" role="alert" aria-live="polite">
+                    {error}
+                  </p>
+
+                  <button className="primary-action" type="submit">
+                    <span aria-hidden="true" className="button-icon">
+                      +
+                    </span>
+                    {editingFamilyMemberId
+                      ? 'Update family member'
+                      : 'Add family member'}{' '}
+                    <span aria-hidden="true">→</span>
+                  </button>
+                </form>
+              </aside>
+            </div>
+          ) : null}
         </>
       ) : null}
 
