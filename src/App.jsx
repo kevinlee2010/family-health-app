@@ -2507,7 +2507,13 @@ function App() {
 
       {activeView === 'family' ? (
         <section className="profile-panel" aria-labelledby="profile-title">
-          <h2 className="panel-title" id="profile-title">About you</h2>
+          <div className="current-health-heading">
+            <h2 className="panel-title" id="profile-title">Current Health</h2>
+            <p>
+              Do you currently have any of these conditions? Choose None if no
+              current conditions apply.
+            </p>
+          </div>
 
           <form className="profile-form" onSubmit={saveProfile} noValidate>
             <section className="profile-form-section">
@@ -2640,7 +2646,6 @@ function App() {
 
             <section className="profile-form-section">
               <div>
-                <p className="eyebrow">Current Health</p>
                 <h2>Known health factors</h2>
               </div>
 
@@ -2711,11 +2716,7 @@ function App() {
             </section>
 
             <fieldset className="illness-fieldset profile-form-section">
-              <legend>Current Health</legend>
-              <p className="helper-text">
-                Do you currently have any of these conditions? Choose None if no
-                current conditions apply.
-              </p>
+              <legend>Current conditions</legend>
               <IllnessPicker
                 inputId="profile-illness-search"
                 inputValue={profileIllnessInput}

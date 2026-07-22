@@ -3827,6 +3827,24 @@ input:focus {
   letter-spacing: -0.01em;
 }
 
+.current-health-heading {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.current-health-heading .panel-title {
+  margin: 0;
+}
+
+.current-health-heading p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted-strong);
+  font-weight: 650;
+  line-height: 1.45;
+}
+
 @media (max-width: 700px) {
   .inner-shell {
     gap: 12px;
