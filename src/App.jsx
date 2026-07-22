@@ -125,60 +125,67 @@ const starterIllnesses = illnessCategories.flatMap((category) => category.illnes
 const guidedSteps = [
   {
     id: 'dashboard',
+    icon: '⌂',
     label: 'Dashboard',
     helper: 'Overview and next step',
   },
   {
-    id: 'about',
-    label: 'My Profile',
-    helper: 'Basic profile and current health',
-  },
-  {
     id: 'family',
-    label: 'Family History',
-    helper: 'Relatives and conditions',
+    icon: '👥',
+    label: 'Family Health History',
+    helper: 'Relatives, self, and conditions',
   },
   {
-    id: 'tree',
-    label: 'Family Tree',
-    helper: 'Visual family structure',
+    id: 'lifestyle',
+    icon: '◒',
+    label: 'Lifestyle Assessment',
+    helper: 'Daily habits and prevention',
   },
   {
-    id: 'risk',
-    label: 'Risk Assessment',
-    helper: 'Category awareness',
-  },
-  {
-    id: 'results',
-    label: 'Results & Tips',
-    helper: 'Personalized briefing',
+    id: 'score',
+    icon: '◎',
+    label: 'Prevention Score',
+    helper: 'Habits and awareness score',
   },
   {
     id: 'actions',
-    label: 'Healthy Actions',
-    helper: 'Local wellness ideas',
+    icon: '⌖',
+    label: 'Localized Plan',
+    helper: 'Local wellness actions',
+  },
+  {
+    id: 'coach',
+    icon: '✦',
+    label: 'AI Prevention Coach',
+    helper: 'Goals, habits, and streaks',
   },
 ]
 
 const legacyViewMap = {
   actions: 'actions',
+  about: 'family',
+  coach: 'coach',
   dashboard: 'dashboard',
   history: 'family',
+  localized: 'actions',
   prevention: 'results',
-  profile: 'about',
+  profile: 'family',
   risk: 'risk',
+  score: 'score',
   tree: 'tree',
-  lifestyle: 'about',
+  lifestyle: 'lifestyle',
 }
 
 const viewTabs = [
   { id: 'dashboard', icon: '⌂', label: 'Dashboard' },
-  { id: 'about', icon: '♡', label: 'My Profile' },
-  { id: 'family', icon: '👥', label: 'Family History' },
+  { id: 'family', icon: '👥', label: 'Family Health History' },
+  { id: 'lifestyle', icon: '◒', label: 'Lifestyle Assessment' },
+  { id: 'score', icon: '◎', label: 'Prevention Score' },
+  { id: 'actions', icon: '⌖', label: 'Localized Plan' },
+  { id: 'coach', icon: '✦', label: 'AI Prevention Coach' },
   { id: 'tree', icon: '⌬', label: 'Family Tree' },
   { id: 'risk', icon: '◌', label: 'Risk Assessment' },
   { id: 'results', icon: '✦', label: 'Results & Tips' },
-  { id: 'actions', icon: '⌖', label: 'Healthy Actions Near You' },
 ]
 
 const initialProfileForm = {
@@ -196,6 +203,11 @@ const initialProfileForm = {
   fruitVegIntake: '',
   dietQuality: '',
   sleep: '',
+  waterIntake: '',
+  sugaryDrinks: '',
+  stressLevel: '',
+  screenTime: '',
+  preventiveScreenings: '',
   knownHighBloodPressure: '',
   knownHighCholesterol: '',
   diabetesStatus: '',
@@ -228,6 +240,31 @@ const sleepOptions = [
   'More than 9 hours',
 ]
 
+const waterIntakeOptions = [
+  'Less than 3 cups',
+  '3-5 cups',
+  '6-8 cups',
+  'More than 8 cups',
+]
+
+const sugaryDrinkOptions = ['Rarely', '1-3 per week', 'Most days', 'Daily']
+
+const stressLevelOptions = ['Low', 'Moderate', 'High', 'Very high']
+
+const screenTimeOptions = [
+  'Less than 2 hours',
+  '2-4 hours',
+  '5-7 hours',
+  '8+ hours',
+]
+
+const preventiveScreeningOptions = [
+  'Up to date',
+  'Not sure',
+  'Need to schedule',
+  'Not age appropriate yet',
+]
+
 const yesNoUnknownOptions = ['No', 'Yes', 'Not sure', 'Prefer not to answer']
 
 const diabetesStatusOptions = [
@@ -248,6 +285,7 @@ const defaultSavedState = {
   profileIllnesses: [],
   profileIllnessInput: '',
   familyMembers: [],
+  familyMemberName: '',
   relationship: '',
   selectedIllnesses: [],
   illnessInput: '',
@@ -256,6 +294,7 @@ const defaultSavedState = {
   editingFamilyMemberId: null,
   selectedTreeNodeId: null,
   collapsedTreeSections: {},
+  habitProgress: {},
   manualLocation: '',
   userCoordinates: null,
   locationStatus: 'idle',
@@ -315,6 +354,11 @@ function sanitizeUserProfile(value) {
     fruitVegIntake: asString(value.fruitVegIntake),
     dietQuality: asString(value.dietQuality),
     sleep: asString(value.sleep),
+    waterIntake: asString(value.waterIntake),
+    sugaryDrinks: asString(value.sugaryDrinks),
+    stressLevel: asString(value.stressLevel),
+    screenTime: asString(value.screenTime),
+    preventiveScreenings: asString(value.preventiveScreenings),
     knownHighBloodPressure: asString(value.knownHighBloodPressure),
     knownHighCholesterol: asString(value.knownHighCholesterol),
     diabetesStatus: asString(value.diabetesStatus),
@@ -368,12 +412,24 @@ function sanitizeCollapsedSections(value) {
   )
 }
 
+function sanitizeHabitProgress(value) {
+  if (!isPlainObject(value)) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => typeof key === 'string')
+      .map(([key, completed]) => [key, Boolean(completed)]),
+  )
+}
+
 function sanitizeActiveView(value) {
-  if (guidedSteps.some((step) => step.id === value)) {
+  if (viewTabs.some((tab) => tab.id === value)) {
     return value
   }
 
-  return legacyViewMap[value] || 'about'
+  return legacyViewMap[value] || 'dashboard'
 }
 
 function sanitizeLocationStatus(value) {
@@ -403,6 +459,7 @@ function normalizeSavedState(value) {
     profileIllnesses,
     profileIllnessInput: asString(value.profileIllnessInput),
     familyMembers: sanitizeFamilyMembers(value.familyMembers),
+    familyMemberName: asString(value.familyMemberName),
     relationship: relationships.includes(value.relationship)
       ? value.relationship
       : '',
@@ -419,6 +476,7 @@ function normalizeSavedState(value) {
         ? value.selectedTreeNodeId
         : null,
     collapsedTreeSections: sanitizeCollapsedSections(value.collapsedTreeSections),
+    habitProgress: sanitizeHabitProgress(value.habitProgress),
     manualLocation: asString(value.manualLocation),
     userCoordinates: sanitizeCoordinates(value.userCoordinates),
     locationStatus,
@@ -899,6 +957,284 @@ function buildHealthyActionCategories({ locationTarget, topAreas }) {
       })),
     }
   })
+}
+
+function getLifestylePriority(profile) {
+  const priorities = []
+  const addPriority = (id, icon, title, detail, scoreImpact) => {
+    if (!priorities.some((priority) => priority.id === id)) {
+      priorities.push({ detail, icon, id, scoreImpact, title })
+    }
+  }
+
+  if (profile.exercise === 'Rarely' || profile.exercise === '1-2 days/week') {
+    addPriority(
+      'movement',
+      '🚶',
+      'Build consistent movement',
+      'Your activity response suggests that short, repeatable walks could make prevention feel more doable.',
+      14,
+    )
+  }
+
+  if (
+    profile.dietQuality === 'Poor' ||
+    profile.dietQuality === 'Fair' ||
+    profile.fruitVegIntake === '0-1 servings' ||
+    profile.fruitVegIntake === '2 servings'
+  ) {
+    addPriority(
+      'nutrition',
+      '🥗',
+      'Improve everyday nutrition',
+      'Your food responses show an opportunity to add more produce, fiber-rich foods, and balanced meals.',
+      12,
+    )
+  }
+
+  if (profile.sleep === 'Less than 6 hours' || profile.sleep === 'More than 9 hours') {
+    addPriority(
+      'sleep',
+      '🌙',
+      'Protect sleep rhythm',
+      'Your sleep response may affect energy, stress, and follow-through on healthy habits.',
+      10,
+    )
+  }
+
+  if (profile.smokingStatus === 'Current') {
+    addPriority(
+      'tobacco',
+      '🚭',
+      'Reduce tobacco or vaping exposure',
+      'Current smoking or vaping is one of the strongest modifiable prevention signals in the intake.',
+      18,
+    )
+  }
+
+  if (profile.waterIntake === 'Less than 3 cups' || profile.waterIntake === '3-5 cups') {
+    addPriority(
+      'hydration',
+      '💧',
+      'Improve hydration',
+      'Your water intake response suggests a simple daily habit target could help.',
+      6,
+    )
+  }
+
+  if (profile.sugaryDrinks === 'Most days' || profile.sugaryDrinks === 'Daily') {
+    addPriority(
+      'sugary-drinks',
+      '🥤',
+      'Cut back sugary drinks',
+      'Frequent sugary drinks can make nutrition, weight, and metabolic prevention goals harder.',
+      9,
+    )
+  }
+
+  if (profile.stressLevel === 'High' || profile.stressLevel === 'Very high') {
+    addPriority(
+      'stress',
+      '🧘',
+      'Lower stress load',
+      'Your stress response suggests breathing, walking, or mindfulness routines could support prevention.',
+      9,
+    )
+  }
+
+  if (profile.screenTime === '8+ hours') {
+    addPriority(
+      'screen-time',
+      '☀️',
+      'Add screen breaks',
+      'Long screen time can crowd out movement, sleep, and outdoor time.',
+      6,
+    )
+  }
+
+  if (
+    profile.preventiveScreenings === 'Not sure' ||
+    profile.preventiveScreenings === 'Need to schedule'
+  ) {
+    addPriority(
+      'screening',
+      '📅',
+      'Check preventive screening timing',
+      'Your screening response suggests it may be worth asking a healthcare professional what is appropriate for your age and family history.',
+      10,
+    )
+  }
+
+  return priorities
+}
+
+function getPositivePreventionSignals(profile, familyHealthSummary) {
+  const positives = []
+
+  if (profile.smokingStatus === 'Never') {
+    positives.push('No smoking or vaping reported.')
+  }
+
+  if (profile.exercise === '3-5 days/week' || profile.exercise === 'Nearly every day') {
+    positives.push('Your exercise routine is already a strong prevention habit.')
+  }
+
+  if (
+    profile.dietQuality === 'Good' ||
+    profile.dietQuality === 'Excellent' ||
+    profile.fruitVegIntake === '3-4 servings' ||
+    profile.fruitVegIntake === '5 or more servings'
+  ) {
+    positives.push('Your nutrition answers show helpful daily choices.')
+  }
+
+  if (profile.sleep === '7-9 hours') {
+    positives.push('Your sleep duration is in a generally supportive range.')
+  }
+
+  if (profile.waterIntake === '6-8 cups' || profile.waterIntake === 'More than 8 cups') {
+    positives.push('Your hydration response is a useful foundation.')
+  }
+
+  if (profile.preventiveScreenings === 'Up to date') {
+    positives.push('You reported being up to date with preventive screenings.')
+  }
+
+  if (familyHealthSummary.categories.filter((category) => category.riskLevel === 'High').length === 0) {
+    positives.push('No high family-history category is visible from the entries so far.')
+  }
+
+  return positives.slice(0, 5)
+}
+
+function calculatePreventionScore({ familyHealthSummary, profile }) {
+  const lifestylePriorities = getLifestylePriority(profile)
+  const familyPriorityPenalty = familyHealthSummary.topAreas.reduce((total, category) => {
+    if (category.riskLevel === 'High') {
+      return total + 8
+    }
+
+    if (category.riskLevel === 'Increased') {
+      return total + 4
+    }
+
+    return total
+  }, 0)
+  const lifestylePenalty = lifestylePriorities.reduce(
+    (total, priority) => total + priority.scoreImpact,
+    0,
+  )
+  const positives = getPositivePreventionSignals(profile, familyHealthSummary)
+  const score = Math.max(
+    0,
+    Math.min(100, 100 - familyPriorityPenalty - lifestylePenalty + positives.length * 2),
+  )
+  const familyPriorities = familyHealthSummary.topAreas
+    .filter((category) => category.riskLevel !== 'Average')
+    .map((category) => ({
+      detail: getHealthyActionCategoryReason(category),
+      icon: getHealthCategoryIcon(category.id),
+      id: category.id,
+      scoreImpact: category.riskLevel === 'High' ? 16 : 10,
+      title: category.name,
+    }))
+  const topPriorities = [...familyPriorities, ...lifestylePriorities]
+    .sort((first, second) => second.scoreImpact - first.scoreImpact)
+    .slice(0, 3)
+  const improvements = lifestylePriorities
+    .map((priority) => priority.title)
+    .slice(0, 5)
+  const explanation =
+    topPriorities.length > 0
+      ? `Your prevention score reflects both family-history awareness and the habits you reported. The biggest opportunities right now are ${toReadableList(
+          topPriorities.map((priority) => priority.title.toLowerCase()),
+        )}. This is not a diagnosis or prediction; it is a friendly way to spot practical prevention steps you can start improving.`
+      : 'Your prevention score is starting from a strong place because the current entries do not show major habit gaps or high family-history signals. Keep updating your family history and lifestyle answers so the coach can stay useful over time.'
+
+  return {
+    areasForImprovement:
+      improvements.length > 0
+        ? improvements
+        : ['Keep family history updated', 'Review routine checkups', 'Maintain healthy habits'],
+    explanation,
+    positives,
+    score,
+    topPriorities:
+      topPriorities.length > 0
+        ? topPriorities
+        : [
+            {
+              detail: 'Routine preventive care helps catch changes early and keeps your health plan current.',
+              icon: '📅',
+              id: 'routine-care',
+              title: 'Routine preventive care',
+            },
+          ],
+  }
+}
+
+function buildCoachGoals(preventionScore) {
+  const goals = [
+    {
+      id: 'walk',
+      label: 'Take a 20-minute walk',
+      detail: 'A small movement goal supports several prevention priorities.',
+    },
+    {
+      id: 'water',
+      label: 'Drink one extra glass of water',
+      detail: 'Hydration is a simple daily win.',
+    },
+    {
+      id: 'produce',
+      label: 'Add fruit or vegetables to one meal',
+      detail: 'A small nutrition upgrade is easier to repeat.',
+    },
+  ]
+
+  preventionScore.topPriorities.forEach((priority) => {
+    if (priority.id === 'tobacco') {
+      goals.push({
+        id: 'quit-support',
+        label: 'Look up one quit-support resource',
+        detail: 'Support tools can make tobacco or vaping goals less lonely.',
+      })
+    }
+
+    if (priority.id === 'screening') {
+      goals.push({
+        id: 'screening-question',
+        label: 'Write one screening question for your next visit',
+        detail: 'Clear questions make healthcare conversations easier.',
+      })
+    }
+
+    if (priority.id === 'stress') {
+      goals.push({
+        id: 'breathing',
+        label: 'Try a 5-minute breathing break',
+        detail: 'Short resets can support stress and sleep.',
+      })
+    }
+  })
+
+  return goals.slice(0, 5)
+}
+
+function getCoachMessage({ completedCount, totalGoals }) {
+  if (totalGoals === 0) {
+    return 'Your coach is ready when you are. Add a few habits to start tracking progress.'
+  }
+
+  if (completedCount === totalGoals) {
+    return 'Strong work today. You completed every coach goal, which is exactly how small habits become momentum.'
+  }
+
+  if (completedCount > 0) {
+    return `Nice progress. You completed ${completedCount} of ${totalGoals} coach goals today, so keep the next step small and repeatable.`
+  }
+
+  return 'Start with one small action today. A 20-minute walk, one extra glass of water, or one screening question is enough to create momentum.'
 }
 
 
@@ -2007,6 +2343,9 @@ function App() {
   const [familyMembers, setFamilyMembers] = useState(
     savedAppState.familyMembers,
   )
+  const [familyMemberName, setFamilyMemberName] = useState(
+    savedAppState.familyMemberName,
+  )
   const [relationship, setRelationship] = useState(savedAppState.relationship)
   const [selectedIllnesses, setSelectedIllnesses] = useState(
     savedAppState.selectedIllnesses,
@@ -2029,6 +2368,7 @@ function App() {
   const [collapsedTreeSections, setCollapsedTreeSections] = useState(
     savedAppState.collapsedTreeSections,
   )
+  const [habitProgress, setHabitProgress] = useState(savedAppState.habitProgress)
   const [activeConditionName, setActiveConditionName] = useState(null)
   const [activeHealthCategoryId, setActiveHealthCategoryId] = useState(null)
   const [manualLocation, setManualLocation] = useState(
@@ -2081,14 +2421,26 @@ function App() {
       (category) => category.id === activeHealthCategoryId,
     ) || null
   const profileBmi = calculateBmi(profileForm)
+  const preventionProfile = userProfile || {
+    ...profileForm,
+    bmi: profileBmi,
+    illnesses: profileIllnesses,
+  }
   const advancedRiskAssessments = calculateAdvancedRisk(
     familyMembers,
-    userProfile || {
-      ...profileForm,
-      bmi: profileBmi,
-      illnesses: profileIllnesses,
-    },
+    preventionProfile,
   )
+  const preventionScore = calculatePreventionScore({
+    familyHealthSummary,
+    profile: preventionProfile,
+  })
+  const coachGoals = buildCoachGoals(preventionScore)
+  const completedCoachGoals = coachGoals.filter((goal) => habitProgress[goal.id])
+  const coachStreak = completedCoachGoals.length
+  const coachMessage = getCoachMessage({
+    completedCount: completedCoachGoals.length,
+    totalGoals: coachGoals.length,
+  })
   const activeConditionDetails = activeConditionName
     ? getConditionDetails(activeConditionName)
     : null
@@ -2114,44 +2466,50 @@ function App() {
   )
   const dashboardSummaryCards = [
     {
-      icon: '👨‍👩‍👧',
-      label: 'Family Members',
-      value: familyMembers.length,
-      detail: userProfile ? 'Profile included in tree' : 'Add your profile next',
+      icon: '◎',
+      label: 'Prevention Score',
+      value: preventionScore.score,
+      detail: 'Habits and awareness, not a diagnosis',
     },
     {
       icon: '❤️',
       label: 'Top Health Priorities',
-      value: familyHealthSummary.topAreas.filter(
-        (category) => category.riskLevel !== 'Average',
-      ).length,
-      detail:
-        familyHealthSummary.topAreas[0]?.riskLevel !== 'Average'
-          ? familyHealthSummary.topAreas
-              .filter((category) => category.riskLevel !== 'Average')
-              .slice(0, 2)
-              .map((category) => category.name)
-              .join(', ')
-          : 'No elevated category yet',
+      value: preventionScore.topPriorities.length,
+      detail: preventionScore.topPriorities
+        .slice(0, 2)
+        .map((priority) => priority.title)
+        .join(', '),
     },
     {
-      icon: '📍',
-      label: 'Healthy Actions Near You',
-      value: healthyActionCategories.length,
-      detail: wellnessLocationTarget
-        ? `Using ${wellnessLocationTarget}`
-        : 'Add location when ready',
+      icon: '✓',
+      label: "Today's Healthy Actions",
+      value: completedCoachGoals.length,
+      detail: `${coachGoals.length} coach goals ready today`,
+    },
+    {
+      icon: '🔥',
+      label: 'Habit Progress',
+      value: `${coachStreak}/${coachGoals.length}`,
+      detail: coachStreak > 0 ? 'Momentum started' : 'Start with one small win',
+    },
+    {
+      icon: '📅',
+      label: 'Weekly Goals',
+      value: coachGoals.length,
+      detail: coachMessage,
     },
   ]
   const workflowProgress = workflowSteps.map((step, index) => {
     const isComplete =
       step.id === 'dashboard' ||
-      (step.id === 'about' && Boolean(userProfile)) ||
       (step.id === 'family' && familyMembers.length > 0) ||
+      (step.id === 'lifestyle' && Boolean(userProfile || Object.values(profileForm).some(Boolean))) ||
+      (step.id === 'score' && advancedRiskAssessments.length > 0) ||
+      (step.id === 'actions' && (Boolean(wellnessLocationTarget) || healthyActionCategories.length > 0)) ||
+      (step.id === 'coach' && coachGoals.length > 0) ||
       (step.id === 'tree' && familyMembers.length > 0) ||
       (step.id === 'risk' && advancedRiskAssessments.length > 0) ||
-      (step.id === 'results' && advancedRiskAssessments.length > 0) ||
-      (step.id === 'actions' && (Boolean(wellnessLocationTarget) || healthyActionCategories.length > 0))
+      (step.id === 'results' && advancedRiskAssessments.length > 0)
 
     return {
       ...step,
@@ -2172,7 +2530,7 @@ function App() {
       ? workflowSteps[currentWorkflowIndex + 1]
       : null
   const continueTarget = nextWorkflowStep?.id || 'dashboard'
-  const finishTarget = activeView === 'actions' ? 'dashboard' : null
+  const finishTarget = activeView === 'coach' ? 'dashboard' : null
   const dashboardWorkflowProgress = workflowProgress.map((step, index) => ({
     ...step,
     isActive: step.id === activeView || (activeView === 'dashboard' && index === 0),
@@ -2191,6 +2549,7 @@ function App() {
       profileIllnesses,
       profileIllnessInput,
       familyMembers,
+      familyMemberName,
       relationship,
       selectedIllnesses,
       illnessInput,
@@ -2199,6 +2558,7 @@ function App() {
       editingFamilyMemberId,
       selectedTreeNodeId,
       collapsedTreeSections,
+      habitProgress,
       manualLocation,
       userCoordinates,
       locationStatus,
@@ -2211,6 +2571,7 @@ function App() {
     profileIllnesses,
     profileIllnessInput,
     familyMembers,
+    familyMemberName,
     relationship,
     selectedIllnesses,
     illnessInput,
@@ -2219,6 +2580,7 @@ function App() {
     editingFamilyMemberId,
     selectedTreeNodeId,
     collapsedTreeSections,
+    habitProgress,
     manualLocation,
     userCoordinates,
     locationStatus,
@@ -2360,6 +2722,11 @@ function App() {
       fruitVegIntake: profileForm.fruitVegIntake,
       dietQuality: profileForm.dietQuality,
       sleep: profileForm.sleep,
+      waterIntake: profileForm.waterIntake,
+      sugaryDrinks: profileForm.sugaryDrinks,
+      stressLevel: profileForm.stressLevel,
+      screenTime: profileForm.screenTime,
+      preventiveScreenings: profileForm.preventiveScreenings,
       knownHighBloodPressure: profileForm.knownHighBloodPressure,
       knownHighCholesterol: profileForm.knownHighCholesterol,
       diabetesStatus: profileForm.diabetesStatus,
@@ -2388,6 +2755,7 @@ function App() {
           member.id === editingFamilyMemberId
             ? {
                 ...member,
+                name: familyMemberName.trim(),
                 relationship,
                 illnesses: selectedIllnesses,
                 earlyDiagnosis: familyEarlyDiagnosis,
@@ -2401,7 +2769,8 @@ function App() {
       setFamilyMembers((currentMembers) => [
         ...currentMembers,
         {
-        id: createId(),
+          id: createId(),
+          name: familyMemberName.trim(),
         relationship,
         illnesses: selectedIllnesses,
         earlyDiagnosis: familyEarlyDiagnosis,
@@ -2411,6 +2780,7 @@ function App() {
       setSuccessMessage('Family member added.')
     }
 
+    setFamilyMemberName('')
     setRelationship('')
     setSelectedIllnesses([])
     setIllnessInput('')
@@ -2421,6 +2791,7 @@ function App() {
   }
 
   function editFamilyMember(member) {
+    setFamilyMemberName(member.name || '')
     setRelationship(member.relationship)
     setSelectedIllnesses(member.illnesses)
     setFamilyEarlyDiagnosis(Boolean(member.earlyDiagnosis))
@@ -2489,6 +2860,7 @@ function App() {
     setProfileIllnesses([])
     setProfileIllnessInput('')
     setFamilyMembers([])
+    setFamilyMemberName('')
     setRelationship('')
     setSelectedIllnesses([])
     setIllnessInput('')
@@ -2499,6 +2871,7 @@ function App() {
     setSuccessMessage('')
     setSelectedTreeNodeId(null)
     setCollapsedTreeSections({})
+    setHabitProgress({})
     setActiveConditionName(null)
     setActiveHealthCategoryId(null)
     setManualLocation('')
@@ -2508,7 +2881,7 @@ function App() {
   }
 
   function goToNextStep() {
-    if (activeView === 'about') {
+    if (activeView === 'family' || activeView === 'lifestyle') {
       saveProfileData('Progress saved.')
     }
 
@@ -2519,6 +2892,13 @@ function App() {
     if (previousWorkflowStep) {
       changeView(previousWorkflowStep.id)
     }
+  }
+
+  function toggleHabitGoal(goalId) {
+    setHabitProgress((currentProgress) => ({
+      ...currentProgress,
+      [goalId]: !currentProgress[goalId],
+    }))
   }
 
   return (
@@ -2585,7 +2965,7 @@ function App() {
             <button
               className="primary-action hero-primary-action"
               type="button"
-              onClick={() => changeView('about')}
+              onClick={() => changeView('family')}
             >
               Continue Your Assessment
               <span aria-hidden="true">→</span>
@@ -2693,8 +3073,8 @@ function App() {
               <p className="eyebrow">Dashboard</p>
               <h1 id="dashboard-title">Good afternoon!</h1>
               <p>
-                Continue your assessment and turn your family history into a
-                clearer, prevention-focused health picture.
+                Continue your prevention journey with family history, lifestyle
+                habits, local actions, and your AI Prevention Coach.
               </p>
             </div>
             <div className="dashboard-progress-summary">
@@ -2703,7 +3083,7 @@ function App() {
               <button
                 className="primary-action"
                 type="button"
-                onClick={() => changeView('about')}
+                onClick={() => changeView('family')}
               >
                 Continue Your Assessment <span aria-hidden="true">→</span>
               </button>
@@ -2755,34 +3135,30 @@ function App() {
               <div className="section-heading-row">
                 <div>
                   <p className="eyebrow">Family insights</p>
-                  <h2>Top areas to review</h2>
+                  <h2>Top 3 health priorities</h2>
                 </div>
                 <button
                   className="secondary-action"
                   type="button"
-                  onClick={() => changeView('risk')}
+                  onClick={() => changeView('score')}
                 >
                   Learn More <span aria-hidden="true">→</span>
                 </button>
               </div>
 
               <ul className="dashboard-attention-list">
-                {familyHealthSummary.topAreas.map((category) => (
-                  <li key={category.id}>
+                {preventionScore.topPriorities.map((priority) => (
+                  <li key={priority.id}>
                     <button
-                      className={`attention-area-button ${getHealthCategoryRiskClass(
-                        category.riskLevel,
-                      )}`}
+                      className="attention-area-button"
                       type="button"
-                      onClick={() => openHealthCategoryDetails(category.id)}
+                      onClick={() => changeView('score')}
                     >
                       <span className="category-name-with-icon">
-                        <span aria-hidden="true">
-                          {getHealthCategoryIcon(category.id)}
-                        </span>
-                        <span>{category.name}</span>
+                        <span aria-hidden="true">{priority.icon}</span>
+                        <span>{priority.title}</span>
                       </span>
-                      <strong>{category.riskLevel}</strong>
+                      <strong>Priority</strong>
                     </button>
                   </li>
                 ))}
@@ -2792,32 +3168,40 @@ function App() {
             <section className="insight-panel">
               <div className="section-heading-row">
                 <div>
-                  <p className="eyebrow">Next steps</p>
-                  <h2>Results</h2>
+                  <p className="eyebrow">Coach</p>
+                  <h2>Today's healthy actions</h2>
                 </div>
                 <button
                   className="secondary-action"
                   type="button"
-                  onClick={() => changeView('results')}
+                  onClick={() => changeView('coach')}
                 >
-                  View Results <span aria-hidden="true">→</span>
+                  Open Coach <span aria-hidden="true">→</span>
                 </button>
               </div>
 
-              <p className="dashboard-next-step-copy">
-                Review your educational risk results and a personalized action
-                plan based on the information you entered.
-              </p>
+              <ul className="coach-mini-list">
+                {coachGoals.slice(0, 3).map((goal) => (
+                  <li key={goal.id}>
+                    <span>{habitProgress[goal.id] ? '✓' : '○'}</span>
+                    <span>{goal.label}</span>
+                  </li>
+                ))}
+              </ul>
             </section>
           </div>
         </section>
       ) : null}
 
-      {activeView === 'about' ? (
+      {activeView === 'family' ? (
         <section className="profile-panel" aria-labelledby="profile-title">
           <div className="page-heading">
-            <p className="eyebrow">Optional profile</p>
-            <h1 id="profile-title">Lifestyle & Health Profile</h1>
+            <p className="eyebrow">Step 1</p>
+            <h1 id="profile-title">Family Health History</h1>
+            <p className="page-description">
+              Start with yourself, then add parents, grandparents, and siblings.
+              This creates the foundation for prevention-focused insights.
+            </p>
           </div>
 
           <form className="profile-form" onSubmit={saveProfile} noValidate>
@@ -3075,6 +3459,20 @@ function App() {
             </div>
 
             <form className="family-form" onSubmit={addFamilyMember} noValidate>
+              <label className="field-group" htmlFor="family-member-name">
+                Name or nickname
+                <input
+                  id="family-member-name"
+                  type="text"
+                  value={familyMemberName}
+                  onChange={(event) => setFamilyMemberName(event.target.value)}
+                  placeholder="Optional"
+                />
+                <span className="helper-text">
+                  Optional. Use relationship only if you prefer.
+                </span>
+              </label>
+
               <label className="field-group" htmlFor="relationship">
                 Relationship
                 <select
@@ -3314,13 +3712,13 @@ function App() {
               {selectedTreeNode.isPlaceholder ? (
                 <div className="tree-edit-block">
                   <p className="helper-text">
-                    Add your profile in the My Profile tab to replace this
+                    Add yourself in the Family Health History step to replace this
                     placeholder.
                   </p>
                   <button
                     className="secondary-action"
                     type="button"
-                    onClick={() => changeView('about')}
+                    onClick={() => changeView('family')}
                   >
                     Edit Profile <span aria-hidden="true">→</span>
                   </button>
@@ -3333,7 +3731,7 @@ function App() {
                   <button
                     className="secondary-action"
                     type="button"
-                    onClick={() => changeView('about')}
+                    onClick={() => changeView('family')}
                   >
                     Edit Profile <span aria-hidden="true">→</span>
                   </button>
@@ -3467,12 +3865,17 @@ function App() {
         />
       ) : null}
 
-      {activeView === 'about' ? (
+      {activeView === 'lifestyle' ? (
         <>
         <section className="profile-panel" aria-labelledby="lifestyle-title">
           <div className="page-heading">
-            <p className="eyebrow">Lifestyle</p>
-            <h1 id="lifestyle-title">Lifestyle & Prevention Habits</h1>
+            <p className="eyebrow">Step 2</p>
+            <h1 id="lifestyle-title">Lifestyle Assessment</h1>
+            <p className="page-description">
+              These optional answers help the prevention coach personalize
+              encouragement, local actions, and habit goals. Responses save
+              automatically on your device.
+            </p>
           </div>
 
           <div className="flow-card-grid">
@@ -3571,17 +3974,173 @@ function App() {
                 }
               />
             </QuestionCard>
+
+            <QuestionCard title="Water intake">
+              <ChoiceButtons
+                label="Water intake"
+                name="waterIntake"
+                value={profileForm.waterIntake}
+                options={waterIntakeOptions}
+                onChange={(value) =>
+                  setProfileForm((currentProfile) => ({
+                    ...currentProfile,
+                    waterIntake: value,
+                  }))
+                }
+              />
+            </QuestionCard>
+
+            <QuestionCard title="Sugary drink consumption">
+              <ChoiceButtons
+                label="Sugary drink consumption"
+                name="sugaryDrinks"
+                value={profileForm.sugaryDrinks}
+                options={sugaryDrinkOptions}
+                onChange={(value) =>
+                  setProfileForm((currentProfile) => ({
+                    ...currentProfile,
+                    sugaryDrinks: value,
+                  }))
+                }
+              />
+            </QuestionCard>
+
+            <QuestionCard title="Stress level">
+              <ChoiceButtons
+                label="Stress level"
+                name="stressLevel"
+                value={profileForm.stressLevel}
+                options={stressLevelOptions}
+                onChange={(value) =>
+                  setProfileForm((currentProfile) => ({
+                    ...currentProfile,
+                    stressLevel: value,
+                  }))
+                }
+              />
+            </QuestionCard>
+
+            <QuestionCard title="Screen time">
+              <ChoiceButtons
+                label="Screen time"
+                name="screenTime"
+                value={profileForm.screenTime}
+                options={screenTimeOptions}
+                onChange={(value) =>
+                  setProfileForm((currentProfile) => ({
+                    ...currentProfile,
+                    screenTime: value,
+                  }))
+                }
+              />
+            </QuestionCard>
+
+            <QuestionCard
+              helper="Choose what fits. The app does not decide what screenings you need."
+              title="Preventive screenings"
+            >
+              <ChoiceButtons
+                label="Preventive screenings"
+                name="preventiveScreenings"
+                value={profileForm.preventiveScreenings}
+                options={preventiveScreeningOptions}
+                onChange={(value) =>
+                  setProfileForm((currentProfile) => ({
+                    ...currentProfile,
+                    preventiveScreenings: value,
+                  }))
+                }
+              />
+            </QuestionCard>
           </div>
         </section>
         </>
+      ) : null}
+
+      {activeView === 'score' ? (
+        <section className="prevention-score-panel" aria-labelledby="score-title">
+          <div className="page-heading dashboard-heading">
+            <div>
+              <p className="eyebrow">Step 3</p>
+              <h1 id="score-title">Prevention Score</h1>
+              <p className="page-description">
+                This score measures prevention habits and family-history
+                awareness. It is not a diagnosis, clinical risk percentage, or
+                prediction that you will develop a condition.
+              </p>
+            </div>
+            <span className="privacy-pill">Educational screening tool</span>
+          </div>
+
+          <div className="score-hero-grid">
+            <article className="score-ring-card">
+              <div
+                className="score-ring"
+                style={{ '--score': `${preventionScore.score}%` }}
+                aria-label={`Prevention score ${preventionScore.score} out of 100`}
+              >
+                <span>{preventionScore.score}</span>
+                <small>/100</small>
+              </div>
+              <h2>Overall Prevention Score</h2>
+              <p>{preventionScore.explanation}</p>
+            </article>
+
+            <article className="score-summary-card">
+              <p className="eyebrow">Top 3 health priorities</p>
+              <div className="priority-list">
+                {preventionScore.topPriorities.map((priority) => (
+                  <article className="priority-card" key={priority.id}>
+                    <span aria-hidden="true">{priority.icon}</span>
+                    <div>
+                      <h3>{priority.title}</h3>
+                      <p>{priority.detail}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </article>
+          </div>
+
+          <div className="score-detail-grid">
+            <section className="score-detail-card">
+              <p className="eyebrow">Already working well</p>
+              <h2>What's in your favor</h2>
+              <ul className="check-list">
+                {preventionScore.positives.length > 0 ? (
+                  preventionScore.positives.map((positive) => (
+                    <li key={positive}>{positive}</li>
+                  ))
+                ) : (
+                  <li>Add more lifestyle answers to reveal positive signals.</li>
+                )}
+              </ul>
+            </section>
+
+            <section className="score-detail-card">
+              <p className="eyebrow">Room to improve</p>
+              <h2>Areas for improvement</h2>
+              <ul className="check-list improvement">
+                {preventionScore.areasForImprovement.map((area) => (
+                  <li key={area}>{area}</li>
+                ))}
+              </ul>
+            </section>
+          </div>
+        </section>
       ) : null}
 
       {activeView === 'actions' ? (
         <section className="wellness-panel" aria-labelledby="wellness-title">
           <div className="page-heading dashboard-heading">
             <div>
-              <p className="eyebrow">Local wellness</p>
-              <h1 id="wellness-title">Healthy Actions Near You</h1>
+              <p className="eyebrow">Step 4</p>
+              <h1 id="wellness-title">Localized Prevention Plan</h1>
+              <p className="page-description">
+                Local suggestions are based on your top prevention priorities.
+                The app uses Maps search links when exact live place data is not
+                available, so it does not invent addresses.
+              </p>
             </div>
             <span className="privacy-pill">Location optional</span>
           </div>
@@ -3658,7 +4217,7 @@ function App() {
                 <div>
                   <p className="eyebrow">Personalized recommendations</p>
                   <h2 id="wellness-recommendations-title">
-                    Top health areas to act on
+                    Top 3 priorities to act on
                   </h2>
                 </div>
                 <span className="member-count">
@@ -3748,6 +4307,112 @@ function App() {
                   referrerPolicy="no-referrer-when-downgrade"
                 />
               </div>
+            </section>
+          </div>
+        </section>
+      ) : null}
+
+      {activeView === 'coach' ? (
+        <section className="coach-panel" aria-labelledby="coach-title">
+          <div className="page-heading dashboard-heading">
+            <div>
+              <p className="eyebrow">Step 5</p>
+              <h1 id="coach-title">AI Prevention Coach</h1>
+              <p className="page-description">
+                Your coach focuses on education, prevention, motivation, and
+                small habit wins over time. It does not diagnose or treat
+                medical conditions.
+              </p>
+            </div>
+            <span className="privacy-pill">{coachStreak} day-goal streak</span>
+          </div>
+
+          <section className="coach-encouragement-card">
+            <div>
+              <p className="eyebrow">Weekly encouragement</p>
+              <h2>{coachMessage}</h2>
+            </div>
+            <button
+              className="secondary-action"
+              type="button"
+              onClick={() => changeView('actions')}
+            >
+              Find Local Support <span aria-hidden="true">→</span>
+            </button>
+          </section>
+
+          <div className="coach-grid">
+            <section className="coach-card">
+              <p className="eyebrow">Today</p>
+              <h2>Daily goals</h2>
+              <ul className="habit-list">
+                {coachGoals.map((goal) => (
+                  <li key={goal.id}>
+                    <label className="habit-check">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(habitProgress[goal.id])}
+                        onChange={() => toggleHabitGoal(goal.id)}
+                      />
+                      <span>
+                        <strong>{goal.label}</strong>
+                        <small>{goal.detail}</small>
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="coach-card">
+              <p className="eyebrow">Progress</p>
+              <h2>Habit progress</h2>
+              <ProgressBar
+                value={
+                  coachGoals.length
+                    ? Math.round((completedCoachGoals.length / coachGoals.length) * 100)
+                    : 0
+                }
+              />
+              <div className="coach-chart" aria-label="Weekly goal progress">
+                {coachGoals.map((goal) => (
+                  <span
+                    className={habitProgress[goal.id] ? 'complete' : ''}
+                    key={goal.id}
+                    title={goal.label}
+                  />
+                ))}
+              </div>
+              <p>
+                {completedCoachGoals.length} of {coachGoals.length} goals
+                completed today.
+              </p>
+            </section>
+
+            <section className="coach-card">
+              <p className="eyebrow">Badges</p>
+              <h2>Achievements</h2>
+              <div className="badge-grid">
+                <span className={coachStreak >= 1 ? 'earned' : ''}>
+                  First healthy action
+                </span>
+                <span className={coachStreak >= 3 ? 'earned' : ''}>
+                  Three-goal momentum
+                </span>
+                <span className={preventionScore.score >= 80 ? 'earned' : ''}>
+                  Prevention foundation
+                </span>
+              </div>
+            </section>
+
+            <section className="coach-card">
+              <p className="eyebrow">Reminder ideas</p>
+              <h2>Personalized reminders</h2>
+              <ul className="check-list">
+                <li>Pick one daily goal and attach it to a routine you already have.</li>
+                <li>Review family-history changes once a month.</li>
+                <li>Bring your top priorities to your next routine checkup.</li>
+              </ul>
             </section>
           </div>
         </section>
