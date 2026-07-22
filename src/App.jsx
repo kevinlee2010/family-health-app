@@ -124,27 +124,19 @@ const starterIllnesses = illnessCategories.flatMap((category) => category.illnes
 const guidedSteps = [
   {
     id: 'dashboard',
-    icon: '⌂',
     label: 'Dashboard',
-    helper: 'Overview and next step',
   },
   {
     id: 'family',
-    icon: '👥',
     label: 'Family Health History',
-    helper: 'Relatives, self, and conditions',
   },
   {
     id: 'lifestyle',
-    icon: '◒',
     label: 'Lifestyle Assessment',
-    helper: 'Daily habits and prevention',
   },
   {
     id: 'coach',
-    icon: '✦',
     label: 'AI Prevention Coach',
-    helper: 'Score, plan, habits, and streaks',
   },
 ]
 
@@ -1329,40 +1321,6 @@ function ClickableConditionTag({
   )
 }
 
-function StepProgress({ activeStepId, onStepClick, steps, completedStepIds }) {
-  return (
-    <nav className="step-progress" aria-label="Progress">
-      <ol>
-        {steps.map((step, index) => {
-          const isActive = step.id === activeStepId
-          const isComplete = completedStepIds.includes(step.id)
-
-          return (
-            <li key={step.id}>
-              <button
-                className={`step-progress-item${isActive ? ' active' : ''}${
-                  isComplete ? ' complete' : ''
-                }`}
-                type="button"
-                aria-current={isActive ? 'step' : undefined}
-                onClick={() => onStepClick(step.id)}
-              >
-                <span className="step-progress-number" aria-hidden="true">
-                  {isComplete ? '✓' : index + 1}
-                </span>
-                <span>
-                  <strong>{step.label}</strong>
-                  <small>{step.helper}</small>
-                </span>
-              </button>
-            </li>
-          )
-        })}
-      </ol>
-    </nav>
-  )
-}
-
 function QuestionCard({
   children,
   helper,
@@ -1921,10 +1879,6 @@ function App() {
       : null
   const continueTarget = nextWorkflowStep?.id || 'dashboard'
   const finishTarget = activeView === 'coach' ? 'dashboard' : null
-  const dashboardWorkflowProgress = workflowProgress.map((step, index) => ({
-    ...step,
-    isActive: step.id === activeView || (activeView === 'dashboard' && index === 0),
-  }))
   const completionPercent = Math.round(
     (workflowProgress.filter((step) => step.isComplete).length /
       workflowProgress.length) *
@@ -2426,15 +2380,6 @@ function App() {
           </button>
         </section>
 
-        <StepProgress
-          activeStepId={activeView}
-          completedStepIds={workflowProgress
-            .filter((step) => step.isComplete)
-            .map((step) => step.id)}
-          onStepClick={changeView}
-          steps={workflowSteps}
-        />
-
         {successMessage ? (
           <p className="flow-message success" role="status">
             {successMessage}
@@ -2470,31 +2415,6 @@ function App() {
               </button>
             </div>
           </div>
-
-          <section
-            className="progress-panel dashboard-progress-panel"
-            aria-label="Setup progress"
-          >
-            <ol className="progress-steps">
-              {dashboardWorkflowProgress.map((step) => (
-                <li key={step.id}>
-                  <button
-                    className={`progress-step${
-                      step.isComplete ? ' complete' : ''
-                    }${step.isActive ? ' active' : ''}`}
-                    type="button"
-                    onClick={() => changeView(step.id)}
-                  >
-                    <span className="progress-number">{step.number}</span>
-                    <span className="progress-label">
-                      <span aria-hidden="true">{step.icon}</span>
-                      <span>{step.label}</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </section>
 
           <div className="dashboard-summary-grid">
             {dashboardSummaryCards.map((card) => (
