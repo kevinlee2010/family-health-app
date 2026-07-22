@@ -18,6 +18,19 @@ const ageRangeOptions = [
 const sexAtBirthOptions = ['Female', 'Male', 'Prefer not to answer']
 
 const noIllnessOption = 'None'
+const noKnownConditionsLabel = 'No known conditions.'
+const familyHistoryConditionOptions = [
+  'Heart disease',
+  'High blood pressure',
+  'High cholesterol',
+  'Type 2 diabetes',
+  'Stroke',
+  'Breast cancer',
+  'Colon cancer',
+  'Asthma',
+  'Depression',
+  "Alzheimer's disease",
+]
 
 const familyTreeTiers = [
   {
@@ -263,7 +276,6 @@ const defaultSavedState = {
   familyMemberName: '',
   relationship: '',
   selectedIllnesses: [],
-  illnessInput: '',
   familyEarlyDiagnosis: false,
   familyDiagnosisAge: '',
   editingFamilyMemberId: null,
@@ -439,7 +451,6 @@ function normalizeSavedState(value) {
       ? value.relationship
       : '',
     selectedIllnesses: asStringArray(value.selectedIllnesses),
-    illnessInput: asString(value.illnessInput),
     familyEarlyDiagnosis: Boolean(value.familyEarlyDiagnosis),
     familyDiagnosisAge: asString(value.familyDiagnosisAge),
     editingFamilyMemberId:
@@ -760,11 +771,16 @@ function normalizeIllness(value) {
 }
 
 function getIllnessKey(value) {
-  return normalizeIllness(value).replace(/\s*\([^)]*\)/g, '')
+  return normalizeIllness(value).replace(/\s*\([^)]*\)/g, '').replace(/\.+$/g, '')
 }
 
 function isNoIllness(value) {
-  return getIllnessKey(value) === getIllnessKey(noIllnessOption)
+  const illnessKey = getIllnessKey(value)
+
+  return (
+    illnessKey === getIllnessKey(noIllnessOption) ||
+    illnessKey === getIllnessKey(noKnownConditionsLabel)
+  )
 }
 
 function getConditionCount(illnesses) {
@@ -1425,10 +1441,14 @@ function FamilyMemberCard({
         <ul className="illness-list compact">
           {member.illnesses.map((illness) => (
             <li key={illness}>
-              <ClickableConditionTag
-                conditionName={illness}
-                onOpenConditionDetails={onOpenConditionDetails}
-              />
+              {isNoIllness(illness) ? (
+                <ConditionTag conditionName={illness} />
+              ) : (
+                <ClickableConditionTag
+                  conditionName={illness}
+                  onOpenConditionDetails={onOpenConditionDetails}
+                />
+              )}
             </li>
           ))}
         </ul>
@@ -1748,7 +1768,6 @@ function App() {
   const [selectedIllnesses, setSelectedIllnesses] = useState(
     savedAppState.selectedIllnesses,
   )
-  const [illnessInput, setIllnessInput] = useState(savedAppState.illnessInput)
   const [familyEarlyDiagnosis, setFamilyEarlyDiagnosis] = useState(
     savedAppState.familyEarlyDiagnosis,
   )
@@ -1929,7 +1948,6 @@ function App() {
       familyMemberName,
       relationship,
       selectedIllnesses,
-      illnessInput,
       familyEarlyDiagnosis,
       familyDiagnosisAge,
       editingFamilyMemberId,
@@ -1951,7 +1969,6 @@ function App() {
     familyMemberName,
     relationship,
     selectedIllnesses,
-    illnessInput,
     familyEarlyDiagnosis,
     familyDiagnosisAge,
     editingFamilyMemberId,
@@ -2054,22 +2071,32 @@ function App() {
     setProfileIllnesses([])
   }
 
-  function addFamilyIllness(illness) {
-    setSelectedIllnesses((currentIllnesses) =>
-      addIllnessToList(currentIllnesses, illness),
-    )
+  function setFamilyConditionSelection(condition, selected) {
+    setSelectedIllnesses((currentIllnesses) => {
+      const withoutNoKnown = currentIllnesses.filter(
+        (illness) => !isNoIllness(illness),
+      )
+
+      if (selected) {
+        return addIllnessToList(withoutNoKnown, condition)
+      }
+
+      return withoutNoKnown.filter(
+        (item) => getIllnessKey(item) !== getIllnessKey(condition),
+      )
+    })
   }
 
-  function removeFamilyIllness(illness) {
-    setSelectedIllnesses((currentIllnesses) =>
-      currentIllnesses.filter(
-        (item) => getIllnessKey(item) !== getIllnessKey(illness),
+  function getFamilyConditionsForSave() {
+    const listedConditions = selectedIllnesses.filter((illness) =>
+      familyHistoryConditionOptions.some(
+        (condition) => getIllnessKey(condition) === getIllnessKey(illness),
       ),
     )
-  }
 
-  function clearFamilyIllnesses() {
-    setSelectedIllnesses([])
+    return listedConditions.length > 0
+      ? listedConditions
+      : [noKnownConditionsLabel]
   }
 
   function saveProfileData(message = 'Profile saved.') {
@@ -2118,6 +2145,8 @@ function App() {
       return
     }
 
+    const familyConditions = getFamilyConditionsForSave()
+
     if (editingFamilyMemberId) {
       setFamilyMembers((currentMembers) =>
         currentMembers.map((member) =>
@@ -2126,7 +2155,7 @@ function App() {
                 ...member,
                 name: familyMemberName.trim(),
                 relationship,
-                illnesses: selectedIllnesses,
+                illnesses: familyConditions,
                 earlyDiagnosis: familyEarlyDiagnosis,
                 diagnosisAge: familyDiagnosisAge,
               }
@@ -2140,9 +2169,9 @@ function App() {
         {
           id: createId(),
           name: familyMemberName.trim(),
-        relationship,
-        illnesses: selectedIllnesses,
-        earlyDiagnosis: familyEarlyDiagnosis,
+          relationship,
+          illnesses: familyConditions,
+          earlyDiagnosis: familyEarlyDiagnosis,
           diagnosisAge: familyDiagnosisAge,
         },
       ])
@@ -2152,7 +2181,6 @@ function App() {
     setFamilyMemberName('')
     setRelationship('')
     setSelectedIllnesses([])
-    setIllnessInput('')
     setFamilyEarlyDiagnosis(false)
     setFamilyDiagnosisAge('')
     setEditingFamilyMemberId(null)
@@ -2160,9 +2188,15 @@ function App() {
   }
 
   function editFamilyMember(member) {
+    const listedConditions = member.illnesses.filter((illness) =>
+      familyHistoryConditionOptions.some(
+        (condition) => getIllnessKey(condition) === getIllnessKey(illness),
+      ),
+    )
+
     setFamilyMemberName(member.name || '')
     setRelationship(member.relationship)
-    setSelectedIllnesses(member.illnesses)
+    setSelectedIllnesses(listedConditions)
     setFamilyEarlyDiagnosis(Boolean(member.earlyDiagnosis))
     setFamilyDiagnosisAge(member.diagnosisAge || '')
     setEditingFamilyMemberId(member.id)
@@ -2232,7 +2266,6 @@ function App() {
     setFamilyMemberName('')
     setRelationship('')
     setSelectedIllnesses([])
-    setIllnessInput('')
     setFamilyEarlyDiagnosis(false)
     setFamilyDiagnosisAge('')
     setEditingFamilyMemberId(null)
@@ -2828,18 +2861,50 @@ function App() {
               </label>
 
               <fieldset className="illness-fieldset">
-                <legend>Illness or condition</legend>
-                <IllnessPicker
-                  inputId="family-illness-search"
-                  inputValue={illnessInput}
-                  onInputChange={setIllnessInput}
-                  onInputClear={() => setIllnessInput('')}
-                  onAddIllness={addFamilyIllness}
-                  onClearIllnesses={clearFamilyIllnesses}
-                  onOpenConditionDetails={openConditionDetails}
-                  onRemoveIllness={removeFamilyIllness}
-                  selectedIllnesses={selectedIllnesses}
-                />
+                <legend>Family-history conditions</legend>
+                <p className="helper-text">
+                  Mark Yes for each condition this relative has had. If none are
+                  selected, this entry will save as No known conditions.
+                </p>
+                <div className="condition-toggle-list">
+                  {familyHistoryConditionOptions.map((condition) => {
+                    const isSelected = selectedIllnesses.some(
+                      (illness) =>
+                        getIllnessKey(illness) === getIllnessKey(condition),
+                    )
+
+                    return (
+                      <div className="condition-toggle-row" key={condition}>
+                        <span>{condition}</span>
+                        <div
+                          className="yes-no-toggle"
+                          aria-label={`${condition} condition status`}
+                        >
+                          <button
+                            className={isSelected ? 'active' : ''}
+                            type="button"
+                            aria-pressed={isSelected}
+                            onClick={() =>
+                              setFamilyConditionSelection(condition, true)
+                            }
+                          >
+                            Yes
+                          </button>
+                          <button
+                            className={!isSelected ? 'active' : ''}
+                            type="button"
+                            aria-pressed={!isSelected}
+                            onClick={() =>
+                              setFamilyConditionSelection(condition, false)
+                            }
+                          >
+                            No
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </fieldset>
 
               <label className="checkbox-card" htmlFor="family-early-diagnosis">
@@ -2888,7 +2953,6 @@ function App() {
           <section className="family-list-panel" aria-labelledby="list-title">
             <div className="list-heading">
               <div>
-                <p className="eyebrow">Current entries</p>
                 <h2 id="list-title">Family members</h2>
               </div>
               <span className="member-count">{familyMembers.length} added</span>
@@ -3118,10 +3182,14 @@ function App() {
                 <ul className="illness-list">
                   {selectedTreeNode.illnesses.map((illness) => (
                     <li key={illness}>
-                      <ClickableConditionTag
-                        conditionName={illness}
-                        onOpenConditionDetails={openConditionDetails}
-                      />
+                      {isNoIllness(illness) ? (
+                        <ConditionTag conditionName={illness} />
+                      ) : (
+                        <ClickableConditionTag
+                          conditionName={illness}
+                          onOpenConditionDetails={openConditionDetails}
+                        />
+                      )}
                     </li>
                   ))}
                 </ul>

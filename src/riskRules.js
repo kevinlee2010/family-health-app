@@ -1,4 +1,10 @@
-const NO_CONDITION_VALUES = ['none', 'no conditions', 'no illness', 'no illnesses']
+const NO_CONDITION_VALUES = [
+  'none',
+  'no conditions',
+  'no known conditions',
+  'no illness',
+  'no illnesses',
+]
 
 const defaultSuggestions = [
   'Discuss screening with a healthcare professional.',
@@ -38,6 +44,7 @@ export function normalizeConditionName(value) {
     .trim()
     .replace(/\u2019/g, "'")
     .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\.+$/g, '')
     .replace(/\s+/g, ' ')
     .toLowerCase()
 }

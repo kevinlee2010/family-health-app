@@ -1050,6 +1050,72 @@ input:focus {
   font-weight: 750;
 }
 
+.illness-fieldset > .helper-text {
+  margin-bottom: 14px;
+}
+
+.condition-toggle-list {
+  display: grid;
+  gap: 10px;
+}
+
+.condition-toggle-row {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #ffffff;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.condition-toggle-row > span {
+  color: var(--ink);
+  font-weight: 850;
+}
+
+.yes-no-toggle {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(54px, 1fr));
+  gap: 4px;
+  padding: 4px;
+}
+
+.yes-no-toggle button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-strong);
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.yes-no-toggle button:hover,
+.yes-no-toggle button:focus-visible {
+  color: var(--accent-dark);
+  outline: none;
+}
+
+.yes-no-toggle button:focus-visible {
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.16);
+}
+
+.yes-no-toggle button.active {
+  background: #ffffff;
+  color: var(--accent-dark);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -2496,6 +2562,14 @@ button:disabled {
 
   .location-controls {
     grid-template-columns: 1fr;
+  }
+
+  .condition-toggle-row {
+    grid-template-columns: 1fr;
+  }
+
+  .yes-no-toggle {
+    width: 100%;
   }
 
   .location-controls .primary-action,
