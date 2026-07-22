@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { calculateRisk as calculateAdvancedRisk } from './riskEngine/calculateRisk'
 import { getConditionDetails } from './conditionDetails'
 import { buildFamilyHealthSummary } from './healthCategories'
 
@@ -142,37 +141,26 @@ const guidedSteps = [
     helper: 'Daily habits and prevention',
   },
   {
-    id: 'score',
-    icon: '◎',
-    label: 'Prevention Score',
-    helper: 'Habits and awareness score',
-  },
-  {
-    id: 'actions',
-    icon: '⌖',
-    label: 'Localized Plan',
-    helper: 'Local wellness actions',
-  },
-  {
     id: 'coach',
     icon: '✦',
     label: 'AI Prevention Coach',
-    helper: 'Goals, habits, and streaks',
+    helper: 'Score, plan, habits, and streaks',
   },
 ]
 
 const legacyViewMap = {
-  actions: 'actions',
+  actions: 'coach',
   about: 'family',
   coach: 'coach',
   dashboard: 'dashboard',
   history: 'family',
-  localized: 'actions',
-  prevention: 'results',
+  localized: 'coach',
+  prevention: 'coach',
   profile: 'family',
-  risk: 'risk',
-  score: 'score',
-  tree: 'tree',
+  risk: 'coach',
+  score: 'coach',
+  results: 'coach',
+  tree: 'family',
   lifestyle: 'lifestyle',
 }
 
@@ -180,12 +168,7 @@ const viewTabs = [
   { id: 'dashboard', icon: '⌂', label: 'Dashboard' },
   { id: 'family', icon: '👥', label: 'Family Health History' },
   { id: 'lifestyle', icon: '◒', label: 'Lifestyle Assessment' },
-  { id: 'score', icon: '◎', label: 'Prevention Score' },
-  { id: 'actions', icon: '⌖', label: 'Localized Plan' },
   { id: 'coach', icon: '✦', label: 'AI Prevention Coach' },
-  { id: 'tree', icon: '⌬', label: 'Family Tree' },
-  { id: 'risk', icon: '◌', label: 'Risk Assessment' },
-  { id: 'results', icon: '✦', label: 'Results & Tips' },
 ]
 
 const initialProfileForm = {
@@ -1238,26 +1221,6 @@ function getCoachMessage({ completedCount, totalGoals }) {
 }
 
 
-function getUniqueIllnesses(entries) {
-  const illnessMap = new Map()
-
-  entries.forEach((entry) => {
-    entry.illnesses.forEach((illness) => {
-      if (isNoIllness(illness)) {
-        return
-      }
-
-      const key = getIllnessKey(illness)
-
-      if (!illnessMap.has(key)) {
-        illnessMap.set(key, illness)
-      }
-    })
-  })
-
-  return Array.from(illnessMap.values())
-}
-
 function getDisplayName(member) {
   if (member.isPlaceholder) {
     return 'You (Self)'
@@ -1450,14 +1413,6 @@ function ProgressBar({ value }) {
   )
 }
 
-function RiskBadge({ riskLevel }) {
-  return (
-    <span className={`risk-badge risk-badge-${riskLevel.toLowerCase()}`}>
-      {riskLevel}
-    </span>
-  )
-}
-
 function FamilyMemberCard({
   member,
   onEdit,
@@ -1514,468 +1469,6 @@ function toReadableList(items) {
 
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
 }
-
-function getProminentCategories(familyHealthSummary) {
-  return familyHealthSummary.topAreas.filter(
-    (category) => category.observationCount > 0,
-  )
-}
-
-function getElevatedResults(advancedRiskAssessments) {
-  return advancedRiskAssessments.filter(
-    (result) => result.riskLevel !== 'Average' || result.factors.length > 0,
-  )
-}
-
-function hasAnyFactor(advancedRiskAssessments, factorIds) {
-  return advancedRiskAssessments.some((result) =>
-    result.factors.some((factor) => factorIds.includes(factor.id)),
-  )
-}
-
-function getBriefingLifestyleObservations(userProfile) {
-  if (!userProfile) {
-    return ['No lifestyle profile has been saved yet, so this briefing leans mostly on family history.']
-  }
-
-  const observations = []
-
-  if (userProfile.smokingStatus === 'Current') {
-    observations.push('current smoking or vaping is one lifestyle area that could matter across several long-term health goals')
-  } else if (userProfile.smokingStatus === 'Never') {
-    observations.push('not smoking or vaping is a meaningful protective signal')
-  } else if (userProfile.smokingStatus === 'Former') {
-    observations.push('staying away from tobacco after former use supports long-term prevention')
-  }
-
-  if (
-    userProfile.exercise === 'Rarely' ||
-    userProfile.exercise === '1-2 days/week'
-  ) {
-    observations.push('your activity level leaves room for a realistic movement routine')
-  } else if (
-    userProfile.exercise === '3-5 days/week' ||
-    userProfile.exercise === 'Nearly every day'
-  ) {
-    observations.push('your reported exercise routine is working in your favor')
-  }
-
-  if (
-    userProfile.fruitVegIntake === '0-1 servings' ||
-    userProfile.dietQuality === 'Poor' ||
-    userProfile.dietQuality === 'Fair'
-  ) {
-    observations.push('nutrition is an area where small, consistent upgrades may help')
-  } else if (
-    userProfile.fruitVegIntake === '3-4 servings' ||
-    userProfile.fruitVegIntake === '5+ servings' ||
-    userProfile.dietQuality === 'Good' ||
-    userProfile.dietQuality === 'Excellent'
-  ) {
-    observations.push('your nutrition responses suggest some supportive habits are already present')
-  }
-
-  if (
-    userProfile.sleep === 'Less than 6 hours' ||
-    userProfile.sleep === 'More than 9 hours'
-  ) {
-    observations.push('sleep may be worth reviewing because it can affect energy, stress, and prevention habits')
-  } else if (userProfile.sleep === '7-9 hours') {
-    observations.push('your sleep duration appears to be in a generally supportive range')
-  }
-
-  if (userProfile.bmi && userProfile.bmi >= 25) {
-    observations.push('weight-support habits may be relevant to heart and metabolic health conversations')
-  }
-
-  return observations.length > 0
-    ? observations
-    : ['your lifestyle responses do not show a single dominant concern yet']
-}
-
-function buildHealthBriefing({
-  advancedRiskAssessments,
-  familyHealthSummary,
-  familyMembers,
-  trackedConditions,
-  userProfile,
-}) {
-  const prominentCategories = getProminentCategories(familyHealthSummary)
-  const elevatedResults = getElevatedResults(advancedRiskAssessments)
-  const categoryNames = prominentCategories
-    .slice(0, 3)
-    .map((category) => category.name.toLowerCase())
-  const lifestyleObservations = getBriefingLifestyleObservations(userProfile)
-
-  if (familyMembers.length === 0 && trackedConditions.length === 0) {
-    return 'Your briefing is just getting started. Once you add family members, health conditions, and optional lifestyle details, this page will look for recurring patterns and turn them into a simpler prevention-focused summary. Family history can point to predisposition, but it does not mean a condition is certain.'
-  }
-
-  const familyPart =
-    categoryNames.length > 0
-      ? `Your family history currently points most strongly toward ${toReadableList(categoryNames)}.`
-      : 'Your current family history does not show one dominant inherited pattern yet.'
-  const trendPart =
-    elevatedResults.length > 0
-      ? `The app also noticed ${elevatedResults.length} area${
-          elevatedResults.length === 1 ? '' : 's'
-        } where family history, personal health details, or lifestyle answers add extra context.`
-      : 'Most scored areas look relatively quiet based on what has been entered so far.'
-  const lifestylePart = `On the lifestyle side, ${toReadableList(
-    lifestyleObservations.slice(0, 2),
-  )}.`
-
-  return `${familyPart} ${trendPart} ${lifestylePart} The important thing to remember is that family history shows predisposition, not certainty; it is a useful prompt for awareness, prevention, and better conversations with a healthcare professional.`
-}
-
-function buildStandoutInsights({
-  advancedRiskAssessments,
-  familyHealthSummary,
-  familyMembers,
-  userProfile,
-}) {
-  const insights = []
-  const prominentCategories = getProminentCategories(familyHealthSummary)
-  const strongestCategory = prominentCategories[0]
-  const elevatedResults = getElevatedResults(advancedRiskAssessments)
-  const earlyDiagnosisCount = familyMembers.filter(
-    (member) => member.earlyDiagnosis,
-  ).length
-  const conditionCounts = new Map()
-
-  familyMembers.forEach((member) => {
-    member.illnesses.forEach((illness) => {
-      if (isNoIllness(illness)) {
-        return
-      }
-
-      const key = getIllnessKey(illness)
-      conditionCounts.set(key, {
-        name: illness,
-        count: (conditionCounts.get(key)?.count || 0) + 1,
-      })
-    })
-  })
-
-  const recurringCondition = Array.from(conditionCounts.values()).find(
-    (condition) => condition.count >= 2,
-  )
-
-  if (strongestCategory) {
-    insights.push({
-      icon: getHealthCategoryIcon(strongestCategory.id),
-      title: `${strongestCategory.name} stands out most`,
-      text: `${strongestCategory.name.toLowerCase()} has the strongest family-history signal in the information entered so far.`,
-    })
-  }
-
-  if (recurringCondition) {
-    insights.push({
-      icon: '↻',
-      title: `${recurringCondition.name} appears more than once`,
-      text: 'A repeated condition is worth keeping organized because it can be useful context during routine care visits.',
-    })
-  }
-
-  if (earlyDiagnosisCount > 0) {
-    insights.push({
-      icon: '⏱',
-      title: 'Earlier diagnosis details may matter',
-      text: `${earlyDiagnosisCount} relative${
-        earlyDiagnosisCount === 1 ? ' was' : 's were'
-      } marked as diagnosed unusually young, which is useful information to share with a healthcare professional.`,
-    })
-  }
-
-  if (elevatedResults.length > 0) {
-    insights.push({
-      icon: '📌',
-      title: 'Several inputs point toward prevention conversations',
-      text: 'Family history, personal health details, and lifestyle answers combine into a few areas that may deserve extra attention over time.',
-    })
-  }
-
-  if (
-    userProfile &&
-    (userProfile.exercise === 'Rarely' ||
-      userProfile.exercise === '1-2 days/week' ||
-      userProfile.smokingStatus === 'Current' ||
-      userProfile.dietQuality === 'Poor' ||
-      userProfile.dietQuality === 'Fair')
-  ) {
-    insights.push({
-      icon: '🌿',
-      title: 'Lifestyle answers show practical openings',
-      text: 'The most useful next steps are likely small habit changes rather than a disease-by-disease checklist.',
-    })
-  }
-
-  if (prominentCategories.length === 0) {
-    insights.push({
-      icon: '🧭',
-      title: 'No strong family pattern is visible yet',
-      text: 'The family history entered so far is limited, so the app is keeping the briefing broad and prevention-focused.',
-    })
-  }
-
-  return insights.slice(0, 5)
-}
-
-function buildPositiveObservations({
-  advancedRiskAssessments,
-  familyHealthSummary,
-  userProfile,
-}) {
-  const positives = []
-  const cancerCategory = familyHealthSummary.categories.find(
-    (category) => category.id === 'cancer',
-  )
-
-  if (userProfile?.smokingStatus === 'Never') {
-    positives.push('No smoking or vaping was reported.')
-  }
-
-  if (
-    userProfile?.exercise === '3-5 days/week' ||
-    userProfile?.exercise === 'Nearly every day'
-  ) {
-    positives.push('Your reported exercise routine is a strong foundation.')
-  }
-
-  if (
-    userProfile?.fruitVegIntake === '3-4 servings' ||
-    userProfile?.fruitVegIntake === '5+ servings' ||
-    userProfile?.dietQuality === 'Good' ||
-    userProfile?.dietQuality === 'Excellent'
-  ) {
-    positives.push('Your nutrition responses suggest helpful eating habits.')
-  }
-
-  if (userProfile?.sleep === '7-9 hours') {
-    positives.push('Your sleep duration is in a generally supportive range.')
-  }
-
-  if (cancerCategory?.observationCount === 0) {
-    positives.push('No hereditary cancer pattern is visible in the entered family history.')
-  }
-
-  const averageCount = advancedRiskAssessments.filter(
-    (result) => result.riskLevel === 'Average' && result.factors.length === 0,
-  ).length
-
-  if (averageCount >= 3) {
-    positives.push('Several assessed areas have no scored risk factors entered yet.')
-  }
-
-  return positives.slice(0, 5)
-}
-
-function buildImpactRecommendations({ advancedRiskAssessments, userProfile }) {
-  const recommendations = []
-  const addRecommendation = (id, priority, icon, title, text) => {
-    if (recommendations.some((recommendation) => recommendation.id === id)) {
-      return
-    }
-
-    recommendations.push({ id, icon, priority, text, title })
-  }
-
-  if (hasAnyFactor(advancedRiskAssessments, ['smoking'])) {
-    addRecommendation(
-      'smoking',
-      100,
-      '🚭',
-      'Make tobacco or vaping support the first priority',
-      'If current smoking or vaping was reported, consider asking a healthcare professional about quit-support options. This may support heart, lung, cancer, and overall prevention goals.',
-    )
-  }
-
-  if (hasAnyFactor(advancedRiskAssessments, ['knownHighBloodPressure'])) {
-    addRecommendation(
-      'blood-pressure',
-      95,
-      '🩺',
-      'Keep blood pressure monitoring visible',
-      'Because high blood pressure was reported, regular monitoring and a clear follow-up plan may help guide prevention conversations.',
-    )
-  }
-
-  if (hasAnyFactor(advancedRiskAssessments, ['knownHighCholesterol'])) {
-    addRecommendation(
-      'cholesterol',
-      90,
-      '🩸',
-      'Discuss cholesterol monitoring',
-      'Cholesterol can be elevated without obvious symptoms, so it may be useful to ask when screening or follow-up is appropriate.',
-    )
-  }
-
-  if (hasAnyFactor(advancedRiskAssessments, ['physicalInactivity'])) {
-    addRecommendation(
-      'movement',
-      85,
-      '🏃',
-      'Start with a repeatable movement goal',
-      'Try a 20-minute walk three times this week, then build gradually if it feels safe and sustainable.',
-    )
-  }
-
-  if (
-    hasAnyFactor(advancedRiskAssessments, [
-      'elevatedBmi',
-      'higherBmi',
-      'lowProduceIntake',
-    ]) ||
-    userProfile?.dietQuality === 'Poor' ||
-    userProfile?.dietQuality === 'Fair'
-  ) {
-    addRecommendation(
-      'nutrition',
-      80,
-      '🥗',
-      'Choose one simple nutrition upgrade',
-      'For the next week, add one fiber-rich food each day, such as vegetables, fruit, beans, whole grains, or lean protein, and consider reducing highly processed or high-sodium foods.',
-    )
-  }
-
-  if (hasAnyFactor(advancedRiskAssessments, ['shortSleep'])) {
-    addRecommendation(
-      'sleep',
-      72,
-      '🌙',
-      'Protect sleep consistency',
-      'A steady bedtime window and a short wind-down routine may make other prevention habits easier to maintain.',
-    )
-  }
-
-  if (advancedRiskAssessments.some((result) => result.familyMembers.length >= 2)) {
-    addRecommendation(
-      'family-history',
-      70,
-      '📋',
-      'Bring family patterns to your next visit',
-      'Write down which relatives were affected and whether anyone was diagnosed unusually young so a healthcare professional can interpret the pattern in context.',
-    )
-  }
-
-  addRecommendation(
-    'routine-care',
-    50,
-    '📅',
-    'Keep routine preventive care on the calendar',
-    'Use regular checkups to review blood pressure, cholesterol, blood sugar, screening timing, and any new family-history details.',
-  )
-
-  return recommendations
-    .sort((first, second) => second.priority - first.priority)
-    .slice(0, 3)
-}
-
-function ResultsBriefingPage({
-  advancedRiskAssessments,
-  familyHealthSummary,
-  familyMembers,
-  trackedConditions,
-  userProfile,
-}) {
-  const briefing = buildHealthBriefing({
-    advancedRiskAssessments,
-    familyHealthSummary,
-    familyMembers,
-    trackedConditions,
-    userProfile,
-  })
-  const insights = buildStandoutInsights({
-    advancedRiskAssessments,
-    familyHealthSummary,
-    familyMembers,
-    userProfile,
-  })
-  const positives = buildPositiveObservations({
-    advancedRiskAssessments,
-    familyHealthSummary,
-    userProfile,
-  })
-  const recommendations = buildImpactRecommendations({
-    advancedRiskAssessments,
-    userProfile,
-  })
-
-  return (
-    <section className="results-briefing-page" aria-labelledby="results-title">
-      <section className="briefing-hero-card">
-        <p className="eyebrow">Personalized summary</p>
-        <h1 id="results-title">Your Health Story</h1>
-        <p>{briefing}</p>
-      </section>
-
-      <section className="briefing-section" aria-labelledby="stood-out-title">
-        <div className="briefing-section-heading">
-          <p className="eyebrow">Key takeaways</p>
-          <h2 id="stood-out-title">What Stood Out</h2>
-        </div>
-        <div className="briefing-card-grid">
-          {insights.map((insight) => (
-            <article className="briefing-insight-card" key={insight.title}>
-              <span aria-hidden="true">{insight.icon}</span>
-              <div>
-                <h3>{insight.title}</h3>
-                <p>{insight.text}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {positives.length > 0 ? (
-        <section className="briefing-section" aria-labelledby="favor-title">
-          <div className="briefing-section-heading">
-            <p className="eyebrow">Protective signals</p>
-            <h2 id="favor-title">What's Working in Your Favor</h2>
-          </div>
-          <ul className="briefing-positive-list">
-            {positives.map((positive) => (
-              <li key={positive}>{positive}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      <section className="briefing-section" aria-labelledby="impact-title">
-        <div className="briefing-section-heading">
-          <p className="eyebrow">Highest-impact next steps</p>
-          <h2 id="impact-title">Top 3 Health Priorities</h2>
-        </div>
-        <div className="impact-action-list">
-          {recommendations.map((recommendation, index) => (
-            <article className="impact-action-card" key={recommendation.id}>
-              <span className="impact-action-rank">{index + 1}</span>
-              <span className="impact-action-icon" aria-hidden="true">
-                {recommendation.icon}
-              </span>
-              <div>
-                <h3>{recommendation.title}</h3>
-                <p>{recommendation.text}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="briefing-looking-ahead" aria-labelledby="looking-ahead-title">
-        <p className="eyebrow">Education, not diagnosis</p>
-        <h2 id="looking-ahead-title">Looking Ahead</h2>
-        <p>
-          Family history is one part of health, alongside environment,
-          lifestyle, access to care, age, and chance. Use this briefing as a
-          starting point for prevention habits and routine conversations with a
-          qualified healthcare professional.
-        </p>
-      </section>
-    </section>
-  )
-}
-
 function ConditionDetailList({ items, title }) {
   return (
     <section className="condition-detail-section">
@@ -2072,91 +1565,6 @@ function ConditionDetailsModal({ conditionName, details, onClose }) {
     </div>
   )
 }
-
-function HealthCategoryDetailsModal({
-  category,
-  onClose,
-  onOpenConditionDetails,
-}) {
-  return (
-    <div className="condition-modal-backdrop" onClick={onClose}>
-      <section
-        className="condition-modal health-category-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="health-category-detail-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="condition-modal-header">
-          <div>
-            <p className="eyebrow">Family health category</p>
-            <h2 id="health-category-detail-title">{category.name}</h2>
-          </div>
-          <button
-            className="remove-button"
-            type="button"
-            onClick={onClose}
-            aria-label="Close family health category details"
-          >
-            &times;
-          </button>
-        </div>
-
-        <p className="condition-modal-disclaimer">
-          This category summary is educational only and is not medical advice.
-          Talk to a healthcare professional for medical advice.
-        </p>
-
-        <section
-          className={`category-detail-risk ${getHealthCategoryRiskClass(
-            category.riskLevel,
-          )}`}
-        >
-          <div>
-            <h3>{category.riskLevel} family-history awareness</h3>
-            <p>{category.explanation}</p>
-          </div>
-          <span>{category.observationCount} family entries</span>
-        </section>
-
-        <section className="condition-overview">
-          <h3>What this category includes</h3>
-          <p>{category.description}</p>
-        </section>
-
-        <section className="category-detail-conditions">
-          <h3>Family conditions contributing to this category</h3>
-          {category.conditions.length > 0 ? (
-            <ul>
-              {category.conditions.map((condition) => (
-                <li key={condition.conditionName}>
-                  <div>
-                    <ConditionButton
-                      className="category-detail-condition-button"
-                      conditionName={condition.conditionName}
-                      onOpenConditionDetails={onOpenConditionDetails}
-                    />
-                    <span>
-                      Listed by {condition.relatives.join(', ')}
-                      {condition.count > condition.relatives.length
-                        ? ` (${condition.count} total entries)`
-                        : ''}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="category-empty-note">
-              No family history entries currently map to this category.
-            </p>
-          )}
-        </section>
-      </section>
-    </div>
-  )
-}
-
 function IllnessPicker({
   inputId,
   inputValue,
@@ -2370,7 +1778,6 @@ function App() {
   )
   const [habitProgress, setHabitProgress] = useState(savedAppState.habitProgress)
   const [activeConditionName, setActiveConditionName] = useState(null)
-  const [activeHealthCategoryId, setActiveHealthCategoryId] = useState(null)
   const [manualLocation, setManualLocation] = useState(
     savedAppState.manualLocation,
   )
@@ -2416,20 +1823,12 @@ function App() {
   const selectedTreeNode =
     treeMembers.find((member) => member.id === selectedTreeNodeId) || selfTreeNode
   const familyHealthSummary = buildFamilyHealthSummary({ familyMembers })
-  const activeHealthCategory =
-    familyHealthSummary.categories.find(
-      (category) => category.id === activeHealthCategoryId,
-    ) || null
   const profileBmi = calculateBmi(profileForm)
   const preventionProfile = userProfile || {
     ...profileForm,
     bmi: profileBmi,
     illnesses: profileIllnesses,
   }
-  const advancedRiskAssessments = calculateAdvancedRisk(
-    familyMembers,
-    preventionProfile,
-  )
   const preventionScore = calculatePreventionScore({
     familyHealthSummary,
     profile: preventionProfile,
@@ -2446,10 +1845,6 @@ function App() {
     : null
   const disclaimerText =
     'This educational tool organizes family history and lifestyle information. It does not provide a diagnosis or replace professional medical advice.'
-  const trackedConditions = getUniqueIllnesses([
-    ...familyMembers,
-    ...(userProfile ? [userProfile] : []),
-  ])
   const wellnessLocationTarget = getLocationSearchTarget({
     manualLocation,
     userCoordinates,
@@ -2504,12 +1899,7 @@ function App() {
       step.id === 'dashboard' ||
       (step.id === 'family' && familyMembers.length > 0) ||
       (step.id === 'lifestyle' && Boolean(userProfile || Object.values(profileForm).some(Boolean))) ||
-      (step.id === 'score' && advancedRiskAssessments.length > 0) ||
-      (step.id === 'actions' && (Boolean(wellnessLocationTarget) || healthyActionCategories.length > 0)) ||
-      (step.id === 'coach' && coachGoals.length > 0) ||
-      (step.id === 'tree' && familyMembers.length > 0) ||
-      (step.id === 'risk' && advancedRiskAssessments.length > 0) ||
-      (step.id === 'results' && advancedRiskAssessments.length > 0)
+      (step.id === 'coach' && coachGoals.length > 0)
 
     return {
       ...step,
@@ -2588,13 +1978,12 @@ function App() {
   ])
 
   useEffect(() => {
-    if (!activeConditionName && !activeHealthCategoryId) {
+    if (!activeConditionName) {
       return undefined
     }
 
     function closeOnEscape(event) {
       if (event.key === 'Escape') {
-        setActiveHealthCategoryId(null)
         setActiveConditionName(null)
       }
     }
@@ -2604,23 +1993,16 @@ function App() {
     return () => {
       window.removeEventListener('keydown', closeOnEscape)
     }
-  }, [activeConditionName, activeHealthCategoryId])
+  }, [activeConditionName])
 
   function openConditionDetails(conditionName) {
-    setActiveHealthCategoryId(null)
     setActiveConditionName(conditionName)
-  }
-
-  function openHealthCategoryDetails(categoryId) {
-    setActiveConditionName(null)
-    setActiveHealthCategoryId(categoryId)
   }
 
   function changeView(viewId) {
     setActiveView(viewId)
     setIsNavOpen(false)
     setActiveConditionName(null)
-    setActiveHealthCategoryId(null)
     setError('')
 
     window.requestAnimationFrame(() => {
@@ -2873,7 +2255,6 @@ function App() {
     setCollapsedTreeSections({})
     setHabitProgress({})
     setActiveConditionName(null)
-    setActiveHealthCategoryId(null)
     setManualLocation('')
     setUserCoordinates(null)
     setLocationStatus('idle')
@@ -3140,7 +2521,7 @@ function App() {
                 <button
                   className="secondary-action"
                   type="button"
-                  onClick={() => changeView('score')}
+                  onClick={() => changeView('coach')}
                 >
                   Learn More <span aria-hidden="true">→</span>
                 </button>
@@ -3152,7 +2533,7 @@ function App() {
                     <button
                       className="attention-area-button"
                       type="button"
-                      onClick={() => changeView('score')}
+                      onClick={() => changeView('coach')}
                     >
                       <span className="category-name-with-icon">
                         <span aria-hidden="true">{priority.icon}</span>
@@ -3580,10 +2961,7 @@ function App() {
               </ul>
             )}
           </section>
-        </>
-      ) : null}
 
-      {activeView === 'tree' ? (
         <section className="family-tree-panel" aria-labelledby="tree-title">
           <div className="tree-heading">
             <div>
@@ -3810,59 +3188,7 @@ function App() {
             </aside>
           </div>
         </section>
-      ) : null}
-
-      {activeView === 'risk' ? (
-        <section className="risk-panel" aria-labelledby="risk-title">
-          <div className="page-heading dashboard-heading">
-            <div>
-              <p className="eyebrow">Risk Assessment</p>
-              <h1 id="risk-title">Family health categories</h1>
-              <p className="page-description">
-                These cards summarize family-history patterns for educational
-                awareness. They are not diagnoses or clinical predictions.
-              </p>
-            </div>
-            <span className="privacy-pill">Educational only</span>
-          </div>
-
-          <div className="risk-category-grid">
-            {familyHealthSummary.categories.map((category) => (
-              <article
-                className={`risk-category-card ${getHealthCategoryRiskClass(
-                  category.riskLevel,
-                )}`}
-                key={category.id}
-              >
-                <div className="risk-category-card-top">
-                  <span className="risk-category-icon" aria-hidden="true">
-                    {getHealthCategoryIcon(category.id)}
-                  </span>
-                  <RiskBadge riskLevel={category.riskLevel} />
-                </div>
-                <h2>{category.name}</h2>
-                <p>{category.explanation}</p>
-                <button
-                  className="secondary-action"
-                  type="button"
-                  onClick={() => openHealthCategoryDetails(category.id)}
-                >
-                  View Details <span aria-hidden="true">→</span>
-                </button>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {activeView === 'results' ? (
-        <ResultsBriefingPage
-          advancedRiskAssessments={advancedRiskAssessments}
-          familyHealthSummary={familyHealthSummary}
-          familyMembers={familyMembers}
-          trackedConditions={trackedConditions}
-          userProfile={userProfile}
-        />
+        </>
       ) : null}
 
       {activeView === 'lifestyle' ? (
@@ -4057,11 +3383,11 @@ function App() {
         </>
       ) : null}
 
-      {activeView === 'score' ? (
+      {activeView === 'coach' ? (
         <section className="prevention-score-panel" aria-labelledby="score-title">
           <div className="page-heading dashboard-heading">
             <div>
-              <p className="eyebrow">Step 3</p>
+              <p className="eyebrow">Coach insight</p>
               <h1 id="score-title">Prevention Score</h1>
               <p className="page-description">
                 This score measures prevention habits and family-history
@@ -4130,11 +3456,11 @@ function App() {
         </section>
       ) : null}
 
-      {activeView === 'actions' ? (
+      {activeView === 'coach' ? (
         <section className="wellness-panel" aria-labelledby="wellness-title">
           <div className="page-heading dashboard-heading">
             <div>
-              <p className="eyebrow">Step 4</p>
+              <p className="eyebrow">Localized prevention plan</p>
               <h1 id="wellness-title">Localized Prevention Plan</h1>
               <p className="page-description">
                 Local suggestions are based on your top prevention priorities.
@@ -4316,7 +3642,7 @@ function App() {
         <section className="coach-panel" aria-labelledby="coach-title">
           <div className="page-heading dashboard-heading">
             <div>
-              <p className="eyebrow">Step 5</p>
+              <p className="eyebrow">AI Prevention Coach</p>
               <h1 id="coach-title">AI Prevention Coach</h1>
               <p className="page-description">
                 Your coach focuses on education, prevention, motivation, and
@@ -4335,7 +3661,11 @@ function App() {
             <button
               className="secondary-action"
               type="button"
-              onClick={() => changeView('actions')}
+              onClick={() =>
+                document
+                  .querySelector('#wellness-title')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
             >
               Find Local Support <span aria-hidden="true">→</span>
             </button>
@@ -4454,13 +3784,6 @@ function App() {
         />
       ) : null}
 
-      {activeHealthCategory ? (
-        <HealthCategoryDetailsModal
-          category={activeHealthCategory}
-          onClose={() => setActiveHealthCategoryId(null)}
-          onOpenConditionDetails={openConditionDetails}
-        />
-      ) : null}
       </main>
     </div>
   )
