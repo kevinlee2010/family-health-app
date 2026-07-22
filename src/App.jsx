@@ -2254,7 +2254,12 @@ function App() {
         id="app-sidebar"
         aria-label="Family health dashboard"
       >
-        <div className="sidebar-brand">
+        <button
+          className="sidebar-brand"
+          type="button"
+          aria-label="Go to Dashboard"
+          onClick={() => changeView('dashboard')}
+        >
           <span className="brand-mark" aria-hidden="true">
             +
           </span>
@@ -2262,7 +2267,7 @@ function App() {
             <strong>Family Health</strong>
             <span>Your data stays on your device.</span>
           </div>
-        </div>
+        </button>
 
         <nav className="view-tabs" aria-label="Family health views">
           {viewTabs.map((tab) => (
