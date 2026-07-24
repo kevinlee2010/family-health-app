@@ -810,6 +810,30 @@ body {
   text-transform: uppercase;
 }
 
+.pattern-strong {
+  --category-bg: #eff6ff;
+  --category-border: #bfdbfe;
+  --category-ink: #1d4ed8;
+}
+
+.pattern-notable {
+  --category-bg: #fffbeb;
+  --category-border: #fde68a;
+  --category-ink: #92400e;
+}
+
+.pattern-limited {
+  --category-bg: #f8fafc;
+  --category-border: #e2e8f0;
+  --category-ink: #475569;
+}
+
+.pattern-clear {
+  --category-bg: #f0fdf4;
+  --category-border: #bbf7d0;
+  --category-ink: #166534;
+}
+
 .wellness-action-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -3294,6 +3318,170 @@ select:focus-visible {
   gap: 18px;
 }
 
+.prevention-insights-section {
+  display: grid;
+  gap: 16px;
+}
+
+.prevention-insights-section .section-heading-row p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.medical-disclaimer {
+  border-radius: 16px;
+  background: #f8fafc;
+  color: var(--muted-strong);
+  margin: 0;
+  padding: 14px 16px;
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.prevention-insight-list {
+  display: grid;
+  gap: 12px;
+}
+
+.prevention-insight-card {
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: var(--shadow-soft);
+  overflow: clip;
+}
+
+.prevention-insight-card summary {
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+  list-style: none;
+}
+
+.prevention-insight-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.prevention-insight-card summary:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.22);
+  outline-offset: -3px;
+}
+
+.insight-summary-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.insight-summary-copy strong {
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+.insight-summary-copy span,
+.insight-expanded-content p,
+.insight-detail-block li {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.pattern-badge {
+  border: 1px solid var(--category-border, #e2e8f0);
+  border-radius: 999px;
+  background: var(--category-bg, #f8fafc);
+  color: var(--category-ink, var(--muted-strong));
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 230px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.pattern-badge small {
+  color: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0.82;
+  text-transform: none;
+}
+
+.pattern-badge-strong {
+  --category-bg: #eff6ff;
+  --category-border: #bfdbfe;
+  --category-ink: #1d4ed8;
+}
+
+.pattern-badge-notable {
+  --category-bg: #fffbeb;
+  --category-border: #fde68a;
+  --category-ink: #92400e;
+}
+
+.pattern-badge-limited {
+  --category-bg: #f8fafc;
+  --category-border: #e2e8f0;
+  --category-ink: #475569;
+}
+
+.pattern-badge-clear {
+  --category-bg: #f0fdf4;
+  --category-border: #bbf7d0;
+  --category-ink: #166534;
+}
+
+.view-details-text {
+  color: var(--accent-dark);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.insight-expanded-content {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 14px;
+  padding: 0 18px 18px;
+}
+
+.insight-note {
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: #1d4ed8;
+  margin: 16px 0 0;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.insight-detail-block {
+  display: grid;
+  gap: 8px;
+}
+
+.insight-detail-block h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.98rem;
+}
+
+.insight-detail-block ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.insight-detail-block a {
+  color: var(--accent-dark);
+  font-weight: 850;
+}
+
 .check-list li {
   border-radius: 16px;
   background: var(--surface-strong);
@@ -3782,6 +3970,15 @@ input:focus {
   .coach-encouragement-card {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .prevention-insight-card summary {
+    grid-template-columns: 1fr;
+  }
+
+  .pattern-badge {
+    max-width: none;
+    width: fit-content;
   }
 
   .impact-action-card {

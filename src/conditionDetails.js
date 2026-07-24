@@ -17,10 +17,10 @@ const conditionDetails = {
     preventionTips: [
       'Maintain regular physical activity and a balanced eating pattern.',
       'Work with a clinician on healthy weight, blood pressure, and cholesterol goals.',
-      'Ask about diabetes prevention programs if you have prediabetes or other risk factors.',
+      'Ask about diabetes prevention programs if you have prediabetes or other health factors.',
     ],
     screening:
-      'Blood glucose tests can check for diabetes or prediabetes. People with risk factors should ask a healthcare professional whether and how often they should be screened.',
+      'Blood glucose tests can check for diabetes or prediabetes. People with health factors should ask a healthcare professional whether and how often they should be screened.',
     resources: [
       {
         label: 'CDC: About Type 2 Diabetes',
@@ -56,7 +56,7 @@ const conditionDetails = {
       'Work with a healthcare professional to monitor and manage blood pressure, cholesterol, and blood sugar.',
     ],
     screening:
-      'General heart-health checks often include blood pressure, cholesterol, blood glucose, weight, and lifestyle risk review. A clinician may recommend additional tests based on symptoms and risk.',
+      'General heart-health checks often include blood pressure, cholesterol, blood glucose, weight, and lifestyle health-factor review. A clinician may recommend additional tests based on symptoms and health history.',
     resources: [
       {
         label: 'MedlinePlus: Heart Diseases',
@@ -91,14 +91,14 @@ const conditionDetails = {
       'Take prescribed medicines as directed if a clinician recommends them.',
     ],
     screening:
-      'Blood pressure measurement is the typical screening test. Frequency depends on age, past readings, and individual risk, so discuss timing with a healthcare professional.',
+      'Blood pressure measurement is the typical screening test. Frequency depends on age, past readings, and individual health history, so discuss timing with a healthcare professional.',
     resources: [
       {
         label: 'American Heart Association: What Is High Blood Pressure?',
         url: 'https://www.heart.org/en/health-topics/high-blood-pressure/the-facts-about-high-blood-pressure',
       },
       {
-        label: 'American Heart Association: High Blood Pressure Risk Factors',
+        label: 'American Heart Association: High Blood Pressure Health Factors',
         url: 'https://www.heart.org/en/health-topics/high-blood-pressure/know-your-risk-factors-for-high-blood-pressure',
       },
       {
@@ -126,7 +126,7 @@ const conditionDetails = {
       'Discuss cholesterol goals and treatment options with a healthcare professional.',
     ],
     screening:
-      'A lipid panel blood test checks total cholesterol, LDL, HDL, and triglycerides. The American Heart Association notes that many adults start regular screening by age 19, with timing adjusted for personal risk.',
+      'A lipid panel blood test checks total cholesterol, LDL, HDL, and triglycerides. The American Heart Association notes that many adults start regular screening by age 19, with timing adjusted for personal health history.',
     resources: [
       {
         label: 'American Heart Association: Cholesterol',
@@ -162,14 +162,14 @@ const conditionDetails = {
       'Avoid tobacco, stay active, and maintain a balanced eating pattern.',
     ],
     screening:
-      'There is not one routine screening test for stroke risk. General prevention often includes checking blood pressure, cholesterol, blood sugar, and heart rhythm when clinically appropriate.',
+      'There is not one routine screening test for stroke prevention. General prevention often includes checking blood pressure, cholesterol, blood sugar, and heart rhythm when clinically appropriate.',
     resources: [
       {
         label: 'CDC: Stroke Signs and Symptoms',
         url: 'https://www.cdc.gov/stroke/signs-symptoms/index.html',
       },
       {
-        label: 'CDC: Stroke Risk Factors',
+        label: 'CDC: Stroke Health Factors',
         url: 'https://www.cdc.gov/stroke/risk-factors/index.html',
       },
       {
@@ -198,10 +198,10 @@ const conditionDetails = {
       'Discuss personal and family history with a clinician, especially if multiple relatives have had breast or related cancers.',
     ],
     screening:
-      'Mammograms are the main screening test. Average-risk screening timing varies by age and preference; people at higher risk may need earlier or additional screening such as MRI.',
+      'Mammograms are the main screening test. Screening timing varies by age, preference, and personal or family history. A healthcare professional can help determine whether additional screening is appropriate.',
     resources: [
       {
-        label: 'American Cancer Society: Breast Cancer Risk and Prevention',
+        label: 'American Cancer Society: Breast Cancer Prevention',
         url: 'https://www.cancer.org/cancer/types/breast-cancer/risk-and-prevention.html',
       },
       {
@@ -234,14 +234,14 @@ const conditionDetails = {
       'Avoid tobacco and limit alcohol.',
     ],
     screening:
-      'The American Cancer Society recommends that people at average risk start regular colorectal cancer screening at age 45. People with higher risk may need earlier or different screening.',
+      'The American Cancer Society recommends that many adults discuss regular colorectal cancer screening around midlife. People with relevant family history may need a personalized screening conversation.',
     resources: [
       {
         label: 'American Cancer Society: Colorectal Cancer',
         url: 'https://www.cancer.org/cancer/types/colon-rectal-cancer.html',
       },
       {
-        label: 'American Cancer Society: Causes, Risks, and Prevention',
+        label: 'American Cancer Society: Causes and Prevention',
         url: 'https://www.cancer.org/cancer/types/colon-rectal-cancer/causes-risks-prevention.html',
       },
       {
@@ -261,7 +261,7 @@ const conditionDetails = {
     riskFactors: [
       'Family history of asthma or allergies.',
       'Exposure to secondhand smoke, air pollution, workplace irritants, or allergens.',
-      'Having allergies or obesity can also be associated with asthma risk.',
+      'Having allergies or obesity can also be associated with asthma-related health concerns.',
     ],
     preventionTips: [
       'Avoid known triggers when possible and do not smoke.',
@@ -291,9 +291,9 @@ const conditionDetails = {
       'Changes in mood, personality, judgment, or daily functioning.',
     ],
     riskFactors: [
-      'Increasing age is the strongest known risk factor.',
+      'Increasing age is the strongest known health factor.',
       'Family history and genetics can play a role.',
-      'Some health and lifestyle factors, such as blood pressure, physical activity, hearing loss, depression, and head injury history, may affect dementia risk.',
+      'Some health and lifestyle factors, such as blood pressure, physical activity, hearing loss, depression, and head injury history, may be relevant to dementia-related prevention conversations.',
     ],
     preventionTips: [
       "There is no proven way to prevent Alzheimer's disease.",
@@ -352,7 +352,7 @@ const conditionCategoryFallbacks = [
     riskFactors: [
       'Family history of heart disease, stroke, high blood pressure, or high cholesterol.',
       'High blood pressure, high cholesterol, diabetes, smoking, and physical inactivity.',
-      'Age, diet, sleep, stress, and weight can also affect cardiovascular risk.',
+      'Age, diet, sleep, stress, and weight can also be relevant to cardiovascular prevention conversations.',
     ],
     preventionTips: [
       'Discuss blood pressure, cholesterol, and blood sugar checks with a healthcare professional.',
@@ -388,7 +388,7 @@ const conditionCategoryFallbacks = [
     ],
     riskFactors: [
       'Family history of diabetes, obesity, or metabolic disease.',
-      'Physical inactivity, eating patterns, sleep, stress, and weight can affect risk.',
+      'Physical inactivity, eating patterns, sleep, stress, and weight can be relevant to preventive care.',
       'Blood pressure, cholesterol, and other health conditions can also matter.',
     ],
     preventionTips: [
@@ -397,7 +397,7 @@ const conditionCategoryFallbacks = [
       'Track family history changes and bring them to preventive care visits.',
     ],
     screening:
-      'Screening may include blood glucose, A1C, cholesterol, blood pressure, and weight-related measures. Timing depends on age, symptoms, and risk factors.',
+      'Screening may include blood glucose, A1C, cholesterol, blood pressure, and weight-related measures. Timing depends on age, symptoms, and health factors.',
     resources: [
       {
         label: 'CDC: Diabetes',
@@ -425,7 +425,7 @@ const conditionCategoryFallbacks = [
     ],
     riskFactors: [
       'Family history of cancer, especially in close relatives.',
-      'Inherited gene changes can raise risk for some cancers.',
+      'Inherited gene changes can be relevant for some cancers.',
       'Age, tobacco, alcohol, sun exposure, infections, and lifestyle factors can also contribute.',
     ],
     preventionTips: [
@@ -463,7 +463,7 @@ const conditionCategoryFallbacks = [
     riskFactors: [
       'Family history can matter for some neurological conditions.',
       'Age, vascular health, head injury history, sleep, and other health conditions may contribute.',
-      'Risk factors vary widely by condition.',
+      'Health factors vary widely by condition.',
     ],
     preventionTips: [
       'Discuss family history and new symptoms with a healthcare professional.',
@@ -542,7 +542,7 @@ const conditionCategoryFallbacks = [
     riskFactors: [
       'Family history of autoimmune, inflammatory, bone, or joint conditions.',
       'Sex, age, hormones, nutrition, smoking, infections, and other immune factors can contribute.',
-      'Risk factors depend on the specific condition.',
+      'Health factors depend on the specific condition.',
     ],
     preventionTips: [
       'Track symptoms, flares, and family history details over time.',
@@ -579,11 +579,11 @@ const conditionCategoryFallbacks = [
     riskFactors: [
       'Family history of kidney disease, thyroid disease, or endocrine disorders.',
       'High blood pressure, diabetes, autoimmune disease, and some inherited conditions can affect kidney or hormone health.',
-      'Risk factors depend on the specific condition.',
+      'Health factors depend on the specific condition.',
     ],
     preventionTips: [
       'Ask about blood pressure, blood sugar, kidney function, urine, or thyroid testing when relevant.',
-      'Manage blood pressure and diabetes risks with a healthcare professional.',
+      'Manage blood pressure and diabetes-related health factors with a healthcare professional.',
       'Track family history changes, especially inherited kidney conditions.',
     ],
     screening:
@@ -615,8 +615,8 @@ const conditionCategoryFallbacks = [
     ],
     riskFactors: [
       'Family history of glaucoma, macular degeneration, or other eye disease.',
-      'Age, diabetes, high blood pressure, smoking, and eye injury history can affect risk.',
-      'Risk factors vary by condition.',
+      'Age, diabetes, high blood pressure, smoking, and eye injury history can be relevant to preventive care.',
+      'Health factors vary by condition.',
     ],
     preventionTips: [
       'Schedule regular comprehensive eye exams, especially with family history.',
@@ -624,7 +624,7 @@ const conditionCategoryFallbacks = [
       'Protect eyes from injury and discuss vision changes promptly.',
     ],
     screening:
-      'Eye screening may include a dilated eye exam, eye pressure measurement, retinal exam, visual field testing, or imaging depending on risk.',
+      'Eye screening may include a dilated eye exam, eye pressure measurement, retinal exam, visual field testing, or imaging depending on health history.',
     resources: [
       {
         label: 'National Eye Institute: Eye Conditions',
@@ -657,7 +657,7 @@ const conditionCategoryFallbacks = [
     riskFactors: [
       'Family history of mental or behavioral health conditions.',
       'Stress, trauma, sleep, substance use, medical conditions, and environment can also contribute.',
-      'Risk factors vary by condition and person.',
+      'Health factors vary by condition and person.',
     ],
     preventionTips: [
       'Discuss symptoms and family history with a qualified healthcare or mental health professional.',

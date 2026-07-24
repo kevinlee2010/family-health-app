@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { getConditionDetails } from './conditionDetails'
 import { buildFamilyHealthSummary } from './healthCategories'
+import {
+  buildPersonalizedPreventionSummary,
+  buildPreventionInsights,
+  getPatternLabel,
+  getPatternTone,
+} from './preventionInsights'
 
 const relationships = ['Mother', 'Father', 'Sibling', 'Grandparent']
 const relationshipLimitMessages = {
@@ -871,10 +877,6 @@ function addIllnessToList(currentIllnesses, illness) {
   return [...currentIllnesses, illness]
 }
 
-function getHealthCategoryRiskClass(riskLevel) {
-  return `category-${riskLevel.toLowerCase()}`
-}
-
 function getHealthCategoryIcon(categoryId) {
   return healthCategoryIcons[categoryId] || '🩺'
 }
@@ -910,15 +912,17 @@ function buildGoogleMapsEmbedUrl(searchQuery, locationTarget) {
 }
 
 function getHealthyActionCategoryReason(category) {
+  const patternLabel = getPatternLabel(category.riskLevel, category.observationCount)
+
   if (category.riskLevel === 'High') {
-    return `${category.name} is one of the top areas because multiple family history entries map to this category.`
+    return `${category.name} is included because multiple family-history entries map to this area. This may be useful to discuss during preventive care visits.`
   }
 
   if (category.riskLevel === 'Increased') {
-    return `${category.name} is included because at least one family history entry maps to this category.`
+    return `${category.name} is included because at least one family-history entry maps to this area. This is an educational pattern, not a diagnosis.`
   }
 
-  return `${category.name} is included as a general prevention area because it is one of the highest-ranked categories from the current entries.`
+  return `${category.name} is included as a general prevention area. Current entries show ${patternLabel.toLowerCase()}.`
 }
 
 function buildHealthyActionCategories({ locationTarget, topAreas }) {
@@ -928,6 +932,10 @@ function buildHealthyActionCategories({ locationTarget, topAreas }) {
     return {
       ...category,
       reason: getHealthyActionCategoryReason(category),
+      patternLabel: getPatternLabel(category.riskLevel, category.observationCount),
+      patternTone: getPatternTone(
+        getPatternLabel(category.riskLevel, category.observationCount),
+      ),
       actions: actions.slice(0, 5).map((action) => ({
         ...action,
         id: `${category.id}-${action.searchQuery}`,
@@ -1078,8 +1086,11 @@ function getPositivePreventionSignals(profile, familyHealthSummary) {
     positives.push('You reported being up to date with preventive screenings.')
   }
 
-  if (familyHealthSummary.categories.filter((category) => category.riskLevel === 'High').length === 0) {
-    positives.push('No high family-history category is visible from the entries so far.')
+  if (
+    familyHealthSummary.categories.filter((category) => category.riskLevel === 'High')
+      .length === 0
+  ) {
+    positives.push('No strong family-health pattern is visible from the entries so far.')
   }
 
   return positives.slice(0, 5)
@@ -1124,10 +1135,10 @@ function calculatePreventionScore({ familyHealthSummary, profile }) {
     .slice(0, 5)
   const explanation =
     topPriorities.length > 0
-      ? `Your prevention score reflects both family-history awareness and the habits you reported. Your biggest opportunities to improve your score are: ${toReadableList(
+      ? `Your prevention score summarizes preventive habits, profile completeness, and educational action opportunities. Your biggest opportunities to improve your score are: ${toReadableList(
           topPriorities.map((priority) => priority.title.toLowerCase()),
-        )}. This is not a diagnosis or prediction; it is a friendly way to spot practical prevention steps you can start improving.`
-      : 'Your prevention score is starting from a strong place because the current entries do not show major habit gaps or high family-history signals. Keep updating your family history and lifestyle answers so the coach can stay useful over time.'
+        )}. It is not a medical risk estimate, diagnosis, or prediction.`
+      : 'Your prevention score is starting from a strong place because the current entries do not show major habit gaps or strong family-history patterns. Keep updating your family history and lifestyle answers so the coach can stay useful over time. This is not a medical risk estimate.'
 
   return {
     areasForImprovement:
@@ -1441,7 +1452,7 @@ function ConditionDetailsModal({ conditionName, details, onClose }) {
                 items={details.symptoms}
               />
               <ConditionDetailList
-                title="Major risk factors"
+                title="Major health factors"
                 items={details.riskFactors}
               />
               <ConditionDetailList
@@ -1796,6 +1807,101 @@ function IllnessPicker({
   )
 }
 
+function PatternBadge({ explanation, label, tone }) {
+  return (
+    <span
+      className={`pattern-badge pattern-badge-${tone}`}
+      title="This label reflects the amount and closeness of the family-history information entered. It is not a medical risk calculation."
+    >
+      {label}
+      <small>{explanation}</small>
+    </span>
+  )
+}
+
+function MedicalDisclaimer() {
+  return (
+    <p className="medical-disclaimer">
+      These insights are based on the family history and lifestyle information
+      you entered. They are provided for educational purposes only and are not a
+      diagnosis, clinical risk assessment, or substitute for professional
+      medical advice.
+    </p>
+  )
+}
+
+function DoctorQuestions({ questions }) {
+  return (
+    <section className="insight-detail-block">
+      <h4>Questions you may want to ask</h4>
+      <ul>
+        {questions.map((question) => (
+          <li key={question}>{question}</li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function EducationalSource({ sourceName, sourceUrl }) {
+  return (
+    <section className="insight-detail-block">
+      <h4>Educational source</h4>
+      <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+        {sourceName}
+      </a>
+    </section>
+  )
+}
+
+function PreventionInsightCard({ insight }) {
+  return (
+    <details className="prevention-insight-card">
+      <summary>
+        <span className="insight-summary-copy">
+          <strong>{insight.healthArea}</strong>
+          <span>{insight.summary}</span>
+        </span>
+        <PatternBadge
+          explanation={insight.evidenceExplanation}
+          label={insight.patternLabel}
+          tone={insight.tone}
+        />
+        <span className="view-details-text">View Details</span>
+      </summary>
+
+      <div className="insight-expanded-content">
+        <p className="insight-note">Educational insight — not a diagnosis.</p>
+        <p>{insight.explanation}</p>
+
+        <section className="insight-detail-block">
+          <h4>Why this appears</h4>
+          <ul>
+            {insight.whyItAppears.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="insight-detail-block">
+          <h4>What you can consider</h4>
+          <ul>
+            {insight.educationalActions.map((action) => (
+              <li key={action}>{action}</li>
+            ))}
+          </ul>
+        </section>
+
+        <DoctorQuestions questions={insight.doctorQuestions} />
+        <EducationalSource
+          sourceName={insight.sourceName}
+          sourceUrl={insight.sourceUrl}
+        />
+      </div>
+    </details>
+  )
+}
+
 function App() {
   const [savedAppState] = useState(loadSavedAppState)
   const [activeView, setActiveView] = useState(savedAppState.activeView)
@@ -1875,6 +1981,14 @@ function App() {
   const preventionScore = calculatePreventionScore({
     familyHealthSummary,
     profile: preventionProfile,
+  })
+  const preventionInsights = buildPreventionInsights({
+    familyHealthSummary,
+    profile: preventionProfile,
+  })
+  const personalizedPreventionSummary = buildPersonalizedPreventionSummary({
+    familyHealthSummary,
+    preventionScore,
   })
   const preventionScoreStatus = getPreventionScoreStatus(preventionScore.score)
   const coachGoals = buildCoachGoals(preventionScore)
@@ -2510,8 +2624,8 @@ function App() {
               </h1>
               <p className="app-subtitle">
                 Build your family health profile to discover inherited health
-                patterns, understand potential risks, and receive personalized
-                educational insights.
+                patterns, understand possible prevention topics, and receive
+                personalized educational insights.
               </p>
             </div>
 
@@ -3493,12 +3607,12 @@ function App() {
               <p className="eyebrow">Coach insight</p>
               <h1 id="score-title">Prevention Score</h1>
               <p className="page-description">
-                This score measures prevention habits and family-history
-                awareness. It is not a diagnosis, clinical risk percentage, or
-                prediction that you will develop a condition.
+                Your Prevention Score summarizes preventive habits, profile
+                completeness, and educational action opportunities. It is not a
+                medical risk estimate.
               </p>
             </div>
-            <span className="privacy-pill">Educational screening tool</span>
+            <span className="privacy-pill">Educational prevention tool</span>
           </div>
 
           <div className="score-hero-grid">
@@ -3531,15 +3645,18 @@ function App() {
                 </p>
                 <p>
                   This score reflects prevention habits and family-history
-                  awareness. It is not a diagnosis, disease-risk percentage, or
-                  prediction.
+                  awareness. It is not a diagnosis, clinical risk score, or
+                  probability of developing a disease.
                 </p>
               </div>
               <p>{preventionScore.explanation}</p>
             </article>
 
             <article className="score-summary-card">
-              <p className="eyebrow">Top 3 health priorities</p>
+              <p className="eyebrow">Personalized prevention summary</p>
+              <h2>What your profile suggests</h2>
+              <p>{personalizedPreventionSummary}</p>
+              <p className="eyebrow">Top 3 areas to explore</p>
               <div className="priority-list">
                 {preventionScore.topPriorities.map((priority) => (
                   <article className="priority-card" key={priority.id}>
@@ -3579,6 +3696,26 @@ function App() {
               </ul>
             </section>
           </div>
+
+          <section className="prevention-insights-section" aria-labelledby="insights-title">
+            <div className="section-heading-row">
+              <div>
+                <h2 id="insights-title">Prevention Insights</h2>
+                <p>
+                  These cards explain family-health patterns using cautious,
+                  educational language.
+                </p>
+              </div>
+            </div>
+
+            <MedicalDisclaimer />
+
+            <div className="prevention-insight-list">
+              {preventionInsights.map((insight) => (
+                <PreventionInsightCard insight={insight} key={insight.id} />
+              ))}
+            </div>
+          </section>
         </section>
       ) : null}
 
@@ -3687,9 +3824,7 @@ function App() {
               <div className="wellness-focus-list">
                 {healthyActionCategories.map((category) => (
                   <article
-                    className={`wellness-focus-card ${getHealthCategoryRiskClass(
-                      category.riskLevel,
-                    )}`}
+                    className={`wellness-focus-card pattern-${category.patternTone}`}
                     key={category.id}
                   >
                     <div className="wellness-focus-header">
@@ -3703,7 +3838,7 @@ function App() {
                         <p>{category.reason}</p>
                       </div>
                       <span className="wellness-risk-badge">
-                        {category.riskLevel}
+                        {category.patternLabel}
                       </span>
                     </div>
 

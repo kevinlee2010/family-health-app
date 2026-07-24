@@ -172,18 +172,18 @@ function getRiskLevel(observationCount) {
 
 function getExplanation({ categoryName, conditionCount, riskLevel }) {
   if (riskLevel === 'High') {
-    return `${categoryName} is marked high because two or more family history entries map to this category.`
+    return `${categoryName} shows a strong family pattern because two or more family-history entries map to this area.`
   }
 
   if (riskLevel === 'Increased') {
-    return `${categoryName} is marked increased because one family history entry maps to this category.`
+    return `${categoryName} shows a notable family pattern because one family-history entry maps to this area.`
   }
 
   if (conditionCount > 0) {
-    return `${categoryName} is marked average because the current mapped entries are limited.`
+    return `${categoryName} has limited mapped family-history information so far.`
   }
 
-  return `No family history entries currently map to ${categoryName.toLowerCase()}.`
+  return `No family-history entries currently map to ${categoryName.toLowerCase()}.`
 }
 
 function addConditionContribution(conditionMap, conditionName, relationship) {
