@@ -1193,6 +1193,23 @@ input:focus {
   cursor: not-allowed;
 }
 
+.autocomplete:has(.autocomplete-input:disabled) {
+  opacity: 0.72;
+}
+
+.autocomplete-input:disabled {
+  background: #f1f5f9;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.condition-option-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
 .none-illness-button {
   width: fit-content;
   min-height: 40px;
@@ -1200,7 +1217,6 @@ input:focus {
   border-radius: 8px;
   background: #ffffff;
   color: var(--muted-strong);
-  margin-top: 10px;
   padding: 0 14px;
   font-weight: 850;
   cursor: pointer;
@@ -1291,10 +1307,26 @@ input:focus {
 }
 
 .suggestion-button:hover,
-.suggestion-button:focus-visible {
+.suggestion-button:focus-visible,
+.suggestion-button.highlighted {
   background: var(--surface-strong);
   color: var(--accent-dark);
   outline: none;
+}
+
+.condition-picker-error {
+  margin-top: 8px;
+}
+
+.condition-note {
+  border-radius: 12px;
+  background: var(--blue-soft);
+  color: #244569;
+  margin-top: 10px;
+  padding: 12px 14px;
+  font-size: 0.92rem;
+  font-weight: 750;
+  line-height: 1.45;
 }
 
 .selected-illness-list {

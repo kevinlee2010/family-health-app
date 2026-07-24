@@ -21,7 +21,8 @@ const ageRangeOptions = [
 
 const sexAtBirthOptions = ['Female', 'Male', 'Prefer not to answer']
 
-const noIllnessOption = 'None'
+const legacyNoIllnessOption = 'None'
+const noListedConditionsLabel = 'None of the conditions listed'
 const noKnownConditionsLabel = 'No known conditions.'
 const familyHistoryConditionOptions = [
   'Heart disease',
@@ -282,6 +283,8 @@ const defaultSavedState = {
   profileForm: initialProfileForm,
   profileIllnesses: [],
   profileIllnessInput: '',
+  profileNoListedConditions: false,
+  profileHasUnlistedCondition: false,
   familyMembers: [],
   familyMemberName: '',
   relationship: '',
@@ -326,6 +329,30 @@ function sanitizeProfileForm(value) {
   )
 }
 
+function getDatabaseIllness(value) {
+  const illnessKey = getIllnessKey(value)
+
+  if (!illnessKey) {
+    return ''
+  }
+
+  return (
+    starterIllnesses.find(
+      (starterIllness) => getIllnessKey(starterIllness) === illnessKey,
+    ) || ''
+  )
+}
+
+function sanitizeDatabaseIllnesses(value) {
+  return asStringArray(value).reduce((illnesses, illness) => {
+    const databaseIllness = getDatabaseIllness(illness)
+
+    return databaseIllness
+      ? addIllnessToList(illnesses, databaseIllness)
+      : illnesses
+  }, [])
+}
+
 function sanitizeUserProfile(value) {
   if (!isPlainObject(value)) {
     return null
@@ -357,7 +384,9 @@ function sanitizeUserProfile(value) {
     knownHighBloodPressure: asString(value.knownHighBloodPressure),
     knownHighCholesterol: asString(value.knownHighCholesterol),
     diabetesStatus: asString(value.diabetesStatus),
-    illnesses: asStringArray(value.illnesses || value.conditions),
+    illnesses: sanitizeDatabaseIllnesses(value.illnesses || value.conditions),
+    noListedConditions: Boolean(value.noListedConditions),
+    hasUnlistedCondition: Boolean(value.hasUnlistedCondition),
     isSelf: true,
   }
 }
@@ -431,8 +460,14 @@ function normalizeSavedState(value) {
     ? sanitizeProfileForm(value.profileForm)
     : sanitizeProfileForm(userProfile)
   const profileIllnesses = Array.isArray(value.profileIllnesses)
-    ? asStringArray(value.profileIllnesses)
-    : asStringArray(userProfile?.illnesses)
+    ? sanitizeDatabaseIllnesses(value.profileIllnesses)
+    : sanitizeDatabaseIllnesses(userProfile?.illnesses)
+  const profileNoListedConditions = Boolean(
+    value.profileNoListedConditions || userProfile?.noListedConditions,
+  )
+  const profileHasUnlistedCondition = Boolean(
+    value.profileHasUnlistedCondition || userProfile?.hasUnlistedCondition,
+  )
   const locationStatus = sanitizeLocationStatus(value.locationStatus)
 
   return {
@@ -441,6 +476,12 @@ function normalizeSavedState(value) {
     profileForm,
     profileIllnesses,
     profileIllnessInput: asString(value.profileIllnessInput),
+    profileNoListedConditions:
+      profileIllnesses.length > 0 ? false : profileNoListedConditions,
+    profileHasUnlistedCondition:
+      profileIllnesses.length > 0 || profileNoListedConditions
+        ? false
+        : profileHasUnlistedCondition,
     familyMembers: sanitizeFamilyMembers(value.familyMembers),
     familyMemberName: asString(value.familyMemberName),
     relationship: relationships.includes(value.relationship)
@@ -769,7 +810,8 @@ function isNoIllness(value) {
   const illnessKey = getIllnessKey(value)
 
   return (
-    illnessKey === getIllnessKey(noIllnessOption) ||
+    illnessKey === getIllnessKey(legacyNoIllnessOption) ||
+    illnessKey === getIllnessKey(noListedConditionsLabel) ||
     illnessKey === getIllnessKey(noKnownConditionsLabel)
   )
 }
@@ -827,20 +869,6 @@ function addIllnessToList(currentIllnesses, illness) {
   }
 
   return [...currentIllnesses, illness]
-}
-
-function formatCustomIllness(value) {
-  const cleanValue = value.trim().replace(/\s+/g, ' ')
-
-  if (!cleanValue) {
-    return ''
-  }
-
-  if (/[A-Z]/.test(cleanValue)) {
-    return cleanValue
-  }
-
-  return cleanValue.replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
 }
 
 function getHealthCategoryRiskClass(riskLevel) {
@@ -1452,21 +1480,25 @@ function ConditionDetailsModal({ conditionName, details, onClose }) {
   )
 }
 function IllnessPicker({
+  disabled = false,
+  hasUnlistedCondition = false,
   inputId,
   inputValue,
+  noListedConditions = false,
   onInputChange,
   onInputClear,
   onAddIllness,
-  onClearIllnesses,
   onOpenConditionDetails,
   onRemoveIllness,
+  onToggleNoListedConditions,
+  onToggleUnlistedCondition,
   selectedIllnesses,
 }) {
+  const [selectedSuggestion, setSelectedSuggestion] = useState('')
+  const [highlightedIllnessKey, setHighlightedIllnessKey] = useState('')
+  const [validationMessage, setValidationMessage] = useState('')
   const normalizedInput = normalizeIllness(inputValue)
-  const typedIllnessKey = getIllnessKey(inputValue)
   const selectedIllnessKeys = selectedIllnesses.map(getIllnessKey)
-  const canAddTypedIllness =
-    typedIllnessKey !== '' && !selectedIllnessKeys.includes(typedIllnessKey)
   const matchingSuggestionGroups = illnessCategories
     .map((category) => {
       const categoryMatches =
@@ -1489,36 +1521,115 @@ function IllnessPicker({
       }
     })
     .filter((category) => category.illnesses.length > 0)
-  const showSuggestions = matchingSuggestionGroups.length > 0
+  const flatSuggestions = matchingSuggestionGroups.flatMap(
+    (category) => category.illnesses,
+  )
+  const selectedSuggestionKey = getIllnessKey(selectedSuggestion)
+  const canAddSelectedSuggestion =
+    !disabled &&
+    selectedSuggestionKey !== '' &&
+    getIllnessKey(inputValue) === selectedSuggestionKey &&
+    !selectedIllnessKeys.includes(selectedSuggestionKey) &&
+    Boolean(getDatabaseIllness(selectedSuggestion))
+  const showSuggestions = !disabled && matchingSuggestionGroups.length > 0
 
   function addIllness(illness) {
-    const illnessKey = getIllnessKey(illness)
+    const databaseIllness = getDatabaseIllness(illness)
+    const illnessKey = getIllnessKey(databaseIllness)
 
-    if (!illnessKey) {
+    if (!databaseIllness || selectedIllnessKeys.includes(illnessKey)) {
       return
     }
 
-    const matchingStarterIllness = starterIllnesses.find(
-      (starterIllness) => getIllnessKey(starterIllness) === illnessKey,
-    )
-
-    onAddIllness(matchingStarterIllness || formatCustomIllness(illness))
+    onAddIllness(databaseIllness)
+    setSelectedSuggestion('')
+    setHighlightedIllnessKey('')
+    setValidationMessage('')
     onInputClear()
   }
 
-  function addTypedIllness() {
-    addIllness(inputValue)
+  function selectSuggestion(illness) {
+    setSelectedSuggestion(illness)
+    setHighlightedIllnessKey(getIllnessKey(illness))
+    setValidationMessage('')
+    onInputChange(illness)
   }
 
-  function handleIllnessKeyDown(event) {
-    if (event.key !== 'Enter') {
+  function addSelectedSuggestion() {
+    if (canAddSelectedSuggestion) {
+      addIllness(selectedSuggestion)
       return
     }
 
-    event.preventDefault()
+    if (inputValue.trim()) {
+      setValidationMessage('Select a condition from the suggestions.')
+    }
+  }
 
-    if (canAddTypedIllness) {
-      addTypedIllness()
+  function handleInputChange(value) {
+    setSelectedSuggestion('')
+    setHighlightedIllnessKey('')
+    setValidationMessage('')
+    onInputChange(value)
+  }
+
+  function moveHighlight(direction) {
+    if (flatSuggestions.length === 0) {
+      return
+    }
+
+    const currentIndex = flatSuggestions.findIndex(
+      (illness) => getIllnessKey(illness) === highlightedIllnessKey,
+    )
+    const nextIndex =
+      currentIndex === -1
+        ? 0
+        : (currentIndex + direction + flatSuggestions.length) %
+          flatSuggestions.length
+
+    setHighlightedIllnessKey(getIllnessKey(flatSuggestions[nextIndex]))
+  }
+
+  function handleIllnessKeyDown(event) {
+    if (disabled) {
+      return
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      moveHighlight(1)
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      moveHighlight(-1)
+      return
+    }
+
+    if (event.key === 'Escape') {
+      setHighlightedIllnessKey('')
+      setSelectedSuggestion('')
+      setValidationMessage('')
+      onInputClear()
+      return
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault()
+
+      const highlightedIllness = flatSuggestions.find(
+        (illness) => getIllnessKey(illness) === highlightedIllnessKey,
+      )
+
+      if (highlightedIllness) {
+        addIllness(highlightedIllness)
+        return
+      }
+
+      if (inputValue.trim()) {
+        setValidationMessage('Select a condition from the suggestions.')
+      }
     }
   }
 
@@ -1532,11 +1643,22 @@ function IllnessPicker({
             className="autocomplete-input"
             aria-autocomplete="list"
             aria-controls={`${inputId}-suggestions`}
+            aria-activedescendant={
+              highlightedIllnessKey
+                ? `${inputId}-${highlightedIllnessKey}`
+                : undefined
+            }
             aria-expanded={showSuggestions}
+            disabled={disabled}
             role="combobox"
             type="text"
             value={inputValue}
-            onChange={(event) => onInputChange(event.target.value)}
+            onBlur={() => {
+              if (inputValue.trim() && !canAddSelectedSuggestion) {
+                setValidationMessage('Select a condition from the suggestions.')
+              }
+            }}
+            onChange={(event) => handleInputChange(event.target.value)}
             onKeyDown={handleIllnessKeyDown}
             placeholder="Type an illness or condition"
             autoComplete="off"
@@ -1545,8 +1667,8 @@ function IllnessPicker({
         <button
           className="add-illness-button"
           type="button"
-          disabled={!canAddTypedIllness}
-          onClick={addTypedIllness}
+          disabled={!canAddSelectedSuggestion}
+          onClick={addSelectedSuggestion}
         >
           Add
         </button>
@@ -1562,11 +1684,25 @@ function IllnessPicker({
                 <span className="suggestion-category-label">{category.name}</span>
                 <ul>
                   {category.illnesses.map((illness) => (
-                    <li key={illness} role="option">
+                    <li
+                      id={`${inputId}-${getIllnessKey(illness)}`}
+                      key={illness}
+                      role="option"
+                      aria-selected={
+                        highlightedIllnessKey === getIllnessKey(illness)
+                      }
+                    >
                       <button
-                        className="suggestion-button"
+                        className={`suggestion-button${
+                          highlightedIllnessKey === getIllnessKey(illness)
+                            ? ' highlighted'
+                            : ''
+                        }`}
                         type="button"
-                        onClick={() => addIllness(illness)}
+                        onMouseEnter={() =>
+                          setHighlightedIllnessKey(getIllnessKey(illness))
+                        }
+                        onClick={() => selectSuggestion(illness)}
                       >
                         {illness}
                       </button>
@@ -1579,17 +1715,54 @@ function IllnessPicker({
         ) : null}
       </div>
 
-      <button
-        className="none-illness-button"
-        type="button"
-        aria-pressed={selectedIllnesses.length === 0}
-        onClick={() => {
-          onClearIllnesses()
-          onInputClear()
-        }}
-      >
-        None
-      </button>
+      {validationMessage ? (
+        <p className="form-error condition-picker-error" role="alert">
+          {validationMessage}
+        </p>
+      ) : null}
+
+      <div className="condition-option-list">
+        <button
+          className="none-illness-button"
+          type="button"
+          aria-pressed={noListedConditions}
+          onClick={() => {
+            const nextValue = !noListedConditions
+
+            onToggleNoListedConditions(nextValue)
+            setSelectedSuggestion('')
+            setHighlightedIllnessKey('')
+            setValidationMessage('')
+            onInputClear()
+          }}
+        >
+          {noListedConditions ? '✓ ' : ''}
+          {noListedConditionsLabel}
+        </button>
+
+        <button
+          className="none-illness-button"
+          type="button"
+          aria-pressed={hasUnlistedCondition}
+          onClick={() => {
+            onToggleUnlistedCondition(!hasUnlistedCondition)
+            setSelectedSuggestion('')
+            setHighlightedIllnessKey('')
+            setValidationMessage('')
+            onInputClear()
+          }}
+        >
+          {hasUnlistedCondition ? '✓ ' : ''}
+          My condition is not listed
+        </button>
+      </div>
+
+      {hasUnlistedCondition ? (
+        <p className="condition-note">
+          You can still use the app, but recommendations may not account for
+          conditions outside the available database.
+        </p>
+      ) : null}
 
       <div className="illness-picker-section">
         <p className="picker-label">Selected:</p>
@@ -1633,6 +1806,12 @@ function App() {
   )
   const [profileIllnessInput, setProfileIllnessInput] = useState(
     savedAppState.profileIllnessInput,
+  )
+  const [profileNoListedConditions, setProfileNoListedConditions] = useState(
+    savedAppState.profileNoListedConditions,
+  )
+  const [profileHasUnlistedCondition, setProfileHasUnlistedCondition] = useState(
+    savedAppState.profileHasUnlistedCondition,
   )
   const [familyMembers, setFamilyMembers] = useState(
     savedAppState.familyMembers,
@@ -1880,6 +2059,8 @@ function App() {
       profileForm,
       profileIllnesses,
       profileIllnessInput,
+      profileNoListedConditions,
+      profileHasUnlistedCondition,
       familyMembers,
       familyMemberName,
       relationship,
@@ -1899,6 +2080,8 @@ function App() {
     profileForm,
     profileIllnesses,
     profileIllnessInput,
+    profileNoListedConditions,
+    profileHasUnlistedCondition,
     familyMembers,
     familyMemberName,
     relationship,
@@ -1986,8 +2169,15 @@ function App() {
   }
 
   function addProfileIllness(illness) {
+    const databaseIllness = getDatabaseIllness(illness)
+
+    if (!databaseIllness) {
+      return
+    }
+
+    setProfileNoListedConditions(false)
     setProfileIllnesses((currentIllnesses) =>
-      addIllnessToList(currentIllnesses, illness),
+      addIllnessToList(currentIllnesses, databaseIllness),
     )
   }
 
@@ -1999,8 +2189,21 @@ function App() {
     )
   }
 
-  function clearProfileIllnesses() {
-    setProfileIllnesses([])
+  function toggleProfileNoListedConditions(selected) {
+    setProfileNoListedConditions(selected)
+
+    if (selected) {
+      setProfileIllnesses([])
+      setProfileHasUnlistedCondition(false)
+    }
+  }
+
+  function toggleProfileHasUnlistedCondition(selected) {
+    setProfileHasUnlistedCondition(selected)
+
+    if (selected) {
+      setProfileNoListedConditions(false)
+    }
   }
 
   function setFamilyConditionSelection(condition, selected) {
@@ -2100,6 +2303,8 @@ function App() {
       knownHighCholesterol: profileForm.knownHighCholesterol,
       diabetesStatus: profileForm.diabetesStatus,
       illnesses: profileIllnesses,
+      noListedConditions: profileNoListedConditions,
+      hasUnlistedCondition: profileHasUnlistedCondition,
       isSelf: true,
     })
     setSuccessMessage(message)
@@ -2211,6 +2416,8 @@ function App() {
     setUserCoordinates(null)
     setLocationStatus('idle')
     setLocationMessage('')
+    setProfileNoListedConditions(false)
+    setProfileHasUnlistedCondition(false)
     setIsFamilyFormOpen(false)
     setActiveFamilyMenuId(null)
   }
@@ -2510,8 +2717,8 @@ function App() {
           <div className="current-health-heading">
             <h2 className="panel-title" id="profile-title">Current Health</h2>
             <p>
-              Do you currently have any of these conditions? Choose None if no
-              current conditions apply.
+              Do you currently have any of these conditions? Choose None of the
+              conditions listed if no current conditions apply.
             </p>
           </div>
 
@@ -2718,14 +2925,18 @@ function App() {
             <fieldset className="illness-fieldset profile-form-section">
               <legend>Current conditions</legend>
               <IllnessPicker
+                disabled={profileNoListedConditions}
+                hasUnlistedCondition={profileHasUnlistedCondition}
                 inputId="profile-illness-search"
                 inputValue={profileIllnessInput}
+                noListedConditions={profileNoListedConditions}
                 onInputChange={setProfileIllnessInput}
                 onInputClear={() => setProfileIllnessInput('')}
                 onAddIllness={addProfileIllness}
-                onClearIllnesses={clearProfileIllnesses}
                 onOpenConditionDetails={openConditionDetails}
                 onRemoveIllness={removeProfileIllness}
+                onToggleNoListedConditions={toggleProfileNoListedConditions}
+                onToggleUnlistedCondition={toggleProfileHasUnlistedCondition}
                 selectedIllnesses={profileIllnesses}
               />
             </fieldset>
