@@ -1981,7 +1981,6 @@ function App() {
   const preventionScoreStatus = getPreventionScoreStatus(preventionScore.score)
   const coachGoals = buildCoachGoals(preventionScore)
   const completedCoachGoals = coachGoals.filter((goal) => habitProgress[goal.id])
-  const coachStreak = completedCoachGoals.length
   const coachMessage = getCoachMessage({
     completedCount: completedCoachGoals.length,
     totalGoals: coachGoals.length,
@@ -2111,8 +2110,8 @@ function App() {
     {
       icon: '🔥',
       label: 'Habit Progress',
-      value: `${coachStreak}/${coachGoals.length}`,
-      detail: coachStreak > 0 ? 'Momentum started' : 'Start with one small win',
+      value: `${completedCoachGoals.length}/${coachGoals.length}`,
+      detail: 'Goals completed today',
     },
     {
       icon: '📅',
@@ -3599,14 +3598,13 @@ function App() {
                 encouragement, and prevention insights.
               </p>
             </div>
-            <span className="privacy-pill">{coachStreak} day-goal streak</span>
           </div>
 
           <section className="coach-daily-panel" aria-labelledby="daily-coach-title">
             <div className="coach-daily-header">
               <div>
-                <p className="eyebrow">Goal streak</p>
-                <h2 id="daily-coach-title">{coachStreak}-day streak</h2>
+                <p className="eyebrow">Weekly encouragement</p>
+                <h2 id="daily-coach-title">{coachMessage}</h2>
               </div>
               <button
                 className="secondary-action"
@@ -3622,11 +3620,6 @@ function App() {
             </div>
 
             <div className="coach-daily-grid">
-              <section className="coach-card compact-coach-card">
-                <p className="eyebrow">Weekly encouragement</p>
-                <p>{coachMessage}</p>
-              </section>
-
               <section className="coach-card compact-coach-card">
                 <p className="eyebrow">Today's goals</p>
                 <ul className="habit-list">
