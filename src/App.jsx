@@ -279,6 +279,56 @@ const diabetesStatusOptions = [
   'Prefer not to answer',
 ]
 
+const meaningfulLifestyleFields = [
+  'ageRange',
+  'sexAtBirth',
+  'heightFeet',
+  'heightInches',
+  'weight',
+  'smokingStatus',
+  'alcoholUse',
+  'exercise',
+  'fruitVegIntake',
+  'dietQuality',
+  'sleep',
+  'waterIntake',
+  'sugaryDrinks',
+  'stressLevel',
+  'screenTime',
+  'preventiveScreenings',
+  'knownHighBloodPressure',
+  'knownHighCholesterol',
+  'diabetesStatus',
+]
+
+function hasMeaningfulFamilyHistory(familyMembers = []) {
+  return familyMembers.some(
+    (member) =>
+      relationships.includes(member.relationship) &&
+      Array.isArray(member.illnesses) &&
+      member.illnesses.length > 0,
+  )
+}
+
+function hasEnoughLifestyleAnswers(profileForm, profileIllnesses = []) {
+  const answeredCount = meaningfulLifestyleFields.filter((field) =>
+    Boolean(profileForm[field]),
+  ).length
+
+  return (
+    answeredCount >= 3 ||
+    profileIllnesses.length > 0 ||
+    Boolean(profileForm.name && answeredCount >= 2)
+  )
+}
+
+function hasAssessmentData({ familyMembers, profileForm, profileIllnesses }) {
+  return (
+    hasMeaningfulFamilyHistory(familyMembers) ||
+    hasEnoughLifestyleAnswers(profileForm, profileIllnesses)
+  )
+}
+
 const storageKey = 'family-health-app-state-v1'
 
 const defaultSavedState = {
@@ -1032,17 +1082,7 @@ function calculatePreventionScore({ familyHealthSummary, profile }) {
     explanation,
     positives,
     score,
-    topPriorities:
-      topPriorities.length > 0
-        ? topPriorities
-        : [
-            {
-              detail: 'Routine preventive care helps catch changes early and keeps your health plan current.',
-              icon: '📅',
-              id: 'routine-care',
-              title: 'Routine preventive care',
-            },
-          ],
+    topPriorities,
   }
 }
 
@@ -1866,6 +1906,10 @@ function App() {
   const preventionScoreStatus = getPreventionScoreStatus(preventionScore.score)
   const coachGoals = buildCoachGoals(preventionScore)
   const completedCoachGoals = coachGoals.filter((goal) => habitProgress[goal.id])
+  const dashboardActionGoals = coachGoals.slice(0, 3)
+  const completedDashboardActionGoals = dashboardActionGoals.filter(
+    (goal) => habitProgress[goal.id],
+  )
   const coachMessage = getCoachMessage({
     completedCount: completedCoachGoals.length,
     totalGoals: coachGoals.length,
@@ -1939,6 +1983,18 @@ function App() {
   const siblingMembers = familyMembers.filter(
     (member) => member.relationship === 'Sibling',
   )
+  const hasFamilyHistoryData = hasMeaningfulFamilyHistory(familyMembers)
+  const hasLifestyleData = hasEnoughLifestyleAnswers(profileForm, profileIllnesses)
+  const hasPersonalizedAssessmentData = hasAssessmentData({
+    familyMembers,
+    profileForm,
+    profileIllnesses,
+  })
+  const nextIncompleteAssessmentView = !hasFamilyHistoryData
+    ? 'family'
+    : !hasLifestyleData
+      ? 'lifestyle'
+      : 'coach'
   const familyGridSections = [
     {
       accent: 'purple',
@@ -1974,41 +2030,28 @@ function App() {
       title: 'You and Siblings',
     },
   ]
-  const dashboardSummaryCards = [
-    {
-      icon: '◎',
-      label: 'Prevention Score',
-      value: preventionScore.score,
-      detail: 'Habits and awareness, not a diagnosis',
-    },
-    {
-      icon: '❤️',
-      label: 'Top Health Priorities',
-      value: preventionScore.topPriorities.length,
-      detail: preventionScore.topPriorities
-        .slice(0, 2)
-        .map((priority) => priority.title)
-        .join(', '),
-    },
-    {
-      icon: '✓',
-      label: "Today's Healthy Actions",
-      value: completedCoachGoals.length,
-      detail: `${coachGoals.length} coach goals ready today`,
-    },
-    {
-      icon: '🔥',
-      label: 'Habit Progress',
-      value: `${completedCoachGoals.length}/${coachGoals.length}`,
-      detail: 'Goals completed today',
-    },
-    {
-      icon: '📅',
-      label: 'Weekly Goals',
-      value: coachGoals.length,
-      detail: coachMessage,
-    },
-  ]
+  const dashboardSummaryCards = hasPersonalizedAssessmentData
+    ? [
+        {
+          icon: '◎',
+          label: 'Prevention Score',
+          value: preventionScore.score,
+          detail: 'Habits and awareness, not a diagnosis',
+        },
+        {
+          icon: '🔥',
+          label: 'Habit Progress',
+          value: `${completedCoachGoals.length}/${coachGoals.length}`,
+          detail: 'Goals completed today',
+        },
+        {
+          icon: '📅',
+          label: 'Weekly Goals',
+          value: coachGoals.length,
+          detail: coachMessage,
+        },
+      ]
+    : []
   const workflowStepIds = workflowSteps.map((step) => step.id)
   const activeWorkflowStepIndex = workflowStepIds.indexOf(activeView)
   const isWorkflowView = activeWorkflowStepIndex >= 0
@@ -2596,92 +2639,151 @@ function App() {
                 habits, local actions, and your AI Prevention Coach.
               </p>
             </div>
-            <div className="dashboard-progress-summary">
+          </div>
+
+          <section className="today-actions-card" aria-labelledby="today-actions-title">
+            <div className="section-heading-row">
+              <div>
+                <p className="eyebrow">
+                  {hasPersonalizedAssessmentData
+                    ? 'Personalized daily plan'
+                    : 'General wellness actions'}
+                </p>
+                <h2 id="today-actions-title">Today's Healthy Actions</h2>
+                <p>
+                  {hasPersonalizedAssessmentData
+                    ? 'Start with one small action today.'
+                    : 'General wellness actions to help you get started.'}
+                </p>
+              </div>
               <button
-                className="primary-action"
+                className="secondary-action"
                 type="button"
-                onClick={() => changeView('family')}
+                onClick={() => changeView('coach')}
               >
-                Continue Your Assessment <span aria-hidden="true">→</span>
+                Open Coach <span aria-hidden="true">→</span>
               </button>
             </div>
-          </div>
 
-          <div className="dashboard-summary-grid">
-            {dashboardSummaryCards.map((card) => (
-              <article className="dashboard-summary-card" key={card.label}>
-                <span className="card-topline">
-                  <span className="card-icon" aria-hidden="true">
-                    {card.icon}
-                  </span>
-                  <span>{card.label}</span>
-                </span>
-                <strong>{card.value}</strong>
-                <p>{card.detail}</p>
-              </article>
-            ))}
-          </div>
+            <p className="today-actions-progress">
+              {completedDashboardActionGoals.length} of {dashboardActionGoals.length}{' '}
+              completed
+            </p>
 
-          <div className="dashboard-content-grid">
-            <section className="insight-panel">
-              <div className="section-heading-row">
-                <div>
-                  <p className="eyebrow">Family insights</p>
-                  <h2>Top 3 health priorities</h2>
-                </div>
-                <button
-                  className="secondary-action"
-                  type="button"
-                  onClick={() => changeView('coach')}
-                >
-                  Learn More <span aria-hidden="true">→</span>
-                </button>
+            <ul className="today-action-list">
+              {dashboardActionGoals.map((goal) => (
+                <li key={goal.id}>
+                  <label className="today-action-row">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(habitProgress[goal.id])}
+                      onChange={() => toggleHabitGoal(goal.id)}
+                    />
+                    <span className="today-action-check" aria-hidden="true" />
+                    <span>
+                      <strong>{goal.label}</strong>
+                      <small>{goal.detail}</small>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="dashboard-assessment-card">
+            <div>
+              <h2>
+                {hasPersonalizedAssessmentData
+                  ? 'Continue your assessment'
+                  : 'Start your health profile'}
+              </h2>
+              <p>
+                {hasPersonalizedAssessmentData
+                  ? 'Complete your family history and lifestyle profile.'
+                  : 'Add your family history and lifestyle information to receive personalized prevention insights and daily recommendations.'}
+              </p>
+            </div>
+            <button
+              className="primary-action"
+              type="button"
+              onClick={() => changeView(nextIncompleteAssessmentView)}
+            >
+              {hasPersonalizedAssessmentData ? 'Continue Your Assessment' : 'Begin Assessment'}
+              <span aria-hidden="true">→</span>
+            </button>
+          </section>
+
+          {hasPersonalizedAssessmentData ? (
+            <>
+              <div className="dashboard-summary-grid">
+                {dashboardSummaryCards.map((card) => (
+                  <article className="dashboard-summary-card" key={card.label}>
+                    <span className="card-topline">
+                      <span className="card-icon" aria-hidden="true">
+                        {card.icon}
+                      </span>
+                      <span>{card.label}</span>
+                    </span>
+                    <strong>{card.value}</strong>
+                    <p>{card.detail}</p>
+                  </article>
+                ))}
               </div>
 
-              <ul className="dashboard-attention-list">
-                {preventionScore.topPriorities.map((priority) => (
-                  <li key={priority.id}>
+              <div className="dashboard-content-grid">
+                <section className="insight-panel">
+                  <div className="section-heading-row">
+                    <div>
+                      <p className="eyebrow">Family Insights</p>
+                      <h2>What your profile shows</h2>
+                    </div>
                     <button
-                      className="attention-area-button"
+                      className="secondary-action"
                       type="button"
                       onClick={() => changeView('coach')}
                     >
-                      <span className="category-name-with-icon">
-                        <span aria-hidden="true">{priority.icon}</span>
-                        <span>{priority.title}</span>
-                      </span>
-                      <strong>Priority</strong>
+                      Learn More <span aria-hidden="true">→</span>
                     </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+                  </div>
+                  <p>{personalizedPreventionSummary}</p>
+                </section>
 
-            <section className="insight-panel">
-              <div className="section-heading-row">
-                <div>
-                  <p className="eyebrow">Coach</p>
-                  <h2>Today's healthy actions</h2>
-                </div>
-                <button
-                  className="secondary-action"
-                  type="button"
-                  onClick={() => changeView('coach')}
-                >
-                  Open Coach <span aria-hidden="true">→</span>
-                </button>
+                <section className="insight-panel">
+                  <div className="section-heading-row">
+                    <div>
+                      <p className="eyebrow">Priorities</p>
+                      <h2>Top Health Priorities</h2>
+                    </div>
+                  </div>
+
+                  <ul className="dashboard-attention-list">
+                    {preventionScore.topPriorities.length > 0 ? (
+                      preventionScore.topPriorities.map((priority) => (
+                        <li key={priority.id}>
+                          <button
+                            className="attention-area-button"
+                            type="button"
+                            onClick={() => changeView('coach')}
+                          >
+                            <span className="category-name-with-icon">
+                              <span aria-hidden="true">{priority.icon}</span>
+                              <span>{priority.title}</span>
+                            </span>
+                            <strong>Open Coach</strong>
+                          </button>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="category-empty-note">
+                        No top health priorities are highlighted from the current
+                        entries.
+                      </li>
+                    )}
+                  </ul>
+                </section>
               </div>
-
-              <ul className="coach-mini-list">
-                {coachGoals.slice(0, 3).map((goal) => (
-                  <li key={goal.id}>
-                    <span>{habitProgress[goal.id] ? '✓' : '○'}</span>
-                    <span>{goal.label}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          </div>
+            </>
+          ) : null}
         </section>
       ) : null}
 
@@ -3541,90 +3643,118 @@ function App() {
             </div>
           </section>
 
-          <div className="score-hero-grid">
-            <article className="score-ring-card">
-              <div
-                className="score-ring"
-                style={{
-                  '--score': `${preventionScore.score}%`,
-                  '--score-color': preventionScoreStatus.tone,
-                }}
-                aria-label={`Prevention score ${preventionScore.score} out of 100, ${preventionScoreStatus.label}`}
-              >
-                <span>{preventionScore.score}</span>
-                <small>/100</small>
-              </div>
-              <div className="score-title-stack">
-                <h2>Prevention Health Score</h2>
-                <span
-                  className={`score-status-badge ${preventionScoreStatus.className}`}
-                >
-                  {preventionScoreStatus.label}
-                </span>
-                <strong>Higher is better.</strong>
-              </div>
-              <div className="score-scale-copy">
-                <p>
-                  0 means your current prevention habits need significant
-                  improvement. 100 means your habits strongly support long-term
-                  preventive health.
-                </p>
-                <p>
-                  This score reflects prevention habits and family-history
-                  awareness. It is not a diagnosis, clinical risk score, or
-                  probability of developing a disease.
-                </p>
-              </div>
-              <p>{preventionScore.explanation}</p>
-            </article>
+          {hasPersonalizedAssessmentData ? (
+            <>
+              <div className="score-hero-grid">
+                <article className="score-ring-card">
+                  <div
+                    className="score-ring"
+                    style={{
+                      '--score': `${preventionScore.score}%`,
+                      '--score-color': preventionScoreStatus.tone,
+                    }}
+                    aria-label={`Prevention score ${preventionScore.score} out of 100, ${preventionScoreStatus.label}`}
+                  >
+                    <span>{preventionScore.score}</span>
+                    <small>/100</small>
+                  </div>
+                  <div className="score-title-stack">
+                    <h2>Prevention Health Score</h2>
+                    <span
+                      className={`score-status-badge ${preventionScoreStatus.className}`}
+                    >
+                      {preventionScoreStatus.label}
+                    </span>
+                    <strong>Higher is better.</strong>
+                  </div>
+                  <div className="score-scale-copy">
+                    <p>
+                      0 means your current prevention habits need significant
+                      improvement. 100 means your habits strongly support long-term
+                      preventive health.
+                    </p>
+                    <p>
+                      This score reflects prevention habits and family-history
+                      awareness. It is not a diagnosis, clinical risk score, or
+                      probability of developing a disease.
+                    </p>
+                  </div>
+                  <p>{preventionScore.explanation}</p>
+                </article>
 
-            <article className="score-summary-card">
-              <p className="eyebrow">Personalized prevention summary</p>
-              <h2>Prevention summary</h2>
-              <p>{personalizedPreventionSummary}</p>
-              <p className="eyebrow">Top 3 areas to explore</p>
-              <div className="priority-list">
-                {preventionScore.topPriorities.map((priority) => (
-                  <article className="priority-card" key={priority.id}>
-                    <span aria-hidden="true">{priority.icon}</span>
-                    <div>
-                      <h3>{priority.title}</h3>
-                      <p>{priority.detail}</p>
+                <article className="score-summary-card">
+                  <p className="eyebrow">Personalized prevention summary</p>
+                  <h2>Prevention summary</h2>
+                  <p>{personalizedPreventionSummary}</p>
+                  <p className="eyebrow">Top 3 areas to explore</p>
+                  {preventionScore.topPriorities.length > 0 ? (
+                    <div className="priority-list">
+                      {preventionScore.topPriorities.map((priority) => (
+                        <article className="priority-card" key={priority.id}>
+                          <span aria-hidden="true">{priority.icon}</span>
+                          <div>
+                            <h3>{priority.title}</h3>
+                            <p>{priority.detail}</p>
+                          </div>
+                        </article>
+                      ))}
                     </div>
-                  </article>
-                ))}
+                  ) : (
+                    <p className="helper-text">
+                      No top health priorities are highlighted from the current
+                      entries.
+                    </p>
+                  )}
+                </article>
               </div>
-            </article>
-          </div>
 
-          <section className="prevention-insights-section" aria-labelledby="insights-title">
-            <div className="section-heading-row">
+              <section className="prevention-insights-section" aria-labelledby="insights-title">
+                <div className="section-heading-row">
+                  <div>
+                    <h2 id="insights-title">Prevention Insights</h2>
+                    <p>
+                      Your three most relevant family-health patterns are shown
+                      below. These insights are educational and are not a diagnosis.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="prevention-insight-list">
+                  {preventionInsights.length > 0 ? (
+                    preventionInsights.map((insight) => (
+                      <PreventionInsightCard insight={insight} key={insight.id} />
+                    ))
+                  ) : (
+                    <p className="helper-text">
+                      Add family health history to reveal your most relevant
+                      family-health patterns.
+                    </p>
+                  )}
+                </div>
+              </section>
+            </>
+          ) : (
+            <section className="dashboard-assessment-card">
               <div>
-                <h2 id="insights-title">Prevention Insights</h2>
+                <h2>Start your health profile</h2>
                 <p>
-                  Your three most relevant family-health patterns are shown
-                  below. These insights are educational and are not a diagnosis.
+                  Add your family history and lifestyle information to unlock
+                  your Prevention Score, insights, and personalized local actions.
                 </p>
               </div>
-            </div>
-
-            <div className="prevention-insight-list">
-              {preventionInsights.length > 0 ? (
-                preventionInsights.map((insight) => (
-                  <PreventionInsightCard insight={insight} key={insight.id} />
-                ))
-              ) : (
-                <p className="helper-text">
-                  Add family health history to reveal your most relevant
-                  family-health patterns.
-                </p>
-              )}
-            </div>
-          </section>
+              <button
+                className="primary-action"
+                type="button"
+                onClick={() => changeView(nextIncompleteAssessmentView)}
+              >
+                Begin Assessment <span aria-hidden="true">→</span>
+              </button>
+            </section>
+          )}
         </section>
       ) : null}
 
-      {activeView === 'coach' ? (
+      {activeView === 'coach' && hasPersonalizedAssessmentData ? (
         <section className="wellness-panel" aria-labelledby="wellness-title">
           <div className="page-heading dashboard-heading">
             <div>

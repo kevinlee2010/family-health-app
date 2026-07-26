@@ -2935,6 +2935,8 @@ select:focus-visible {
 .trust-badge,
 .privacy-banner,
 .dashboard-welcome-card,
+.today-actions-card,
+.dashboard-assessment-card,
 .dashboard-summary-card,
 .insight-panel,
 .profile-form-section,
@@ -2971,6 +2973,8 @@ select:focus-visible {
 
 .privacy-banner p:last-child,
 .dashboard-welcome-card p,
+.today-actions-card p,
+.dashboard-assessment-card p,
 .dashboard-summary-card p,
 .insight-panel p,
 .page-description,
@@ -2999,7 +3003,6 @@ select:focus-visible {
 
 .dashboard-welcome-card {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
   gap: 24px;
   align-items: center;
   padding: clamp(24px, 4vw, 36px);
@@ -3020,14 +3023,6 @@ select:focus-visible {
   font-size: clamp(2rem, 4vw, 3.2rem);
 }
 
-.dashboard-progress-summary {
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.72);
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-}
-
 .progress-bar {
   width: 100%;
   height: 10px;
@@ -3045,7 +3040,123 @@ select:focus-visible {
 }
 
 .dashboard-summary-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.today-actions-card,
+.dashboard-assessment-card {
+  padding: clamp(22px, 3.5vw, 30px);
+}
+
+.today-actions-card {
+  display: grid;
+  gap: 18px;
+  background:
+    radial-gradient(circle at 92% 12%, rgba(37, 99, 235, 0.14), transparent 12rem),
+    linear-gradient(135deg, #ffffff, #f8fbff);
+}
+
+.today-actions-card .section-heading-row {
+  align-items: start;
+}
+
+.today-actions-card h2,
+.dashboard-assessment-card h2 {
+  color: var(--ink);
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  letter-spacing: -0.025em;
+}
+
+.today-actions-progress {
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--accent-dark);
+  margin: 0;
+  padding: 8px 12px;
+  font-weight: 900;
+}
+
+.today-action-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.today-action-row {
+  border: 1px solid rgba(211, 225, 232, 0.92);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.today-action-row:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.today-action-row input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.today-action-check {
+  width: 30px;
+  height: 30px;
+  border: 2px solid #bfdbfe;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+}
+
+.today-action-row input:checked + .today-action-check {
+  border-color: var(--success);
+  background: var(--success);
+}
+
+.today-action-row input:checked + .today-action-check::after {
+  color: #ffffff;
+  content: '✓';
+  font-weight: 950;
+}
+
+.today-action-row input:focus-visible + .today-action-check {
+  outline: 3px solid rgba(37, 99, 235, 0.24);
+  outline-offset: 2px;
+}
+
+.today-action-row strong {
+  color: var(--ink);
+  display: block;
+  font-size: 1.02rem;
+}
+
+.today-action-row small {
+  color: var(--muted);
+  display: block;
+  font-weight: 650;
+  line-height: 1.45;
+  margin-top: 3px;
+}
+
+.dashboard-assessment-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
 }
 
 .dashboard-summary-card {
@@ -3077,29 +3188,12 @@ select:focus-visible {
   letter-spacing: -0.04em;
 }
 
-.coach-mini-list,
 .priority-list,
 .check-list,
 .habit-list {
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-.coach-mini-list {
-  display: grid;
-  gap: 10px;
-}
-
-.coach-mini-list li {
-  border-radius: 16px;
-  background: var(--surface-strong);
-  color: var(--muted-strong);
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  padding: 12px;
-  font-weight: 800;
 }
 
 .prevention-score-panel {
@@ -3854,7 +3948,7 @@ input:focus {
   .hero-primary-action,
   .hero-secondary-actions,
   .hero-secondary-actions .secondary-action,
-  .dashboard-progress-summary .primary-action,
+  .dashboard-assessment-card .primary-action,
   .flow-footer-actions .primary-action,
   .flow-footer-actions .secondary-action {
     width: 100%;
@@ -3865,6 +3959,12 @@ input:focus {
   .lifestyle-grid,
   .briefing-card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-assessment-card,
+  .today-actions-card .section-heading-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .coach-daily-header {
