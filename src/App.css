@@ -762,114 +762,78 @@ body {
   align-items: start;
 }
 
-.wellness-focus-list {
+.wellness-recommendation-list {
   display: grid;
-  gap: 18px;
+  gap: 10px;
 }
 
-.wellness-focus-card {
-  border: 1px solid var(--category-border, #e4edf3);
-  border-radius: 8px;
-  background: var(--category-bg, #ffffff);
+.wellness-recommendation-card {
+  width: 100%;
+  border: 1px solid rgba(211, 225, 232, 0.9);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  text-align: left;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.wellness-recommendation-card:hover,
+.wellness-recommendation-card.selected {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: #f8fbff;
   box-shadow: var(--shadow-soft);
-  display: grid;
-  gap: 16px;
-  padding: clamp(16px, 3vw, 22px);
+  transform: translateY(-1px);
 }
 
-.wellness-focus-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: start;
+.wellness-recommendation-card:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.24);
+  outline-offset: 2px;
 }
 
-.wellness-focus-header h3 {
+.wellness-recommendation-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--blue-soft);
+  display: inline-grid;
+  place-items: center;
+  font-size: 1.28rem;
+}
+
+.wellness-recommendation-card h3 {
   margin: 0;
   color: var(--ink);
-  font-size: clamp(1.08rem, 2vw, 1.35rem);
+  font-size: 1rem;
 }
 
-.wellness-focus-header p {
-  margin-top: 8px;
+.wellness-recommendation-card p {
+  margin: 4px 0 0;
   color: var(--muted-strong);
   font-weight: 650;
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
-.wellness-risk-badge {
-  flex: 0 0 auto;
-  border: 1px solid var(--category-border, #d5e2e0);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.75);
-  color: var(--category-ink, var(--muted-strong));
-  display: inline-flex;
-  padding: 7px 11px;
-  font-size: 0.78rem;
-  font-weight: 900;
-  text-transform: uppercase;
+.wellness-supports {
+  font-size: 0.84rem;
 }
 
-.pattern-strong {
-  --category-bg: #eff6ff;
-  --category-border: #bfdbfe;
-  --category-ink: #1d4ed8;
+.wellness-supports strong {
+  color: var(--ink);
 }
 
-.pattern-notable {
-  --category-bg: #fffbeb;
-  --category-border: #fde68a;
-  --category-ink: #92400e;
-}
-
-.pattern-limited {
-  --category-bg: #f8fafc;
-  --category-border: #e2e8f0;
-  --category-ink: #475569;
-}
-
-.pattern-clear {
-  --category-bg: #f0fdf4;
-  --category-border: #bbf7d0;
-  --category-ink: #166534;
-}
-
-.wellness-action-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 12px;
-}
-
-.wellness-action-card {
-  border: 1px solid rgba(211, 225, 232, 0.9);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px;
-}
-
-.wellness-category {
-  width: fit-content;
-  border: 1px solid #c8ddd6;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-  display: inline-flex;
-  padding: 6px 9px;
-  font-size: 0.78rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.wellness-action-card p {
-  margin-top: 10px;
-  color: var(--muted-strong);
-  font-weight: 650;
-  line-height: 1.55;
+.recommendation-arrow {
+  color: var(--accent);
+  font-weight: 950;
 }
 
 .map-action {
@@ -2588,21 +2552,12 @@ button:disabled {
     width: 100%;
   }
 
-  .location-controls .primary-action,
-  .map-action {
-    width: 100%;
-  }
+.location-controls .primary-action,
+.map-action {
+  width: 100%;
+}
 
-  .wellness-focus-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .wellness-risk-badge {
-    width: fit-content;
-  }
-
-  .privacy-banner {
+.privacy-banner {
     padding: 14px;
   }
 
@@ -2973,8 +2928,7 @@ select:focus-visible {
 .trust-indicators,
 .dashboard-summary-grid,
 .risk-category-grid,
-.briefing-card-grid,
-.wellness-action-grid {
+.briefing-card-grid {
   gap: 16px;
 }
 
@@ -3002,8 +2956,6 @@ select:focus-visible {
 .impact-action-card,
 .wellness-privacy-card,
 .location-card,
-.wellness-focus-card,
-.wellness-action-card,
 .wellness-map-card,
 .bmi-card,
 .condition-modal {
@@ -3026,8 +2978,6 @@ select:focus-visible {
 .briefing-hero-card p:not(.eyebrow),
 .briefing-section p,
 .briefing-looking-ahead p,
-.wellness-focus-card p,
-.wellness-action-card p,
 .wellness-map-card p,
 .location-card p {
   color: var(--muted);
@@ -3078,11 +3028,6 @@ select:focus-visible {
   padding: 18px;
 }
 
-.dashboard-progress-summary > span {
-  color: var(--ink);
-  font-weight: 900;
-}
-
 .progress-bar {
   width: 100%;
   height: 10px;
@@ -3113,8 +3058,7 @@ select:focus-visible {
 .dashboard-summary-card:hover,
 .risk-category-card:hover,
 .briefing-insight-card:hover,
-.impact-action-card:hover,
-.wellness-action-card:hover {
+.impact-action-card:hover {
   box-shadow: var(--shadow-lift);
   transform: translateY(-4px);
 }
@@ -3583,7 +3527,6 @@ select:focus-visible {
 .profile-form,
 .family-form,
 .flow-card-grid,
-.wellness-focus-list,
 .impact-action-list,
 .results-briefing-page {
   gap: 22px;
@@ -3664,21 +3607,17 @@ input:focus {
   gap: 8px;
 }
 
-.risk-badge-average,
-.wellness-risk-badge.average,
-.category-average .wellness-risk-badge {
+.risk-badge-average {
   background: var(--status-green);
   color: #166534;
 }
 
-.risk-badge-increased,
-.category-increased .wellness-risk-badge {
+.risk-badge-increased {
   background: var(--status-yellow);
   color: #92400e;
 }
 
-.risk-badge-high,
-.category-high .wellness-risk-badge {
+.risk-badge-high {
   background: var(--status-red);
   color: #991b1b;
 }
@@ -3779,44 +3718,8 @@ input:focus {
 
 .wellness-privacy-card,
 .location-card,
-.wellness-focus-card,
 .wellness-map-card {
   padding: 24px;
-}
-
-.wellness-action-card {
-  overflow: hidden;
-  padding: 0;
-  transition:
-    transform 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.wellness-image-placeholder {
-  min-height: 130px;
-  background:
-    radial-gradient(circle at 82% 24%, rgba(34, 197, 94, 0.22), transparent 7rem),
-    linear-gradient(135deg, #eff6ff, #ecfeff);
-  display: grid;
-  place-items: center;
-  color: var(--accent);
-  font-size: 2.4rem;
-}
-
-.wellness-action-card > div:not(.wellness-image-placeholder) {
-  display: grid;
-  gap: 8px;
-  padding: 18px;
-}
-
-.wellness-action-card .map-action {
-  margin: 0 18px 18px;
-}
-
-.wellness-distance {
-  color: var(--muted);
-  font-size: 0.86rem;
-  font-weight: 750;
 }
 
 .condition-modal-backdrop {
@@ -4034,8 +3937,7 @@ input:focus {
 
 .inner-shell .profile-form,
 .inner-shell .family-form,
-.inner-shell .flow-card-grid,
-.inner-shell .wellness-focus-list {
+.inner-shell .flow-card-grid {
   gap: 16px;
 }
 
