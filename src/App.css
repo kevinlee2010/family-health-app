@@ -3332,8 +3332,7 @@ select:focus-visible {
   color: #0f766e;
 }
 
-.score-title-stack p,
-.compact-score-disclaimer {
+.score-title-stack p {
   margin: 0;
   color: var(--muted);
   font-weight: 650;
@@ -3341,7 +3340,6 @@ select:focus-visible {
 }
 
 .priority-list,
-.score-focus-list,
 .check-list,
 .habit-list {
   list-style: none;
@@ -3349,35 +3347,6 @@ select:focus-visible {
   padding: 0;
   display: grid;
   gap: 12px;
-}
-
-.score-focus-block {
-  display: grid;
-  gap: 10px;
-}
-
-.score-focus-list {
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-}
-
-.score-focus-list li {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface-strong);
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  font-weight: 850;
-}
-
-.compact-score-disclaimer {
-  width: fit-content;
-  border-radius: 999px;
-  background: #f1f5f9;
-  padding: 7px 10px;
-  font-size: 0.88rem;
 }
 
 .priority-card {

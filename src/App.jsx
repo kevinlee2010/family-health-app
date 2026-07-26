@@ -3674,29 +3674,6 @@ function App() {
                     </p>
                   </div>
                 </div>
-
-                {preventionScore.topPriorities.length > 0 ? (
-                  <div className="score-focus-block">
-                    <p className="eyebrow">Focus on</p>
-                    <ul className="score-focus-list">
-                      {preventionScore.topPriorities.map((priority) => (
-                        <li key={priority.id}>
-                          <span aria-hidden="true">{priority.icon}</span>
-                          <span>{priority.title}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="helper-text">
-                    Complete your family history and lifestyle profile to see
-                    personalized priorities.
-                  </p>
-                )}
-
-                <p className="compact-score-disclaimer">
-                  Educational only — not a diagnosis.
-                </p>
               </section>
 
               <section className="prevention-insights-section" aria-labelledby="insights-title">
