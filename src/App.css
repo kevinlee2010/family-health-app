@@ -687,7 +687,6 @@ body {
   gap: 22px;
 }
 
-.wellness-privacy-card,
 .location-card,
 .wellness-recommendations,
 .wellness-map-card {
@@ -700,18 +699,11 @@ body {
   padding: clamp(18px, 3vw, 24px);
 }
 
-.wellness-privacy-card {
-  border-color: #bfdbd4;
-  background: linear-gradient(135deg, #f2fbf8 0%, #eaf6ff 100%);
-}
-
-.wellness-privacy-card h2,
 .location-card h2,
 .wellness-map-card h2 {
   font-size: clamp(1.25rem, 2.5vw, 1.65rem);
 }
 
-.wellness-privacy-card p,
 .location-card p,
 .wellness-map-card p {
   color: var(--muted-strong);
@@ -2956,7 +2948,6 @@ select:focus-visible {
 .briefing-looking-ahead,
 .briefing-insight-card,
 .impact-action-card,
-.wellness-privacy-card,
 .location-card,
 .wellness-map-card,
 .bmi-card,
@@ -3804,7 +3795,6 @@ input:focus {
   overflow: hidden;
 }
 
-.wellness-privacy-card,
 .location-card,
 .wellness-map-card {
   padding: 24px;

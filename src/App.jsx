@@ -3581,7 +3581,7 @@ function App() {
                 type="button"
                 onClick={() =>
                   document
-                    .querySelector('#wellness-title')
+                    .querySelector('#wellness-recommendations-title')
                     ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                 }
               >
@@ -3719,30 +3719,7 @@ function App() {
       ) : null}
 
       {activeView === 'coach' && hasPersonalizedAssessmentData ? (
-        <section className="wellness-panel" aria-labelledby="wellness-title">
-          <div className="page-heading dashboard-heading">
-            <div>
-              <p className="eyebrow">Localized prevention plan</p>
-              <h1 id="wellness-title">Localized Prevention Plan</h1>
-              <p className="page-description">
-                Local suggestions are based on your top prevention priorities.
-                The app uses Maps search links when exact live place data is not
-                available, so it does not invent addresses.
-              </p>
-            </div>
-            <span className="privacy-pill">Location optional</span>
-          </div>
-
-          <section className="wellness-privacy-card" aria-label="Privacy">
-            <div>
-              <h2>Your next healthy step can be local.</h2>
-              <p>
-                Location is optional. Your family health history stays on your
-                device.
-              </p>
-            </div>
-          </section>
-
+        <section className="wellness-panel" aria-labelledby="wellness-recommendations-title">
           <section className="location-card" aria-labelledby="location-title">
             <div>
               <p className="eyebrow">Location</p>
