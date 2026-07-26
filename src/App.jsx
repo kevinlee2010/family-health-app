@@ -3645,8 +3645,11 @@ function App() {
 
           {hasPersonalizedAssessmentData ? (
             <>
-              <div className="score-hero-grid">
-                <article className="score-ring-card">
+              <section
+                className="score-ring-card compact-score-card"
+                aria-labelledby="prevention-score-heading"
+              >
+                <div className="compact-score-layout">
                   <div
                     className="score-ring"
                     style={{
@@ -3659,54 +3662,42 @@ function App() {
                     <small>/100</small>
                   </div>
                   <div className="score-title-stack">
-                    <h2>Prevention Health Score</h2>
+                    <h2 id="prevention-score-heading">Prevention Health Score</h2>
                     <span
                       className={`score-status-badge ${preventionScoreStatus.className}`}
                     >
                       {preventionScoreStatus.label}
                     </span>
-                    <strong>Higher is better.</strong>
-                  </div>
-                  <div className="score-scale-copy">
                     <p>
-                      0 means your current prevention habits need significant
-                      improvement. 100 means your habits strongly support long-term
-                      preventive health.
-                    </p>
-                    <p>
-                      This score reflects prevention habits and family-history
-                      awareness. It is not a diagnosis, clinical risk score, or
-                      probability of developing a disease.
+                      A higher score reflects stronger prevention habits and
+                      family-health awareness.
                     </p>
                   </div>
-                  <p>{preventionScore.explanation}</p>
-                </article>
+                </div>
 
-                <article className="score-summary-card">
-                  <p className="eyebrow">Personalized prevention summary</p>
-                  <h2>Prevention summary</h2>
-                  <p>{personalizedPreventionSummary}</p>
-                  <p className="eyebrow">Top 3 areas to explore</p>
-                  {preventionScore.topPriorities.length > 0 ? (
-                    <div className="priority-list">
+                {preventionScore.topPriorities.length > 0 ? (
+                  <div className="score-focus-block">
+                    <p className="eyebrow">Focus on</p>
+                    <ul className="score-focus-list">
                       {preventionScore.topPriorities.map((priority) => (
-                        <article className="priority-card" key={priority.id}>
+                        <li key={priority.id}>
                           <span aria-hidden="true">{priority.icon}</span>
-                          <div>
-                            <h3>{priority.title}</h3>
-                            <p>{priority.detail}</p>
-                          </div>
-                        </article>
+                          <span>{priority.title}</span>
+                        </li>
                       ))}
-                    </div>
-                  ) : (
-                    <p className="helper-text">
-                      No top health priorities are highlighted from the current
-                      entries.
-                    </p>
-                  )}
-                </article>
-              </div>
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="helper-text">
+                    Complete your family history and lifestyle profile to see
+                    personalized priorities.
+                  </p>
+                )}
+
+                <p className="compact-score-disclaimer">
+                  Educational only — not a diagnosis.
+                </p>
+              </section>
 
               <section className="prevention-insights-section" aria-labelledby="insights-title">
                 <div className="section-heading-row">

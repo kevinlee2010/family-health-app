@@ -3234,7 +3234,6 @@ select:focus-visible {
 }
 
 .score-ring-card,
-.score-summary-card,
 .score-detail-card,
 .coach-card {
   padding: 24px;
@@ -3246,13 +3245,22 @@ select:focus-visible {
 
 .score-ring-card {
   display: grid;
-  justify-items: center;
-  text-align: center;
   gap: 16px;
 }
 
+.compact-score-card {
+  gap: 18px;
+}
+
+.compact-score-layout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+}
+
 .score-ring {
-  width: 190px;
+  width: 132px;
   aspect-ratio: 1;
   border-radius: 999px;
   background:
@@ -3266,22 +3274,22 @@ select:focus-visible {
 
 .score-ring span {
   color: var(--ink);
-  font-size: 3.6rem;
+  font-size: 2.7rem;
   font-weight: 950;
   letter-spacing: -0.06em;
 }
 
 .score-ring small {
   position: absolute;
-  top: calc(50% + 38px);
+  top: calc(50% + 29px);
   color: var(--muted);
   font-weight: 850;
 }
 
 .score-title-stack {
   display: grid;
-  justify-items: center;
-  gap: 8px;
+  justify-items: start;
+  gap: 10px;
 }
 
 .score-title-stack h2 {
@@ -3324,22 +3332,52 @@ select:focus-visible {
   color: #0f766e;
 }
 
-.score-scale-copy {
-  display: grid;
-  gap: 8px;
-  max-width: 460px;
-}
-
-.score-scale-copy p {
+.score-title-stack p,
+.compact-score-disclaimer {
   margin: 0;
-  font-size: 0.94rem;
+  color: var(--muted);
+  font-weight: 650;
+  line-height: 1.5;
 }
 
 .priority-list,
+.score-focus-list,
 .check-list,
 .habit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
   gap: 12px;
+}
+
+.score-focus-block {
+  display: grid;
+  gap: 10px;
+}
+
+.score-focus-list {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.score-focus-list li {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  font-weight: 850;
+}
+
+.compact-score-disclaimer {
+  width: fit-content;
+  border-radius: 999px;
+  background: #f1f5f9;
+  padding: 7px 10px;
+  font-size: 0.88rem;
 }
 
 .priority-card {
