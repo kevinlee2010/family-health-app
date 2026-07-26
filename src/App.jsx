@@ -1096,112 +1096,6 @@ function getPositivePreventionSignals(profile, familyHealthSummary) {
   return positives.slice(0, 5)
 }
 
-function getProfileStrengths(profile) {
-  const strengths = []
-
-  if (profile.exercise === '3-5 days/week' || profile.exercise === 'Nearly every day') {
-    strengths.push('regular movement')
-  }
-
-  if (
-    profile.dietQuality === 'Good' ||
-    profile.dietQuality === 'Excellent' ||
-    profile.fruitVegIntake === '3-4 servings' ||
-    profile.fruitVegIntake === '5 or more servings'
-  ) {
-    strengths.push('balanced nutrition')
-  }
-
-  if (profile.waterIntake === '6-8 cups' || profile.waterIntake === 'More than 8 cups') {
-    strengths.push('good hydration')
-  }
-
-  if (profile.sleep === '7-9 hours') {
-    strengths.push('supportive sleep')
-  }
-
-  if (profile.smokingStatus === 'Never') {
-    strengths.push('no smoking or vaping reported')
-  }
-
-  return strengths.slice(0, 3)
-}
-
-function getProfileImprovementAreas(profile) {
-  const areas = []
-  const addArea = (area) => {
-    if (!areas.includes(area)) {
-      areas.push(area)
-    }
-  }
-
-  if (profile.smokingStatus === 'Current') {
-    addArea('reducing tobacco or vaping exposure')
-  }
-
-  if (profile.sleep === 'Less than 6 hours' || profile.sleep === 'More than 9 hours') {
-    addArea('improving sleep')
-  }
-
-  if (profile.stressLevel === 'High' || profile.stressLevel === 'Very high') {
-    addArea('managing stress')
-  }
-
-  if (profile.sugaryDrinks === 'Most days' || profile.sugaryDrinks === 'Daily') {
-    addArea('reducing sugary drinks')
-  }
-
-  if (profile.screenTime === '8+ hours') {
-    addArea('adding screen breaks')
-  }
-
-  if (profile.exercise === 'Rarely' || profile.exercise === '1-2 days/week') {
-    addArea('building regular movement')
-  }
-
-  if (
-    profile.dietQuality === 'Poor' ||
-    profile.dietQuality === 'Fair' ||
-    profile.fruitVegIntake === '0-1 servings' ||
-    profile.fruitVegIntake === '2 servings'
-  ) {
-    addArea('improving everyday nutrition')
-  }
-
-  if (profile.waterIntake === 'Less than 3 cups' || profile.waterIntake === '3-5 cups') {
-    addArea('improving hydration')
-  }
-
-  return areas.slice(0, 3)
-}
-
-function buildProfileSuggestion(profile) {
-  const strengths = getProfileStrengths(profile)
-  const improvementAreas = getProfileImprovementAreas(profile)
-
-  if (strengths.length > 0 && improvementAreas.length > 0) {
-    return `Your profile shows a strong foundation with ${toReadableList(
-      strengths,
-    )}. The biggest opportunities to strengthen your long-term health are ${toReadableList(
-      improvementAreas,
-    )}.`
-  }
-
-  if (strengths.length > 0) {
-    return `Your profile shows strong prevention habits, including ${toReadableList(
-      strengths,
-    )}. Keep those routines steady and update your answers as your health habits change.`
-  }
-
-  if (improvementAreas.length > 0) {
-    return `Your answers point to practical next steps: ${toReadableList(
-      improvementAreas,
-    )}. Start small and build consistency without trying to change everything at once.`
-  }
-
-  return 'Add lifestyle answers to see a clearer profile summary. The coach will highlight strengths and practical improvement areas as your information becomes more complete.'
-}
-
 function calculatePreventionScore({ familyHealthSummary, profile }) {
   const lifestylePriorities = getLifestylePriority(profile)
   const familyPriorityPenalty = familyHealthSummary.topAreas.reduce((total, category) => {
@@ -1917,22 +1811,10 @@ function PatternBadge({ explanation, label, tone }) {
   return (
     <span
       className={`pattern-badge pattern-badge-${tone}`}
-      title="This label reflects the amount and closeness of the family-history information entered. It is not a medical risk calculation."
+      title={explanation}
     >
       {label}
-      <small>{explanation}</small>
     </span>
-  )
-}
-
-function MedicalDisclaimer() {
-  return (
-    <p className="medical-disclaimer">
-      These insights are based on the family history and lifestyle information
-      you entered. They are provided for educational purposes only and are not a
-      diagnosis, clinical risk assessment, or substitute for professional
-      medical advice.
-    </p>
   )
 }
 
@@ -2097,7 +1979,6 @@ function App() {
     preventionScore,
   })
   const preventionScoreStatus = getPreventionScoreStatus(preventionScore.score)
-  const profileSuggestion = buildProfileSuggestion(preventionProfile)
   const coachGoals = buildCoachGoals(preventionScore)
   const completedCoachGoals = coachGoals.filter((goal) => habitProgress[goal.id])
   const coachStreak = completedCoachGoals.length
@@ -3711,16 +3592,88 @@ function App() {
         <section className="prevention-score-panel" aria-labelledby="score-title">
           <div className="page-heading dashboard-heading">
             <div>
-              <p className="eyebrow">Coach insight</p>
-              <h1 id="score-title">Prevention Score</h1>
+              <p className="eyebrow">Prevention journey</p>
+              <h1 id="score-title">AI Prevention Coach</h1>
               <p className="page-description">
-                Your Prevention Score summarizes preventive habits, profile
-                completeness, and educational action opportunities. It is not a
-                medical risk estimate.
+                Build healthier habits through personalized goals,
+                encouragement, and prevention insights.
               </p>
             </div>
-            <span className="privacy-pill">Educational prevention tool</span>
+            <span className="privacy-pill">{coachStreak} day-goal streak</span>
           </div>
+
+          <section className="coach-daily-panel" aria-labelledby="daily-coach-title">
+            <div className="coach-daily-header">
+              <div>
+                <p className="eyebrow">Goal streak</p>
+                <h2 id="daily-coach-title">{coachStreak}-day streak</h2>
+              </div>
+              <button
+                className="secondary-action"
+                type="button"
+                onClick={() =>
+                  document
+                    .querySelector('#wellness-title')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+              >
+                Find Local Support <span aria-hidden="true">→</span>
+              </button>
+            </div>
+
+            <div className="coach-daily-grid">
+              <section className="coach-card compact-coach-card">
+                <p className="eyebrow">Weekly encouragement</p>
+                <p>{coachMessage}</p>
+              </section>
+
+              <section className="coach-card compact-coach-card">
+                <p className="eyebrow">Today's goals</p>
+                <ul className="habit-list">
+                  {coachGoals.map((goal) => (
+                    <li key={goal.id}>
+                      <label className="habit-check compact">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(habitProgress[goal.id])}
+                          onChange={() => toggleHabitGoal(goal.id)}
+                        />
+                        <span>
+                          <strong>{goal.label}</strong>
+                          <small>{goal.detail}</small>
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              <section className="coach-card compact-coach-card">
+                <p className="eyebrow">Progress</p>
+                <h2>Habit progress</h2>
+                <ProgressBar
+                  value={
+                    coachGoals.length
+                      ? Math.round((completedCoachGoals.length / coachGoals.length) * 100)
+                      : 0
+                  }
+                />
+                <div className="coach-chart compact" aria-label="Daily goal progress">
+                  {coachGoals.map((goal) => (
+                    <span
+                      className={habitProgress[goal.id] ? 'complete' : ''}
+                      key={goal.id}
+                      title={goal.label}
+                    />
+                  ))}
+                </div>
+                <p>
+                  {completedCoachGoals.length} of {coachGoals.length} goals
+                  completed today.
+                </p>
+              </section>
+            </div>
+          </section>
 
           <div className="score-hero-grid">
             <article className="score-ring-card">
@@ -3778,28 +3731,28 @@ function App() {
             </article>
           </div>
 
-          <section className="score-detail-card profile-suggestion-card">
-            <h2>What your profile suggests</h2>
-            <p>{profileSuggestion}</p>
-          </section>
-
           <section className="prevention-insights-section" aria-labelledby="insights-title">
             <div className="section-heading-row">
               <div>
                 <h2 id="insights-title">Prevention Insights</h2>
                 <p>
-                  These cards explain family-health patterns using cautious,
-                  educational language.
+                  Your three most relevant family-health patterns are shown
+                  below. These insights are educational and are not a diagnosis.
                 </p>
               </div>
             </div>
 
-            <MedicalDisclaimer />
-
             <div className="prevention-insight-list">
-              {preventionInsights.map((insight) => (
-                <PreventionInsightCard insight={insight} key={insight.id} />
-              ))}
+              {preventionInsights.length > 0 ? (
+                preventionInsights.map((insight) => (
+                  <PreventionInsightCard insight={insight} key={insight.id} />
+                ))
+              ) : (
+                <p className="helper-text">
+                  Add family health history to reveal your most relevant
+                  family-health patterns.
+                </p>
+              )}
             </div>
           </section>
         </section>
@@ -3980,116 +3933,6 @@ function App() {
                   referrerPolicy="no-referrer-when-downgrade"
                 />
               </div>
-            </section>
-          </div>
-        </section>
-      ) : null}
-
-      {activeView === 'coach' ? (
-        <section className="coach-panel" aria-labelledby="coach-title">
-          <div className="page-heading dashboard-heading">
-            <div>
-              <p className="eyebrow">AI Prevention Coach</p>
-              <h1 id="coach-title">AI Prevention Coach</h1>
-              <p className="page-description">
-                Your coach focuses on education, prevention, motivation, and
-                small habit wins over time. It does not diagnose or treat
-                medical conditions.
-              </p>
-            </div>
-            <span className="privacy-pill">{coachStreak} day-goal streak</span>
-          </div>
-
-          <section className="coach-encouragement-card">
-            <div>
-              <p className="eyebrow">Weekly encouragement</p>
-              <h2>{coachMessage}</h2>
-            </div>
-            <button
-              className="secondary-action"
-              type="button"
-              onClick={() =>
-                document
-                  .querySelector('#wellness-title')
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }
-            >
-              Find Local Support <span aria-hidden="true">→</span>
-            </button>
-          </section>
-
-          <div className="coach-grid">
-            <section className="coach-card">
-              <p className="eyebrow">Today</p>
-              <h2>Daily goals</h2>
-              <ul className="habit-list">
-                {coachGoals.map((goal) => (
-                  <li key={goal.id}>
-                    <label className="habit-check">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(habitProgress[goal.id])}
-                        onChange={() => toggleHabitGoal(goal.id)}
-                      />
-                      <span>
-                        <strong>{goal.label}</strong>
-                        <small>{goal.detail}</small>
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="coach-card">
-              <p className="eyebrow">Progress</p>
-              <h2>Habit progress</h2>
-              <ProgressBar
-                value={
-                  coachGoals.length
-                    ? Math.round((completedCoachGoals.length / coachGoals.length) * 100)
-                    : 0
-                }
-              />
-              <div className="coach-chart" aria-label="Weekly goal progress">
-                {coachGoals.map((goal) => (
-                  <span
-                    className={habitProgress[goal.id] ? 'complete' : ''}
-                    key={goal.id}
-                    title={goal.label}
-                  />
-                ))}
-              </div>
-              <p>
-                {completedCoachGoals.length} of {coachGoals.length} goals
-                completed today.
-              </p>
-            </section>
-
-            <section className="coach-card">
-              <p className="eyebrow">Badges</p>
-              <h2>Achievements</h2>
-              <div className="badge-grid">
-                <span className={coachStreak >= 1 ? 'earned' : ''}>
-                  First healthy action
-                </span>
-                <span className={coachStreak >= 3 ? 'earned' : ''}>
-                  Three-goal momentum
-                </span>
-                <span className={preventionScore.score >= 80 ? 'earned' : ''}>
-                  Prevention foundation
-                </span>
-              </div>
-            </section>
-
-            <section className="coach-card">
-              <p className="eyebrow">Reminder ideas</p>
-              <h2>Personalized reminders</h2>
-              <ul className="check-list">
-                <li>Pick one daily goal and attach it to a routine you already have.</li>
-                <li>Review family-history changes once a month.</li>
-                <li>Bring your top priorities to your next routine checkup.</li>
-              </ul>
             </section>
           </div>
         </section>

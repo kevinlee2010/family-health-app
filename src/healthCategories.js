@@ -39,8 +39,6 @@ export const healthCategoryDefinitions = [
       'obesity',
       'metabolic',
       'insulin',
-      'cholesterol',
-      'triglyceride',
     ],
   },
   {

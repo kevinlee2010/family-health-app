@@ -166,11 +166,11 @@ function getInsightExplanation(category, patternLabel) {
     : ''
 
   if (patternLabel === 'Strong Family Pattern') {
-    return `Multiple family entries reported ${listedConditions}. This may be useful information to share during preventive healthcare visits.`
+    return `${category.name} stands out because multiple family entries reported ${listedConditions}. This may be useful information to share during preventive healthcare visits.`
   }
 
   if (patternLabel === 'Notable Family Pattern') {
-    return `One family entry currently maps to ${category.name.toLowerCase()}. This does not mean you will develop a condition, but it may be relevant when discussing preventive care.`
+    return `${category.name} stands out because one family entry reported ${listedConditions}. This does not mean you will develop a condition, but it may be relevant when discussing preventive care.`
   }
 
   if (patternLabel === 'No Strong Pattern Identified') {
@@ -178,6 +178,58 @@ function getInsightExplanation(category, patternLabel) {
   }
 
   return `Limited family information is available for ${category.name.toLowerCase()}. Adding more relatives or health details may improve the educational insights.`
+}
+
+const insightPriority = {
+  'Strong Family Pattern': 4,
+  'Notable Family Pattern': 3,
+  'No Strong Pattern Identified': 2,
+  'Limited Family Information': 1,
+}
+
+const firstDegreeRelationships = ['Mother', 'Father', 'Sibling']
+
+function getFirstDegreeObservationCount(category) {
+  return category.conditions.reduce(
+    (total, condition) =>
+      total +
+      condition.relatives.filter((relative) =>
+        firstDegreeRelationships.includes(relative),
+      ).length,
+    0,
+  )
+}
+
+function getRankedInsights(insights) {
+  return insights
+    .filter((insight) => insight.observationCount > 0)
+    .sort((firstInsight, secondInsight) => {
+      const patternDifference =
+        insightPriority[secondInsight.patternLabel] -
+        insightPriority[firstInsight.patternLabel]
+
+      if (patternDifference !== 0) {
+        return patternDifference
+      }
+
+      const observationDifference =
+        secondInsight.observationCount - firstInsight.observationCount
+
+      if (observationDifference !== 0) {
+        return observationDifference
+      }
+
+      const firstDegreeDifference =
+        secondInsight.firstDegreeObservationCount -
+        firstInsight.firstDegreeObservationCount
+
+      if (firstDegreeDifference !== 0) {
+        return firstDegreeDifference
+      }
+
+      return secondInsight.conditionCount - firstInsight.conditionCount
+    })
+    .slice(0, 3)
 }
 
 function getWhyItAppears(category, profile) {
@@ -227,7 +279,7 @@ function getWhyItAppears(category, profile) {
 }
 
 export function buildPreventionInsights({ familyHealthSummary, profile }) {
-  return familyHealthSummary.categories.map((category) => {
+  const insights = familyHealthSummary.categories.map((category) => {
     const patternLabel =
       category.observationCount === 0
         ? 'Limited Family Information'
@@ -252,8 +304,11 @@ export function buildPreventionInsights({ familyHealthSummary, profile }) {
       educationalActions: content.actions,
       evidenceExplanation: getPatternExplanation(patternLabel),
       explanation: getInsightExplanation(category, patternLabel),
+      firstDegreeObservationCount: getFirstDegreeObservationCount(category),
       healthArea: content.title,
       id: category.id,
+      conditionCount: category.conditions.length,
+      observationCount: category.observationCount,
       patternLabel,
       sourceName: content.sourceName,
       sourceUrl: content.sourceUrl,
@@ -271,6 +326,8 @@ export function buildPreventionInsights({ familyHealthSummary, profile }) {
             ],
     }
   })
+
+  return getRankedInsights(insights)
 }
 
 export function buildPersonalizedPreventionSummary({
