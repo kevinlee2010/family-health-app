@@ -1096,6 +1096,112 @@ function getPositivePreventionSignals(profile, familyHealthSummary) {
   return positives.slice(0, 5)
 }
 
+function getProfileStrengths(profile) {
+  const strengths = []
+
+  if (profile.exercise === '3-5 days/week' || profile.exercise === 'Nearly every day') {
+    strengths.push('regular movement')
+  }
+
+  if (
+    profile.dietQuality === 'Good' ||
+    profile.dietQuality === 'Excellent' ||
+    profile.fruitVegIntake === '3-4 servings' ||
+    profile.fruitVegIntake === '5 or more servings'
+  ) {
+    strengths.push('balanced nutrition')
+  }
+
+  if (profile.waterIntake === '6-8 cups' || profile.waterIntake === 'More than 8 cups') {
+    strengths.push('good hydration')
+  }
+
+  if (profile.sleep === '7-9 hours') {
+    strengths.push('supportive sleep')
+  }
+
+  if (profile.smokingStatus === 'Never') {
+    strengths.push('no smoking or vaping reported')
+  }
+
+  return strengths.slice(0, 3)
+}
+
+function getProfileImprovementAreas(profile) {
+  const areas = []
+  const addArea = (area) => {
+    if (!areas.includes(area)) {
+      areas.push(area)
+    }
+  }
+
+  if (profile.smokingStatus === 'Current') {
+    addArea('reducing tobacco or vaping exposure')
+  }
+
+  if (profile.sleep === 'Less than 6 hours' || profile.sleep === 'More than 9 hours') {
+    addArea('improving sleep')
+  }
+
+  if (profile.stressLevel === 'High' || profile.stressLevel === 'Very high') {
+    addArea('managing stress')
+  }
+
+  if (profile.sugaryDrinks === 'Most days' || profile.sugaryDrinks === 'Daily') {
+    addArea('reducing sugary drinks')
+  }
+
+  if (profile.screenTime === '8+ hours') {
+    addArea('adding screen breaks')
+  }
+
+  if (profile.exercise === 'Rarely' || profile.exercise === '1-2 days/week') {
+    addArea('building regular movement')
+  }
+
+  if (
+    profile.dietQuality === 'Poor' ||
+    profile.dietQuality === 'Fair' ||
+    profile.fruitVegIntake === '0-1 servings' ||
+    profile.fruitVegIntake === '2 servings'
+  ) {
+    addArea('improving everyday nutrition')
+  }
+
+  if (profile.waterIntake === 'Less than 3 cups' || profile.waterIntake === '3-5 cups') {
+    addArea('improving hydration')
+  }
+
+  return areas.slice(0, 3)
+}
+
+function buildProfileSuggestion(profile) {
+  const strengths = getProfileStrengths(profile)
+  const improvementAreas = getProfileImprovementAreas(profile)
+
+  if (strengths.length > 0 && improvementAreas.length > 0) {
+    return `Your profile shows a strong foundation with ${toReadableList(
+      strengths,
+    )}. The biggest opportunities to strengthen your long-term health are ${toReadableList(
+      improvementAreas,
+    )}.`
+  }
+
+  if (strengths.length > 0) {
+    return `Your profile shows strong prevention habits, including ${toReadableList(
+      strengths,
+    )}. Keep those routines steady and update your answers as your health habits change.`
+  }
+
+  if (improvementAreas.length > 0) {
+    return `Your answers point to practical next steps: ${toReadableList(
+      improvementAreas,
+    )}. Start small and build consistency without trying to change everything at once.`
+  }
+
+  return 'Add lifestyle answers to see a clearer profile summary. The coach will highlight strengths and practical improvement areas as your information becomes more complete.'
+}
+
 function calculatePreventionScore({ familyHealthSummary, profile }) {
   const lifestylePriorities = getLifestylePriority(profile)
   const familyPriorityPenalty = familyHealthSummary.topAreas.reduce((total, category) => {
@@ -1991,6 +2097,7 @@ function App() {
     preventionScore,
   })
   const preventionScoreStatus = getPreventionScoreStatus(preventionScore.score)
+  const profileSuggestion = buildProfileSuggestion(preventionProfile)
   const coachGoals = buildCoachGoals(preventionScore)
   const completedCoachGoals = coachGoals.filter((goal) => habitProgress[goal.id])
   const coachStreak = completedCoachGoals.length
@@ -3654,7 +3761,7 @@ function App() {
 
             <article className="score-summary-card">
               <p className="eyebrow">Personalized prevention summary</p>
-              <h2>What your profile suggests</h2>
+              <h2>Prevention summary</h2>
               <p>{personalizedPreventionSummary}</p>
               <p className="eyebrow">Top 3 areas to explore</p>
               <div className="priority-list">
@@ -3671,31 +3778,10 @@ function App() {
             </article>
           </div>
 
-          <div className="score-detail-grid">
-            <section className="score-detail-card">
-              <p className="eyebrow">Already working well</p>
-              <h2>What's in your favor</h2>
-              <ul className="check-list">
-                {preventionScore.positives.length > 0 ? (
-                  preventionScore.positives.map((positive) => (
-                    <li key={positive}>{positive}</li>
-                  ))
-                ) : (
-                  <li>Add more lifestyle answers to reveal positive signals.</li>
-                )}
-              </ul>
-            </section>
-
-            <section className="score-detail-card">
-              <p className="eyebrow">Room to improve</p>
-              <h2>Areas for improvement</h2>
-              <ul className="check-list improvement">
-                {preventionScore.areasForImprovement.map((area) => (
-                  <li key={area}>{area}</li>
-                ))}
-              </ul>
-            </section>
-          </div>
+          <section className="score-detail-card profile-suggestion-card">
+            <h2>What your profile suggests</h2>
+            <p>{profileSuggestion}</p>
+          </section>
 
           <section className="prevention-insights-section" aria-labelledby="insights-title">
             <div className="section-heading-row">
