@@ -1772,7 +1772,6 @@ function PreventionInsightCard({ insight }) {
       <summary>
         <span className="insight-summary-copy">
           <strong>{insight.healthArea}</strong>
-          <span>{insight.summary}</span>
         </span>
         <PatternBadge
           explanation={insight.evidenceExplanation}
@@ -1783,9 +1782,6 @@ function PreventionInsightCard({ insight }) {
       </summary>
 
       <div className="insight-expanded-content">
-        <p className="insight-note">Educational insight — not a diagnosis.</p>
-        <p>{insight.explanation}</p>
-
         <section className="insight-detail-block">
           <h4>Why this appears</h4>
           <ul>

@@ -3436,7 +3436,6 @@ select:focus-visible {
 
 .insight-summary-copy {
   display: grid;
-  gap: 5px;
 }
 
 .insight-summary-copy strong {
@@ -3444,7 +3443,6 @@ select:focus-visible {
   font-size: 1.05rem;
 }
 
-.insight-summary-copy span,
 .insight-expanded-content p,
 .insight-detail-block li {
   color: var(--muted);
@@ -3501,17 +3499,6 @@ select:focus-visible {
   display: grid;
   gap: 14px;
   padding: 0 18px 18px;
-}
-
-.insight-note {
-  width: fit-content;
-  border-radius: 999px;
-  background: var(--blue-soft);
-  color: #1d4ed8;
-  margin: 16px 0 0;
-  padding: 6px 10px;
-  font-size: 0.82rem;
-  font-weight: 900;
 }
 
 .insight-detail-block {

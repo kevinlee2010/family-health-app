@@ -119,18 +119,6 @@ const healthAreaContent = {
   },
 }
 
-function toReadableList(items) {
-  if (items.length <= 1) {
-    return items.join('')
-  }
-
-  if (items.length === 2) {
-    return `${items[0]} and ${items[1]}`
-  }
-
-  return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`
-}
-
 export function getPatternLabel(riskLevel, observationCount = 0) {
   if (observationCount === 0 && riskLevel !== 'Average') {
     return 'Limited Family Information'
@@ -157,27 +145,6 @@ export function getPatternExplanation(patternLabel) {
   }
 
   return 'Too little family-history information is available for a confident educational insight.'
-}
-
-function getInsightExplanation(category, patternLabel) {
-  const conditionNames = category.conditions.map((condition) => condition.conditionName)
-  const listedConditions = conditionNames.length
-    ? toReadableList(conditionNames.slice(0, 3))
-    : ''
-
-  if (patternLabel === 'Strong Family Pattern') {
-    return `${category.name} stands out because multiple family entries reported ${listedConditions}. This may be useful information to share during preventive healthcare visits.`
-  }
-
-  if (patternLabel === 'Notable Family Pattern') {
-    return `${category.name} stands out because one family entry reported ${listedConditions}. This does not mean you will develop a condition, but it may be relevant when discussing preventive care.`
-  }
-
-  if (patternLabel === 'No Strong Pattern Identified') {
-    return `No strong family-health pattern is visible for ${category.name.toLowerCase()} from the information entered so far. This is not proof that future concerns cannot occur.`
-  }
-
-  return `Limited family information is available for ${category.name.toLowerCase()}. Adding more relatives or health details may improve the educational insights.`
 }
 
 const insightPriority = {
@@ -303,7 +270,6 @@ export function buildPreventionInsights({ familyHealthSummary, profile }) {
       doctorQuestions: content.questions,
       educationalActions: content.actions,
       evidenceExplanation: getPatternExplanation(patternLabel),
-      explanation: getInsightExplanation(category, patternLabel),
       firstDegreeObservationCount: getFirstDegreeObservationCount(category),
       healthArea: content.title,
       id: category.id,
@@ -312,18 +278,8 @@ export function buildPreventionInsights({ familyHealthSummary, profile }) {
       patternLabel,
       sourceName: content.sourceName,
       sourceUrl: content.sourceUrl,
-      summary:
-        patternLabel === 'Limited Family Information'
-          ? `More family-health details can make this ${content.title.toLowerCase()} insight more useful.`
-          : getInsightExplanation(category, patternLabel),
       tone: getPatternTone(patternLabel),
-      whyItAppears:
-        whyItAppears.length > 0
-          ? whyItAppears
-          : [
-              'No family entries currently map to this health area',
-              'Additional family details may improve this educational insight',
-            ],
+      whyItAppears,
     }
   })
 
