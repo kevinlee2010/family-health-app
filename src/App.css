@@ -3135,14 +3135,6 @@ select:focus-visible {
   font-size: 1.02rem;
 }
 
-.today-action-row small {
-  color: var(--muted);
-  display: block;
-  font-weight: 650;
-  line-height: 1.45;
-  margin-top: 3px;
-}
-
 .dashboard-assessment-card {
   display: flex;
   justify-content: space-between;
@@ -3366,8 +3358,7 @@ select:focus-visible {
 .priority-card p,
 .score-ring-card p,
 .score-detail-card li,
-.coach-card p,
-.coach-card small {
+.coach-card p {
   color: var(--muted);
   line-height: 1.6;
 }

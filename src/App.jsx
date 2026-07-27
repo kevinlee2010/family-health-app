@@ -2678,7 +2678,6 @@ function App() {
                     <span className="today-action-check" aria-hidden="true" />
                     <span>
                       <strong>{goal.label}</strong>
-                      <small>{goal.detail}</small>
                     </span>
                   </label>
                 </li>
@@ -3603,7 +3602,6 @@ function App() {
                         />
                         <span>
                           <strong>{goal.label}</strong>
-                          <small>{goal.detail}</small>
                         </span>
                       </label>
                     </li>
