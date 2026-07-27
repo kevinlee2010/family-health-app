@@ -1179,7 +1179,7 @@ function getCoachMessage({ completedCount, totalGoals }) {
     return `Nice progress. You completed ${completedCount} of ${totalGoals} coach goals today, so keep the next step small and repeatable.`
   }
 
-  return 'Start with one small action today. A 20-minute walk, one extra glass of water, or one screening question is enough to create momentum.'
+  return 'Build healthy habits one step at a time.'
 }
 
 
@@ -2646,11 +2646,7 @@ function App() {
                     : 'General wellness actions'}
                 </p>
                 <h2 id="today-actions-title">Today's Healthy Actions</h2>
-                <p>
-                  {hasPersonalizedAssessmentData
-                    ? 'Start with one small action today.'
-                    : 'General wellness actions to help you get started.'}
-                </p>
+                <p>Build healthy habits one step at a time.</p>
               </div>
               <button
                 className="secondary-action"
