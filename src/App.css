@@ -754,22 +754,21 @@ body {
   align-items: start;
 }
 
-.wellness-recommendation-list {
+.weekly-event-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
-.wellness-recommendation-card {
+.weekly-event-card {
   width: 100%;
   border: 1px solid rgba(211, 225, 232, 0.9);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.88);
   color: inherit;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
+  gap: 13px;
   align-items: start;
-  padding: 14px;
+  padding: 15px;
   text-align: left;
   transition:
     background 180ms ease,
@@ -778,22 +777,12 @@ body {
     transform 180ms ease;
 }
 
-.wellness-recommendation-card:hover,
-.wellness-recommendation-card.selected {
+.weekly-event-card:hover,
+.weekly-event-card.selected {
   border-color: rgba(37, 99, 235, 0.35);
   background: #f8fbff;
   box-shadow: var(--shadow-soft);
   transform: translateY(-1px);
-}
-
-.wellness-recommendation-card:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.24);
-  outline-offset: 2px;
-}
-
-.wellness-recommendation-content {
-  display: grid;
-  gap: 10px;
 }
 
 .wellness-recommendation-icon {
@@ -806,31 +795,52 @@ body {
   font-size: 1.28rem;
 }
 
-.wellness-recommendation-card h3 {
-  margin: 0;
-  color: var(--ink);
-  font-size: 1rem;
+.weekly-event-topline {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
 }
 
-.wellness-recommendation-card p {
+.weekly-event-card h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.03rem;
+}
+
+.weekly-event-topline p,
+.weekly-event-card p {
   margin: 0;
   color: var(--muted-strong);
   font-weight: 650;
   line-height: 1.45;
 }
 
-.wellness-reason,
-.wellness-resource-type {
+.weekly-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.weekly-event-meta span {
+  border-radius: 999px;
+  background: var(--surface-strong);
+  padding: 6px 10px;
+}
+
+.weekly-event-reason {
   font-size: 0.9rem;
 }
 
-.wellness-reason strong,
-.wellness-resource-type strong {
-  color: var(--ink);
+.weekly-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.wellness-find-button {
-  justify-self: start;
+.weekly-event-actions .primary-action,
+.weekly-event-actions .secondary-action {
   min-height: 38px;
   padding: 9px 14px;
 }
@@ -858,6 +868,30 @@ body {
   min-height: 420px;
   border: 0;
   display: block;
+}
+
+.event-detail-modal {
+  width: min(760px, 100%);
+}
+
+.event-detail-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.event-detail-summary span {
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  font-weight: 800;
+  padding: 8px 12px;
+}
+
+.event-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .compact-empty {
