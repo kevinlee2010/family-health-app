@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "fetch-events": "node scripts/fetch-events.js",
     "lint": "eslint .",
     "test": "node --test",
     "preview": "vite preview"

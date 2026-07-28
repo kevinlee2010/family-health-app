@@ -10,7 +10,6 @@ import {
   calculatePreventionScore,
   getPreventionScoreStatus,
 } from './preventionScore'
-import { getMockWeeklyEvents } from './mockWeeklyEvents'
 
 const relationships = ['Mother', 'Father', 'Sibling', 'Grandparent']
 const relationshipLimitMessages = {
@@ -654,8 +653,6 @@ function clearSavedAppState() {
 
 const workflowSteps = guidedSteps
 
-const closeFamilyRelationships = ['Mother', 'Father', 'Sibling']
-const eventSearchRadiusMiles = 25
 const mockLocationLookup = {
   '94127': {
     city: '',
@@ -788,14 +785,6 @@ function addIllnessToList(currentIllnesses, illness) {
   return [...currentIllnesses, illness]
 }
 
-function hasValidEventLocation(event) {
-  return Boolean(
-    event?.address ||
-      (Number.isFinite(event?.coordinates?.latitude) &&
-        Number.isFinite(event?.coordinates?.longitude)),
-  )
-}
-
 function getEventDestination(event) {
   if (
     Number.isFinite(event?.coordinates?.latitude) &&
@@ -809,22 +798,6 @@ function getEventDestination(event) {
 
 function getEventLocationLabel(event) {
   return [event?.location, event?.address].filter(Boolean).join(', ')
-}
-
-function buildGoogleMapsDirectionsUrl(event, originTarget = '') {
-  const destination = getEventDestination(event)
-
-  if (!destination) {
-    return ''
-  }
-
-  const originQuery = originTarget
-    ? `&origin=${encodeURIComponent(originTarget)}`
-    : ''
-
-  return `https://www.google.com/maps/dir/?api=1${originQuery}&destination=${encodeURIComponent(
-    destination,
-  )}`
 }
 
 function buildEventMapEmbedUrl(event) {
@@ -898,328 +871,34 @@ function geocodeMockLocation(locationInput) {
   }
 }
 
-function getDistanceMiles(firstLocation, secondLocation) {
-  if (
-    !Number.isFinite(firstLocation?.latitude) ||
-    !Number.isFinite(firstLocation?.longitude) ||
-    !Number.isFinite(secondLocation?.latitude) ||
-    !Number.isFinite(secondLocation?.longitude)
-  ) {
-    return null
+function normalizeRemoteEvent(event, index) {
+  const address = typeof event?.address === 'string' ? event.address : ''
+  const directionsUrl =
+    typeof event?.directionsLink === 'string' && event.directionsLink.trim()
+      ? event.directionsLink
+      : ''
+
+  return {
+    address,
+    city: typeof event?.city === 'string' ? event.city : '',
+    description: typeof event?.description === 'string' ? event.description : '',
+    directionsUrl,
+    eventLink: typeof event?.eventLink === 'string' ? event.eventLink : '',
+    hasLocation: Boolean(address),
+    id:
+      typeof event?.id === 'string' && event.id.trim()
+        ? event.id
+        : `event-${index + 1}`,
+    image: typeof event?.image === 'string' ? event.image : '',
+    location: address,
+    source: typeof event?.source === 'string' ? event.source : '',
+    startsAt: typeof event?.startDate === 'string' ? event.startDate : '',
+    title:
+      typeof event?.title === 'string' && event.title.trim()
+        ? event.title
+        : 'Untitled event',
+    when: typeof event?.when === 'string' ? event.when : '',
   }
-
-  const earthRadiusMiles = 3958.8
-  const toRadians = (degrees) => (degrees * Math.PI) / 180
-  const latitudeDifference = toRadians(secondLocation.latitude - firstLocation.latitude)
-  const longitudeDifference = toRadians(secondLocation.longitude - firstLocation.longitude)
-  const firstLatitude = toRadians(firstLocation.latitude)
-  const secondLatitude = toRadians(secondLocation.latitude)
-  const haversine =
-    Math.sin(latitudeDifference / 2) ** 2 +
-    Math.cos(firstLatitude) *
-      Math.cos(secondLatitude) *
-      Math.sin(longitudeDifference / 2) ** 2
-
-  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
-}
-
-function formatDistance(distanceMiles) {
-  if (!Number.isFinite(distanceMiles)) {
-    return ''
-  }
-
-  if (distanceMiles < 10) {
-    return `${distanceMiles.toFixed(1)} miles`
-  }
-
-  return `${Math.round(distanceMiles)} miles`
-}
-
-function conditionMatches(condition, keywords) {
-  const conditionKey = getIllnessKey(condition)
-
-  return keywords.some((keyword) => conditionKey.includes(getIllnessKey(keyword)))
-}
-
-function getFamilyConditionReports(familyMembers, keywords) {
-  return familyMembers.flatMap((member) =>
-    member.illnesses
-      .filter((illness) => !isNoIllness(illness))
-      .filter((illness) => conditionMatches(illness, keywords))
-      .map((illness) => ({
-        condition: illness,
-        isCloseRelative: closeFamilyRelationships.includes(member.relationship),
-        relationship: member.relationship,
-      })),
-  )
-}
-
-function getCloseReportCount(reports) {
-  return reports.filter((report) => report.isCloseRelative).length
-}
-
-function joinReadableList(items) {
-  if (items.length <= 1) {
-    return items[0] || ''
-  }
-
-  if (items.length === 2) {
-    return `${items[0]} and ${items[1]}`
-  }
-
-  return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`
-}
-
-function getRelativeLabel(relationship) {
-  if (relationship === 'Mother') return 'your mother'
-  if (relationship === 'Father') return 'your father'
-  if (relationship === 'Sibling') return 'a sibling'
-  if (relationship === 'Grandparent') return 'a grandparent'
-
-  return `a ${relationship.toLowerCase()}`
-}
-
-function buildFamilyReportReason(reports) {
-  const entries = reports
-    .slice(0, 3)
-    .map(
-      (report) =>
-        `${getRelativeLabel(report.relationship)} reported ${report.condition}`,
-    )
-
-  if (reports.length > 3) {
-    entries.push('other relatives reported related conditions')
-  }
-
-  return `${joinReadableList(entries)}.`
-}
-
-function hasLifestyleAnswer(profile, field, values) {
-  return values.includes(profile[field])
-}
-
-function buildWeeklyEventRecommendations({
-  activeLocation,
-  events,
-  familyMembers,
-  locationTarget,
-  profile,
-  profileIllnesses,
-}) {
-  const hasCurrentProfileCondition = (keywords) =>
-    profileIllnesses
-      .filter((illness) => !isNoIllness(illness))
-      .some((illness) => conditionMatches(illness, keywords))
-
-  const cardiovascularReports = getFamilyConditionReports(familyMembers, [
-    'heart disease',
-    'heart attack',
-    'high blood pressure',
-    'hypertension',
-    'high cholesterol',
-    'stroke',
-  ])
-  const cholesterolReports = getFamilyConditionReports(familyMembers, [
-    'heart disease',
-    'heart attack',
-    'high cholesterol',
-    'stroke',
-  ])
-  const bloodPressureReports = getFamilyConditionReports(familyMembers, [
-    'high blood pressure',
-    'hypertension',
-    'stroke',
-  ])
-  const diabetesReports = getFamilyConditionReports(familyMembers, [
-    'type 2 diabetes',
-  ])
-  const cancerReports = getFamilyConditionReports(familyMembers, [
-    'breast cancer',
-    'colon cancer',
-  ])
-  const mentalWellnessReports = getFamilyConditionReports(familyMembers, [
-    'depression',
-    'anxiety',
-  ])
-
-  const currentSmoking = profile.smokingStatus === 'Current'
-  const lowActivity = hasLifestyleAnswer(profile, 'exercise', [
-    'Rarely',
-    '1-2 days/week',
-  ])
-  const nutritionOpportunity =
-    hasLifestyleAnswer(profile, 'dietQuality', ['Poor', 'Fair']) ||
-    hasLifestyleAnswer(profile, 'fruitVegIntake', [
-      '0-1 servings',
-      '2 servings',
-    ])
-  const highStress = hasLifestyleAnswer(profile, 'stressLevel', [
-    'High',
-    'Very high',
-  ])
-  const knownBloodPressure =
-    profile.knownHighBloodPressure === 'Yes' ||
-    hasCurrentProfileCondition(['high blood pressure', 'hypertension'])
-  const knownCholesterol =
-    profile.knownHighCholesterol === 'Yes' ||
-    hasCurrentProfileCondition(['high cholesterol'])
-  const diabetesSignal =
-    profile.diabetesStatus === 'Prediabetes' ||
-    profile.diabetesStatus === 'Diabetes' ||
-    profile.diabetesStatus === 'Type 2 diabetes' ||
-    profile.diabetesStatus === 'Diabetes, not sure what type' ||
-    hasCurrentProfileCondition(['type 2 diabetes'])
-  const signals = [
-    {
-      reason: bloodPressureReports.length
-        ? `Recommended because ${buildFamilyReportReason(
-            bloodPressureReports,
-          ).replace(/\.$/, '').toLowerCase()}.`
-        : 'Recommended because your profile includes known high blood pressure.',
-      score: 36 + bloodPressureReports.length + getCloseReportCount(bloodPressureReports),
-      tag: 'blood-pressure',
-      visible: bloodPressureReports.length || knownBloodPressure,
-    },
-    {
-      reason: cholesterolReports.length
-        ? `Recommended because ${buildFamilyReportReason(
-            cholesterolReports,
-          ).replace(/\.$/, '').toLowerCase()}.`
-        : 'Recommended because your profile includes known high cholesterol.',
-      score: 34 + cholesterolReports.length + getCloseReportCount(cholesterolReports),
-      tag: 'cholesterol',
-      visible: cholesterolReports.length || knownCholesterol,
-    },
-    {
-      reason:
-        'Recommended because cardiovascular conditions appear in your reported family history.',
-      score: 30 + cardiovascularReports.length + getCloseReportCount(cardiovascularReports),
-      tag: 'cardiovascular',
-      visible: cardiovascularReports.length,
-    },
-    {
-      reason: diabetesReports.length
-        ? 'Recommended because type 2 diabetes appears in your reported family history.'
-        : 'Recommended because your profile includes diabetes or prediabetes awareness.',
-      score: 35 + diabetesReports.length + getCloseReportCount(diabetesReports),
-      tag: 'diabetes',
-      visible: diabetesReports.length || diabetesSignal,
-    },
-    {
-      reason:
-        'Recommended because breast or colon cancer appears in your reported family history.',
-      score: 33 + cancerReports.length + getCloseReportCount(cancerReports),
-      tag: 'cancer',
-      visible: cancerReports.length,
-    },
-    {
-      reason: 'Recommended because your lifestyle profile indicates current smoking or vaping.',
-      score: 38,
-      tag: 'smoking',
-      visible: currentSmoking,
-    },
-    {
-      reason:
-        'Recommended because your activity response suggests an opportunity to build more regular movement.',
-      score: 26,
-      tag: 'movement',
-      visible: lowActivity,
-    },
-    {
-      reason:
-        'Recommended because your nutrition answers suggest an opportunity to strengthen everyday food habits.',
-      score: 24,
-      tag: 'nutrition',
-      visible: nutritionOpportunity,
-    },
-    {
-      reason: mentalWellnessReports.length
-        ? 'Recommended because mental wellness conditions appear in your reported family history.'
-        : 'Recommended because your stress response suggests support could be useful this week.',
-      score: 27 + mentalWellnessReports.length,
-      tag: 'mental',
-      visible: highStress || mentalWellnessReports.length,
-    },
-    {
-      reason: 'Recommended because your stress response suggests support could be useful this week.',
-      score: 28,
-      tag: 'stress',
-      visible: highStress,
-    },
-    {
-      reason:
-        'Recommended as a general community wellness opportunity while you continue building your profile.',
-      score: 8,
-      tag: 'general',
-      visible: true,
-    },
-  ].filter((signal) => signal.visible)
-  const now = new Date()
-  const weekEnd = new Date(now)
-  weekEnd.setDate(now.getDate() + 7)
-  const eventRecommendations = events
-    .filter((event) => {
-      const eventDate = new Date(event.startsAt)
-
-      return eventDate >= now && eventDate <= weekEnd
-    })
-    .map((event) => {
-      const matchingSignals = signals.filter((signal) =>
-        event.tags.includes(signal.tag),
-      )
-      const bestSignal = matchingSignals.sort(
-        (firstSignal, secondSignal) => secondSignal.score - firstSignal.score,
-      )[0]
-      const relevanceScore = matchingSignals.reduce(
-        (total, signal) => total + signal.score,
-        0,
-      )
-      const distanceMiles = getDistanceMiles(activeLocation, event.coordinates)
-
-      return {
-        ...event,
-        calculatedDistanceMiles: distanceMiles,
-        distance: formatDistance(distanceMiles) || event.distance,
-        directionsUrl: buildGoogleMapsDirectionsUrl(event, locationTarget),
-        hasLocation: hasValidEventLocation(event),
-        relevanceScore,
-        recommendationReason: bestSignal?.reason || '',
-      }
-    })
-    .filter((event) => event.relevanceScore > 0)
-    .filter(
-      (event) =>
-        Number.isFinite(event.calculatedDistanceMiles) &&
-        event.calculatedDistanceMiles <= eventSearchRadiusMiles,
-    )
-
-  const personalizedEvents = eventRecommendations.filter(
-    (event) => !event.tags.includes('general') || event.relevanceScore > 8,
-  )
-  const eventsToShow =
-    personalizedEvents.length > 0
-      ? personalizedEvents
-      : eventRecommendations.filter((event) => event.tags.includes('general'))
-
-  return eventsToShow
-    .sort((firstEvent, secondEvent) => {
-      const relevanceDifference =
-        secondEvent.relevanceScore - firstEvent.relevanceScore
-
-      if (relevanceDifference !== 0) {
-        return relevanceDifference
-      }
-
-      const distanceDifference =
-        firstEvent.calculatedDistanceMiles - secondEvent.calculatedDistanceMiles
-
-      if (distanceDifference !== 0) {
-        return distanceDifference
-      }
-
-      return new Date(firstEvent.startsAt) - new Date(secondEvent.startsAt)
-    })
-    .slice(0, 6)
 }
 
 function buildCoachGoals(preventionScore) {
@@ -1506,16 +1185,6 @@ function ConditionDetailsModal({ conditionName, details, onClose }) {
       </section>
     </div>
   )
-}
-
-function formatEventDateTime(startsAt) {
-  const eventDate = new Date(startsAt)
-
-  return new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    weekday: 'long',
-  }).format(eventDate)
 }
 
 function IllnessPicker({
@@ -1967,6 +1636,9 @@ function App() {
   const [isFamilyFormOpen, setIsFamilyFormOpen] = useState(false)
   const [activeFamilyMenuId, setActiveFamilyMenuId] = useState(null)
   const [selectedWeeklyEvent, setSelectedWeeklyEvent] = useState(null)
+  const [weeklyEvents, setWeeklyEvents] = useState([])
+  const [weeklyEventsError, setWeeklyEventsError] = useState('')
+  const [weeklyEventsStatus, setWeeklyEventsStatus] = useState('loading')
 
   const selfTreeNode = userProfile
     ? {
@@ -2019,15 +1691,6 @@ function App() {
     : null
   const disclaimerText =
     'This educational tool organizes family history and lifestyle information. It does not provide a diagnosis or replace professional medical advice.'
-  const wellnessLocationTarget = getLocationOriginTarget(activeLocation)
-  const weeklyEvents = buildWeeklyEventRecommendations({
-    activeLocation,
-    events: getMockWeeklyEvents(),
-    familyMembers,
-    locationTarget: wellnessLocationTarget,
-    profile: profileForm,
-    profileIllnesses,
-  })
   const selectedEvent =
     weeklyEvents.find((event) => event.id === selectedWeeklyEvent?.id) ||
     weeklyEvents[0] ||
@@ -2210,6 +1873,51 @@ function App() {
     locationStatus,
     locationMessage,
   ])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadWeeklyEvents() {
+      setWeeklyEventsStatus('loading')
+      setWeeklyEventsError('')
+
+      try {
+        const response = await fetch('/data/events.json', {
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error(`Unable to load events.json (${response.status}).`)
+        }
+
+        const events = await response.json()
+
+        if (!Array.isArray(events)) {
+          throw new Error('The events data file is not a valid event list.')
+        }
+
+        setWeeklyEvents(events.map(normalizeRemoteEvent))
+        setWeeklyEventsStatus('success')
+      } catch (fetchError) {
+        if (fetchError.name === 'AbortError') {
+          return
+        }
+
+        setWeeklyEvents([])
+        setWeeklyEventsError(
+          fetchError.message ||
+            'This week’s events could not be loaded. Please try again later.',
+        )
+        setWeeklyEventsStatus('error')
+      }
+    }
+
+    loadWeeklyEvents()
+
+    return () => {
+      controller.abort()
+    }
+  }, [])
 
   useEffect(() => {
     if (!activeConditionName) {
@@ -3946,13 +3654,23 @@ function App() {
                     </div>
                   </div>
 
-                  {weeklyEvents.length === 0 ? (
-                    <p className="helper-text">
-                      {activeLocation.source
-                        ? 'No prevention events were found near this location for this week.'
-                        : 'Choose your location to see personalized weekly health opportunities.'}
+                  {weeklyEventsStatus === 'loading' ? (
+                    <p className="helper-text">Loading this week’s events...</p>
+                  ) : null}
+
+                  {weeklyEventsStatus === 'error' ? (
+                    <p className="flow-message error" role="alert">
+                      {weeklyEventsError}
                     </p>
-                  ) : (
+                  ) : null}
+
+                  {weeklyEventsStatus === 'success' && weeklyEvents.length === 0 ? (
+                    <p className="helper-text">
+                      No prevention events were found for this week.
+                    </p>
+                  ) : null}
+
+                  {weeklyEvents.length > 0 ? (
                     <div className="weekly-event-list">
                       {weeklyEvents.map((event) => (
                         <article
@@ -3971,35 +3689,50 @@ function App() {
                             }
                           }}
                         >
+                          {event.image ? (
+                            <img
+                              className="weekly-event-image"
+                              src={event.image}
+                              alt=""
+                              loading="lazy"
+                            />
+                          ) : null}
+
                           <div className="weekly-event-topline">
-                            <span
-                              className="wellness-recommendation-icon"
-                              aria-hidden="true"
-                            >
-                              {event.icon}
-                            </span>
                             <div>
                               <h3>{event.title}</h3>
-                              <p>{formatEventDateTime(event.startsAt)}</p>
+                              <p>{event.when || event.startsAt || 'Date to be announced'}</p>
                             </div>
                           </div>
 
                           <div className="weekly-event-meta">
-                            <span>{event.location}</span>
-                            <span>
-                              {event.cost} • {event.distance}
-                            </span>
+                            {event.address ? <span>{event.address}</span> : null}
+                            {event.source ? <span>{event.source}</span> : null}
                             {selectedEvent?.id === event.id ? (
                               <span className="selected-event-label">Selected</span>
                             ) : null}
                           </div>
 
-                          <p className="weekly-event-reason">
-                            {event.recommendationReason}
-                          </p>
+                          {event.description ? (
+                            <p className="weekly-event-reason">
+                              {event.description}
+                            </p>
+                          ) : null}
 
                           <div className="weekly-event-actions">
-                            {event.hasLocation ? (
+                            {event.eventLink ? (
+                              <a
+                                className="secondary-action"
+                                href={event.eventLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(clickEvent) => clickEvent.stopPropagation()}
+                              >
+                                More Info <span aria-hidden="true">→</span>
+                              </a>
+                            ) : null}
+
+                            {event.directionsUrl ? (
                               <a
                                 className="primary-action"
                                 href={event.directionsUrl}
@@ -4012,20 +3745,13 @@ function App() {
                               >
                                 Get Directions <span aria-hidden="true">→</span>
                               </a>
-                            ) : (
-                              <button
-                                className="secondary-action"
-                                type="button"
-                                disabled
-                                onClick={(clickEvent) => clickEvent.stopPropagation()}
-                              >
-                                Location unavailable
-                              </button>
-                            )}
+                            ) : null}
                           </div>
                         </article>
                       ))}
                     </div>
+                  ) : (
+                    null
                   )}
                 </section>
 
@@ -4059,14 +3785,29 @@ function App() {
                     </div>
 
                     {selectedEvent ? (
-                      <a
-                        className="secondary-action map-action"
-                        href={selectedEvent.directionsUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Open in Google Maps <span aria-hidden="true">→</span>
-                      </a>
+                      <div className="weekly-event-actions">
+                        {selectedEvent.eventLink ? (
+                          <a
+                            className="secondary-action map-action"
+                            href={selectedEvent.eventLink}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            More Info <span aria-hidden="true">→</span>
+                          </a>
+                        ) : null}
+
+                        {selectedEvent.directionsUrl ? (
+                          <a
+                            className="secondary-action map-action"
+                            href={selectedEvent.directionsUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Get Directions <span aria-hidden="true">→</span>
+                          </a>
+                        ) : null}
+                      </div>
                     ) : null}
                   </section>
                 ) : null}

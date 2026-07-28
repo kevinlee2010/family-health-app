@@ -795,20 +795,18 @@ body {
   outline-offset: 3px;
 }
 
-.wellness-recommendation-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  background: var(--blue-soft);
-  display: inline-grid;
-  place-items: center;
-  font-size: 1.28rem;
-}
-
 .weekly-event-topline {
   display: flex;
   gap: 12px;
   align-items: flex-start;
+}
+
+.weekly-event-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--surface-strong);
 }
 
 .weekly-event-card h3 {
