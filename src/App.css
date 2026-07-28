@@ -775,14 +775,24 @@ body {
     border-color 180ms ease,
     box-shadow 180ms ease,
     transform 180ms ease;
+  cursor: pointer;
 }
 
 .weekly-event-card:hover,
 .weekly-event-card.selected {
-  border-color: rgba(37, 99, 235, 0.35);
+  border-color: rgba(37, 99, 235, 0.5);
   background: #f8fbff;
   box-shadow: var(--shadow-soft);
   transform: translateY(-1px);
+}
+
+.weekly-event-card.selected {
+  border-color: rgba(37, 99, 235, 0.72);
+}
+
+.weekly-event-card:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.24);
+  outline-offset: 3px;
 }
 
 .wellness-recommendation-icon {
@@ -827,6 +837,11 @@ body {
   border-radius: 999px;
   background: var(--surface-strong);
   padding: 6px 10px;
+}
+
+.weekly-event-meta .selected-event-label {
+  background: var(--blue-soft);
+  color: var(--accent);
 }
 
 .weekly-event-reason {

@@ -714,6 +714,10 @@ function getEventDestination(event) {
   return event?.address || ''
 }
 
+function getEventLocationLabel(event) {
+  return [event?.location, event?.address].filter(Boolean).join(', ')
+}
+
 function buildGoogleMapsDirectionsUrl(event, originTarget = '') {
   const destination = getEventDestination(event)
 
@@ -731,7 +735,7 @@ function buildGoogleMapsDirectionsUrl(event, originTarget = '') {
 }
 
 function buildEventMapEmbedUrl(event) {
-  const destination = getEventDestination(event)
+  const destination = getEventDestination(event) || getEventLocationLabel(event)
 
   if (!destination) {
     return ''
@@ -1768,7 +1772,7 @@ function App() {
   const [isNavOpen, setIsNavOpen] = useState(false)
   const [isFamilyFormOpen, setIsFamilyFormOpen] = useState(false)
   const [activeFamilyMenuId, setActiveFamilyMenuId] = useState(null)
-  const [selectedWeeklyEventId, setSelectedWeeklyEventId] = useState('')
+  const [selectedWeeklyEvent, setSelectedWeeklyEvent] = useState(null)
 
   const selfTreeNode = userProfile
     ? {
@@ -1832,12 +1836,12 @@ function App() {
     profile: profileForm,
     profileIllnesses,
   })
-  const selectedWeeklyEvent =
-    weeklyEvents.find((event) => event.id === selectedWeeklyEventId) ||
+  const selectedEvent =
+    weeklyEvents.find((event) => event.id === selectedWeeklyEvent?.id) ||
     weeklyEvents[0] ||
     null
-  const weeklyEventMapUrl = selectedWeeklyEvent
-    ? buildEventMapEmbedUrl(selectedWeeklyEvent)
+  const weeklyEventMapUrl = selectedEvent
+    ? buildEventMapEmbedUrl(selectedEvent)
     : ''
   function getRelationshipCount(group, ignoredMemberId = null) {
     return familyMembers.filter(
@@ -3716,9 +3720,19 @@ function App() {
                       {weeklyEvents.map((event) => (
                         <article
                           className={`weekly-event-card${
-                            selectedWeeklyEvent?.id === event.id ? ' selected' : ''
+                            selectedEvent?.id === event.id ? ' selected' : ''
                           }`}
                           key={event.id}
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={selectedEvent?.id === event.id}
+                          onClick={() => setSelectedWeeklyEvent(event)}
+                          onKeyDown={(keyEvent) => {
+                            if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
+                              keyEvent.preventDefault()
+                              setSelectedWeeklyEvent(event)
+                            }
+                          }}
                         >
                           <div className="weekly-event-topline">
                             <span
@@ -3738,6 +3752,9 @@ function App() {
                             <span>
                               {event.cost} • {event.distance}
                             </span>
+                            {selectedEvent?.id === event.id ? (
+                              <span className="selected-event-label">Selected</span>
+                            ) : null}
                           </div>
 
                           <p className="weekly-event-reason">
@@ -3751,7 +3768,10 @@ function App() {
                                 href={event.directionsUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                onClick={() => setSelectedWeeklyEventId(event.id)}
+                                onClick={(clickEvent) => {
+                                  clickEvent.stopPropagation()
+                                  setSelectedWeeklyEvent(event)
+                                }}
                               >
                                 Get Directions <span aria-hidden="true">→</span>
                               </a>
@@ -3760,6 +3780,7 @@ function App() {
                                 className="secondary-action"
                                 type="button"
                                 disabled
+                                onClick={(clickEvent) => clickEvent.stopPropagation()}
                               >
                                 Location unavailable
                               </button>
@@ -3771,7 +3792,7 @@ function App() {
                   )}
                 </section>
 
-                {selectedWeeklyEvent ? (
+                {selectedEvent ? (
                   <section
                     className="wellness-map-card"
                     aria-labelledby="wellness-map-title"
@@ -3779,16 +3800,16 @@ function App() {
                     <div>
                       <p className="eyebrow">Map</p>
                       <h2 id="wellness-map-title">
-                        {selectedWeeklyEvent.title}
+                        {selectedEvent.title}
                       </h2>
                       <p>
-                        Select Get Directions on an event to update this shared
-                        map.
+                        {getEventLocationLabel(selectedEvent)}
                       </p>
                     </div>
 
                     <div className="wellness-map-frame">
                       <iframe
+                        key={selectedEvent.id}
                         src={weeklyEventMapUrl}
                         title="Nearby weekly health event map"
                         loading="lazy"
@@ -3798,7 +3819,7 @@ function App() {
 
                     <a
                       className="secondary-action map-action"
-                      href={selectedWeeklyEvent.directionsUrl}
+                      href={selectedEvent.directionsUrl}
                       target="_blank"
                       rel="noreferrer"
                     >
