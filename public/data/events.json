@@ -11,6 +11,7 @@
     "directionsLink": "https://www.google.com/search?sca_esv=7fe2d86af3c866b1&hl=en&gl=us&q=Golden+Gate+Park+Senior+Center&ludocid=14937900420127358296&ibp=gwp%3B0,7",
     "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRswtkeud6w0_ABzqoqXqZCHl6sx6lLLs5KVbgV6y2FpvMxzaMfYXMFGe8&s",
     "source": "open.spotify.com",
+    "zipCode": "",
     "category": "Other"
   },
   {
@@ -25,6 +26,7 @@
     "directionsLink": "https://www.google.com/search?sca_esv=7fe2d86af3c866b1&hl=en&gl=us&q=Golden+Gate+Park&ludocid=8196141654667405104&ibp=gwp%3B0,7",
     "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTTw9HbXFa118LUKwEe8C5DnCJLag3mT6mn1TlDdWip9bAzBKiOuCN9qQI&s",
     "source": "www.sfgate.com",
+    "zipCode": "",
     "category": "Other"
   },
   {
@@ -39,6 +41,7 @@
     "directionsLink": "https://www.google.com/search?sca_esv=7fe2d86af3c866b1&hl=en&gl=us&q=Golden+Gate+Park&ludocid=8196141654667405104&ibp=gwp%3B0,7",
     "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS_aD79eNXkAyir4wJg4BDrL8dVzONDAKVK9E7NjCKwI-gmoqGuDH1n7T4&s",
     "source": "open.spotify.com",
+    "zipCode": "",
     "category": "Other"
   }
 ]
