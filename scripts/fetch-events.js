@@ -83,6 +83,10 @@ function getCityFromAddress(address) {
   return ''
 }
 
+function getZipFromAddress(address) {
+  return normalizeText(address).match(/\b\d{5}(?:-\d{4})?\b/)?.[0]?.slice(0, 5) || ''
+}
+
 function getHostname(value) {
   if (!value) {
     return ''
@@ -165,6 +169,7 @@ function normalizeEvent(event, index) {
     directionsLink: buildDirectionsLink(address, rawDirectionsLink),
     image: getFirstString(event.thumbnail, event.image),
     source: getFirstString(event.source, getHostname(eventLink)) || 'SerpApi',
+    zipCode: getFirstString(event.zipCode, event.postal_code, getZipFromAddress(address)),
   }
 
   return {

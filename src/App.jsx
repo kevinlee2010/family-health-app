@@ -10,6 +10,11 @@ import {
   calculatePreventionScore,
   getPreventionScoreStatus,
 } from './preventionScore'
+import {
+  getCityForZip,
+  getNearbyCitiesForZip,
+  isSupportedZip,
+} from './zipCodeMap'
 
 const relationships = ['Mother', 'Father', 'Sibling', 'Grandparent']
 const relationshipLimitMessages = {
@@ -653,57 +658,6 @@ function clearSavedAppState() {
 
 const workflowSteps = guidedSteps
 
-const mockLocationLookup = {
-  '94127': {
-    city: '',
-    latitude: 37.7354,
-    longitude: -122.4644,
-    zipCode: '94127',
-  },
-  '94110': {
-    city: '',
-    latitude: 37.7486,
-    longitude: -122.4156,
-    zipCode: '94110',
-  },
-  '94132': {
-    city: '',
-    latitude: 37.7218,
-    longitude: -122.4841,
-    zipCode: '94132',
-  },
-  'san francisco': {
-    city: 'San Francisco',
-    latitude: 37.7749,
-    longitude: -122.4194,
-    zipCode: '',
-  },
-  'san francisco, ca': {
-    city: 'San Francisco',
-    latitude: 37.7749,
-    longitude: -122.4194,
-    zipCode: '',
-  },
-  '10001': {
-    city: '',
-    latitude: 40.7506,
-    longitude: -73.9972,
-    zipCode: '10001',
-  },
-  'new york': {
-    city: 'New York',
-    latitude: 40.7128,
-    longitude: -74.006,
-    zipCode: '',
-  },
-  'oakland': {
-    city: 'Oakland',
-    latitude: 37.8044,
-    longitude: -122.2712,
-    zipCode: '',
-  },
-}
-
 function createId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID()
@@ -843,36 +797,16 @@ function buildLocationMapEmbedUrl(activeLocation) {
   )}&output=embed`
 }
 
-function geocodeMockLocation(locationInput) {
-  const cleanLocation = locationInput.trim()
-  const lookupKey = cleanLocation.toLowerCase()
-
-  if (!cleanLocation) {
-    return null
-  }
-
-  const resolvedLocation = mockLocationLookup[lookupKey]
-
-  if (!resolvedLocation) {
-    return {
-      city: /^\d{5}$/.test(cleanLocation) ? '' : cleanLocation,
-      latitude: null,
-      longitude: null,
-      source: 'manual',
-      zipCode: /^\d{5}$/.test(cleanLocation) ? cleanLocation : '',
-    }
-  }
-
-  return {
-    ...resolvedLocation,
-    city: resolvedLocation.city || (/^\d{5}$/.test(cleanLocation) ? '' : cleanLocation),
-    source: 'manual',
-    zipCode: resolvedLocation.zipCode || (/^\d{5}$/.test(cleanLocation) ? cleanLocation : ''),
-  }
+function getZipFromAddress(address) {
+  return address.match(/\b\d{5}(?:-\d{4})?\b/)?.[0]?.slice(0, 5) || ''
 }
 
 function normalizeRemoteEvent(event, index) {
   const address = typeof event?.address === 'string' ? event.address : ''
+  const zipCode =
+    typeof event?.zipCode === 'string' && /^\d{5}$/.test(event.zipCode)
+      ? event.zipCode
+      : getZipFromAddress(address)
   const directionsUrl =
     typeof event?.directionsLink === 'string' && event.directionsLink.trim()
       ? event.directionsLink
@@ -898,6 +832,87 @@ function normalizeRemoteEvent(event, index) {
         ? event.title
         : 'Untitled event',
     when: typeof event?.when === 'string' ? event.when : '',
+    zipCode,
+  }
+}
+
+function getEventFilterResult(events, activeLocation) {
+  const searchedZipCode = activeLocation.source === 'manual' ? activeLocation.zipCode : ''
+
+  if (!searchedZipCode) {
+    return {
+      events,
+      status: events.length > 0 ? 'all-events' : 'empty',
+      targetCity: '',
+      zipCode: '',
+    }
+  }
+
+  if (!/^\d{5}$/.test(searchedZipCode)) {
+    return {
+      events: [],
+      status: 'invalid-zip',
+      targetCity: '',
+      zipCode: searchedZipCode,
+    }
+  }
+
+  const targetCity = getCityForZip(searchedZipCode)
+
+  if (!targetCity) {
+    return {
+      events: [],
+      status: 'unsupported-zip',
+      targetCity: '',
+      zipCode: searchedZipCode,
+    }
+  }
+
+  const exactZipEvents = events.filter((event) => event.zipCode === searchedZipCode)
+
+  if (exactZipEvents.length > 0) {
+    return {
+      events: exactZipEvents,
+      status: 'exact-zip',
+      targetCity,
+      zipCode: searchedZipCode,
+    }
+  }
+
+  const cityEvents = events.filter(
+    (event) => event.city.toLowerCase() === targetCity.toLowerCase(),
+  )
+
+  if (cityEvents.length > 0) {
+    return {
+      events: cityEvents,
+      status: 'city-match',
+      targetCity,
+      zipCode: searchedZipCode,
+    }
+  }
+
+  const nearbyCities = getNearbyCitiesForZip(searchedZipCode)
+  const nearbyEvents = events.filter((event) =>
+    nearbyCities.some(
+      (city) => event.city.toLowerCase() === city.toLowerCase(),
+    ),
+  )
+
+  if (nearbyEvents.length > 0) {
+    return {
+      events: nearbyEvents,
+      status: 'nearby-city',
+      targetCity,
+      zipCode: searchedZipCode,
+    }
+  }
+
+  return {
+    events: [],
+    status: 'supported-empty',
+    targetCity,
+    zipCode: searchedZipCode,
   }
 }
 
@@ -1691,10 +1706,22 @@ function App() {
     : null
   const disclaimerText =
     'This educational tool organizes family history and lifestyle information. It does not provide a diagnosis or replace professional medical advice.'
+  const weeklyEventFilter = getEventFilterResult(weeklyEvents, activeLocation)
+  const displayedWeeklyEvents = weeklyEventFilter.events
   const selectedEvent =
-    weeklyEvents.find((event) => event.id === selectedWeeklyEvent?.id) ||
-    weeklyEvents[0] ||
+    displayedWeeklyEvents.find((event) => event.id === selectedWeeklyEvent?.id) ||
+    displayedWeeklyEvents[0] ||
     null
+  const weeklyEventHeading = weeklyEventFilter.zipCode
+    ? `Health events near ${weeklyEventFilter.zipCode}`
+    : 'This Week Near You'
+  const weeklyEventDescription = weeklyEventFilter.zipCode
+    ? weeklyEventFilter.status === 'nearby-city'
+      ? `Showing nearby supported-city events because no exact events were found in ${weeklyEventFilter.targetCity}.`
+      : weeklyEventFilter.targetCity
+        ? `Showing events for ${weeklyEventFilter.targetCity}.`
+        : ''
+    : 'Upcoming community health opportunities matched to your family history and lifestyle profile.'
   const weeklyEventMapUrl = selectedEvent
     ? buildEventMapEmbedUrl(selectedEvent)
     : buildLocationMapEmbedUrl(activeLocation)
@@ -1998,34 +2025,49 @@ function App() {
   function handleManualLocationSubmit(event) {
     event.preventDefault()
 
-    const locationInput = getActiveLocationLabel(activeLocation)
+    const locationInput = activeLocation.zipCode.trim()
 
     if (!locationInput.trim()) {
       setLocationStatus('error')
-      setLocationMessage('Enter a city or ZIP code to search near that location.')
+      setLocationMessage('Enter a 5-digit ZIP code to search near that location.')
       return
     }
 
-    const resolvedLocation = geocodeMockLocation(locationInput)
+    if (!/^\d{5}$/.test(locationInput)) {
+      setActiveLocation({
+        city: '',
+        latitude: null,
+        longitude: null,
+        source: 'manual',
+        zipCode: locationInput,
+      })
+      setSelectedWeeklyEvent(null)
+      setLocationStatus('error')
+      setLocationMessage('Enter a valid 5-digit ZIP code.')
+      return
+    }
 
-    setActiveLocation(resolvedLocation)
+    const city = getCityForZip(locationInput)
+
+    setActiveLocation({
+      city,
+      latitude: null,
+      longitude: null,
+      source: 'manual',
+      zipCode: locationInput,
+    })
     setSelectedWeeklyEvent(null)
 
-    if (
-      Number.isFinite(resolvedLocation.latitude) &&
-      Number.isFinite(resolvedLocation.longitude)
-    ) {
-      setLocationStatus('manual')
+    if (!isSupportedZip(locationInput)) {
+      setLocationStatus('error')
       setLocationMessage(
-        `Using ${locationInput.trim()} for this week's event search.`,
+        'That ZIP code is not supported yet. Try a San Francisco, Daly City, South San Francisco, Oakland, or Berkeley ZIP code.',
       )
       return
     }
 
-    setLocationStatus('error')
-    setLocationMessage(
-      'This mock event dataset cannot resolve that location yet. Real location-based results will need a larger event dataset or backend.',
-    )
+    setLocationStatus('manual')
+    setLocationMessage(`Showing health events near ${locationInput} (${city}).`)
   }
 
   function addProfileIllness(illness) {
@@ -3597,30 +3639,34 @@ function App() {
                 className="field-group location-field"
                 htmlFor="manual-location"
               >
-                City or ZIP code
+                ZIP code
                 <input
                   id="manual-location"
+                  inputMode="numeric"
+                  maxLength={5}
+                  pattern="\d{5}"
                   type="text"
-                  value={getActiveLocationLabel(activeLocation)}
+                  value={activeLocation.zipCode}
                   onChange={(event) => {
-                    const locationInput = event.target.value
-                    const isZipCode = /^\d{0,5}$/.test(locationInput.trim())
+                    const zipCode = event.target.value
+                      .replace(/\D/g, '')
+                      .slice(0, 5)
 
                     setActiveLocation((currentLocation) => ({
                       ...currentLocation,
-                      city: isZipCode ? '' : locationInput,
+                      city: '',
                       latitude: null,
                       longitude: null,
                       source: '',
-                      zipCode: isZipCode ? locationInput : '',
+                      zipCode,
                     }))
                   }}
-                  placeholder="Example: Oakland, CA or 94612"
+                  placeholder="Example: 94132"
                 />
               </label>
 
               <button className="secondary-action" type="submit">
-                Search Location <span aria-hidden="true">→</span>
+                Search ZIP <span aria-hidden="true">→</span>
               </button>
             </form>
 
@@ -3645,12 +3691,9 @@ function App() {
                   <div className="section-heading-row">
                     <div>
                       <h2 id="wellness-recommendations-title">
-                        This Week Near You
+                        {weeklyEventHeading}
                       </h2>
-                      <p>
-                        Upcoming community health opportunities matched to your
-                        family history and lifestyle profile.
-                      </p>
+                      {weeklyEventDescription ? <p>{weeklyEventDescription}</p> : null}
                     </div>
                   </div>
 
@@ -3664,15 +3707,21 @@ function App() {
                     </p>
                   ) : null}
 
-                  {weeklyEventsStatus === 'success' && weeklyEvents.length === 0 ? (
+                  {weeklyEventsStatus === 'success' && displayedWeeklyEvents.length === 0 ? (
                     <p className="helper-text">
-                      No prevention events were found for this week.
+                      {weeklyEventFilter.status === 'invalid-zip'
+                        ? 'Enter a valid 5-digit ZIP code.'
+                        : weeklyEventFilter.status === 'unsupported-zip'
+                          ? 'That ZIP code is not supported yet. Try a San Francisco, Daly City, South San Francisco, Oakland, or Berkeley ZIP code.'
+                          : weeklyEventFilter.status === 'supported-empty'
+                            ? `No prevention events were found near ${weeklyEventFilter.zipCode} for this week.`
+                            : 'No prevention events were found for this week.'}
                     </p>
                   ) : null}
 
-                  {weeklyEvents.length > 0 ? (
+                  {displayedWeeklyEvents.length > 0 ? (
                     <div className="weekly-event-list">
-                      {weeklyEvents.map((event) => (
+                      {displayedWeeklyEvents.map((event) => (
                         <article
                           className={`weekly-event-card${
                             selectedEvent?.id === event.id ? ' selected' : ''
