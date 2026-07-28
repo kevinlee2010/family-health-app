@@ -695,7 +695,54 @@ function addIllnessToList(currentIllnesses, illness) {
   return [...currentIllnesses, illness]
 }
 
-function getLocationSearchTarget({ manualLocation, userCoordinates }) {
+function hasValidEventLocation(event) {
+  return Boolean(
+    event?.address ||
+      (Number.isFinite(event?.coordinates?.latitude) &&
+        Number.isFinite(event?.coordinates?.longitude)),
+  )
+}
+
+function getEventDestination(event) {
+  if (
+    Number.isFinite(event?.coordinates?.latitude) &&
+    Number.isFinite(event?.coordinates?.longitude)
+  ) {
+    return `${event.coordinates.latitude},${event.coordinates.longitude}`
+  }
+
+  return event?.address || ''
+}
+
+function buildGoogleMapsDirectionsUrl(event, originTarget = '') {
+  const destination = getEventDestination(event)
+
+  if (!destination) {
+    return ''
+  }
+
+  const originQuery = originTarget
+    ? `&origin=${encodeURIComponent(originTarget)}`
+    : ''
+
+  return `https://www.google.com/maps/dir/?api=1${originQuery}&destination=${encodeURIComponent(
+    destination,
+  )}`
+}
+
+function buildEventMapEmbedUrl(event) {
+  const destination = getEventDestination(event)
+
+  if (!destination) {
+    return ''
+  }
+
+  return `https://maps.google.com/maps?q=${encodeURIComponent(
+    destination,
+  )}&output=embed`
+}
+
+function getLocationOriginTarget({ manualLocation, userCoordinates }) {
   if (userCoordinates) {
     return `${userCoordinates.latitude},${userCoordinates.longitude}`
   }
@@ -707,22 +754,6 @@ function getLocationSearchTarget({ manualLocation, userCoordinates }) {
   }
 
   return ''
-}
-
-function buildGoogleMapsSearchUrl(searchQuery, locationTarget) {
-  const query = locationTarget
-    ? `${searchQuery} near ${locationTarget}`
-    : `${searchQuery} near me`
-
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
-}
-
-function buildGoogleMapsEmbedUrl(searchQuery, locationTarget) {
-  const query = locationTarget
-    ? `${searchQuery} near ${locationTarget}`
-    : `${searchQuery} near me`
-
-  return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`
 }
 
 function conditionMatches(condition, keywords) {
@@ -960,7 +991,8 @@ function buildWeeklyEventRecommendations({
 
       return {
         ...event,
-        directionsUrl: buildGoogleMapsSearchUrl(event.searchQuery, locationTarget),
+        directionsUrl: buildGoogleMapsDirectionsUrl(event, locationTarget),
+        hasLocation: hasValidEventLocation(event),
         relevanceScore,
         recommendationReason: bestSignal?.reason || '',
       }
@@ -1285,79 +1317,6 @@ function formatEventDateTime(startsAt) {
   }).format(eventDate)
 }
 
-function WeeklyEventDetailsModal({ event, onClose, onDirections }) {
-  if (!event) {
-    return null
-  }
-
-  return (
-    <div className="condition-modal-backdrop" onClick={onClose}>
-      <section
-        className="condition-modal event-detail-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="event-details-title"
-        onClick={(clickEvent) => clickEvent.stopPropagation()}
-      >
-        <div className="condition-modal-header">
-          <div>
-            <p className="eyebrow">This week near you</p>
-            <h2 id="event-details-title">
-              <span aria-hidden="true">{event.icon}</span> {event.title}
-            </h2>
-          </div>
-          <button
-            className="remove-button"
-            type="button"
-            onClick={onClose}
-            aria-label="Close event details"
-          >
-            &times;
-          </button>
-        </div>
-
-        <div className="event-detail-summary">
-          <span>{formatEventDateTime(event.startsAt)}</span>
-          <span>{event.location}</span>
-          <span>
-            {event.cost} • {event.distance}
-          </span>
-        </div>
-
-        <section className="condition-overview">
-          <h3>Why it is recommended</h3>
-          <p>{event.recommendationReason}</p>
-        </section>
-
-        <section className="condition-detail-section">
-          <h3>Event details</h3>
-          <p>{event.details}</p>
-        </section>
-
-        <div className="event-detail-actions">
-          <button
-            className="primary-action"
-            type="button"
-            onClick={() => {
-              onDirections(event.id)
-              onClose()
-            }}
-          >
-            Get Directions <span aria-hidden="true">→</span>
-          </button>
-          <a
-            className="secondary-action"
-            href={event.directionsUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open in Google Maps <span aria-hidden="true">→</span>
-          </a>
-        </div>
-      </section>
-    </div>
-  )
-}
 function IllnessPicker({
   disabled = false,
   hasUnlistedCondition = false,
@@ -1810,7 +1769,6 @@ function App() {
   const [isFamilyFormOpen, setIsFamilyFormOpen] = useState(false)
   const [activeFamilyMenuId, setActiveFamilyMenuId] = useState(null)
   const [selectedWeeklyEventId, setSelectedWeeklyEventId] = useState('')
-  const [activeWeeklyEventId, setActiveWeeklyEventId] = useState('')
 
   const selfTreeNode = userProfile
     ? {
@@ -1863,7 +1821,7 @@ function App() {
     : null
   const disclaimerText =
     'This educational tool organizes family history and lifestyle information. It does not provide a diagnosis or replace professional medical advice.'
-  const wellnessLocationTarget = getLocationSearchTarget({
+  const wellnessLocationTarget = getLocationOriginTarget({
     manualLocation,
     userCoordinates,
   })
@@ -1878,13 +1836,8 @@ function App() {
     weeklyEvents.find((event) => event.id === selectedWeeklyEventId) ||
     weeklyEvents[0] ||
     null
-  const activeWeeklyEvent =
-    weeklyEvents.find((event) => event.id === activeWeeklyEventId) || null
   const weeklyEventMapUrl = selectedWeeklyEvent
-    ? buildGoogleMapsEmbedUrl(
-        selectedWeeklyEvent.searchQuery,
-        wellnessLocationTarget,
-      )
+    ? buildEventMapEmbedUrl(selectedWeeklyEvent)
     : ''
   function getRelationshipCount(group, ignoredMemberId = null) {
     return familyMembers.filter(
@@ -3792,20 +3745,25 @@ function App() {
                           </p>
 
                           <div className="weekly-event-actions">
-                            <button
-                              className="secondary-action"
-                              type="button"
-                              onClick={() => setActiveWeeklyEventId(event.id)}
-                            >
-                              View Details
-                            </button>
-                            <button
-                              className="primary-action"
-                              type="button"
-                              onClick={() => setSelectedWeeklyEventId(event.id)}
-                            >
-                              Get Directions <span aria-hidden="true">→</span>
-                            </button>
+                            {event.hasLocation ? (
+                              <a
+                                className="primary-action"
+                                href={event.directionsUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => setSelectedWeeklyEventId(event.id)}
+                              >
+                                Get Directions <span aria-hidden="true">→</span>
+                              </a>
+                            ) : (
+                              <button
+                                className="secondary-action"
+                                type="button"
+                                disabled
+                              >
+                                Location unavailable
+                              </button>
+                            )}
                           </div>
                         </article>
                       ))}
@@ -3902,14 +3860,6 @@ function App() {
           conditionName={activeConditionName}
           details={activeConditionDetails}
           onClose={() => setActiveConditionName(null)}
-        />
-      ) : null}
-
-      {activeWeeklyEvent ? (
-        <WeeklyEventDetailsModal
-          event={activeWeeklyEvent}
-          onClose={() => setActiveWeeklyEventId('')}
-          onDirections={setSelectedWeeklyEventId}
         />
       ) : null}
 

@@ -870,30 +870,6 @@ body {
   display: block;
 }
 
-.event-detail-modal {
-  width: min(760px, 100%);
-}
-
-.event-detail-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.event-detail-summary span {
-  border-radius: 999px;
-  background: var(--surface-strong);
-  color: var(--ink);
-  font-weight: 800;
-  padding: 8px 12px;
-}
-
-.event-detail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
 .compact-empty {
   min-height: 150px;
 }
