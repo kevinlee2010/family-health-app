@@ -1,3 +1,6 @@
+// This prototype dataset only covers San Francisco. Real location-based results
+// will require a larger geographic event dataset, a public events API, or a
+// Cloudflare backend that retrieves events by city or ZIP code.
 const mockWeeklyEventTemplates = [
   {
     id: 'bp-screening-westside-pharmacy',

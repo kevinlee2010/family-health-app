@@ -352,8 +352,13 @@ const defaultSavedState = {
   familyDiagnosisAge: '',
   editingFamilyMemberId: null,
   habitProgress: {},
-  manualLocation: '',
-  userCoordinates: null,
+  activeLocation: {
+    city: '',
+    latitude: null,
+    longitude: null,
+    source: '',
+    zipCode: '',
+  },
   locationStatus: 'idle',
   locationMessage: '',
 }
@@ -483,6 +488,24 @@ function sanitizeCoordinates(value) {
   }
 }
 
+function sanitizeActiveLocation(value) {
+  if (!isPlainObject(value)) {
+    return { ...defaultSavedState.activeLocation }
+  }
+
+  const source = ['manual', 'gps'].includes(value.source) ? value.source : ''
+  const latitude = Number(value.latitude)
+  const longitude = Number(value.longitude)
+
+  return {
+    city: asString(value.city),
+    latitude: Number.isFinite(latitude) ? latitude : null,
+    longitude: Number.isFinite(longitude) ? longitude : null,
+    source,
+    zipCode: asString(value.zipCode),
+  }
+}
+
 function sanitizeHabitProgress(value) {
   if (!isPlainObject(value)) {
     return {}
@@ -528,6 +551,26 @@ function normalizeSavedState(value) {
     value.profileHasUnlistedCondition || userProfile?.hasUnlistedCondition,
   )
   const locationStatus = sanitizeLocationStatus(value.locationStatus)
+  const legacyCoordinates = sanitizeCoordinates(value.userCoordinates)
+  const activeLocation = isPlainObject(value.activeLocation)
+    ? sanitizeActiveLocation(value.activeLocation)
+    : legacyCoordinates
+      ? {
+          city: '',
+          latitude: legacyCoordinates.latitude,
+          longitude: legacyCoordinates.longitude,
+          source: 'gps',
+          zipCode: '',
+        }
+      : {
+          city: asString(value.manualLocation),
+          latitude: null,
+          longitude: null,
+          source: asString(value.manualLocation) ? 'manual' : '',
+          zipCode: /^\d{5}$/.test(asString(value.manualLocation).trim())
+            ? asString(value.manualLocation).trim()
+            : '',
+        }
 
   return {
     activeView: sanitizeActiveView(value.activeView),
@@ -554,8 +597,7 @@ function normalizeSavedState(value) {
         ? value.editingFamilyMemberId
         : null,
     habitProgress: sanitizeHabitProgress(value.habitProgress),
-    manualLocation: asString(value.manualLocation),
-    userCoordinates: sanitizeCoordinates(value.userCoordinates),
+    activeLocation,
     locationStatus,
     locationMessage:
       locationStatus === 'idle' ? '' : asString(value.locationMessage),
@@ -613,6 +655,57 @@ function clearSavedAppState() {
 const workflowSteps = guidedSteps
 
 const closeFamilyRelationships = ['Mother', 'Father', 'Sibling']
+const eventSearchRadiusMiles = 25
+const mockLocationLookup = {
+  '94127': {
+    city: '',
+    latitude: 37.7354,
+    longitude: -122.4644,
+    zipCode: '94127',
+  },
+  '94110': {
+    city: '',
+    latitude: 37.7486,
+    longitude: -122.4156,
+    zipCode: '94110',
+  },
+  '94132': {
+    city: '',
+    latitude: 37.7218,
+    longitude: -122.4841,
+    zipCode: '94132',
+  },
+  'san francisco': {
+    city: 'San Francisco',
+    latitude: 37.7749,
+    longitude: -122.4194,
+    zipCode: '',
+  },
+  'san francisco, ca': {
+    city: 'San Francisco',
+    latitude: 37.7749,
+    longitude: -122.4194,
+    zipCode: '',
+  },
+  '10001': {
+    city: '',
+    latitude: 40.7506,
+    longitude: -73.9972,
+    zipCode: '10001',
+  },
+  'new york': {
+    city: 'New York',
+    latitude: 40.7128,
+    longitude: -74.006,
+    zipCode: '',
+  },
+  'oakland': {
+    city: 'Oakland',
+    latitude: 37.8044,
+    longitude: -122.2712,
+    zipCode: '',
+  },
+}
 
 function createId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -746,18 +839,100 @@ function buildEventMapEmbedUrl(event) {
   )}&output=embed`
 }
 
-function getLocationOriginTarget({ manualLocation, userCoordinates }) {
-  if (userCoordinates) {
-    return `${userCoordinates.latitude},${userCoordinates.longitude}`
+function getActiveLocationLabel(activeLocation) {
+  return activeLocation.zipCode || activeLocation.city || ''
+}
+
+function getLocationOriginTarget(activeLocation) {
+  if (!activeLocation?.source) {
+    return ''
   }
 
-  const cleanManualLocation = manualLocation.trim()
-
-  if (cleanManualLocation) {
-    return cleanManualLocation
+  if (
+    Number.isFinite(activeLocation?.latitude) &&
+    Number.isFinite(activeLocation?.longitude)
+  ) {
+    return `${activeLocation.latitude},${activeLocation.longitude}`
   }
 
-  return ''
+  return getActiveLocationLabel(activeLocation)
+}
+
+function buildLocationMapEmbedUrl(activeLocation) {
+  const locationTarget = getLocationOriginTarget(activeLocation)
+
+  if (!locationTarget) {
+    return ''
+  }
+
+  return `https://maps.google.com/maps?q=${encodeURIComponent(
+    locationTarget,
+  )}&output=embed`
+}
+
+function geocodeMockLocation(locationInput) {
+  const cleanLocation = locationInput.trim()
+  const lookupKey = cleanLocation.toLowerCase()
+
+  if (!cleanLocation) {
+    return null
+  }
+
+  const resolvedLocation = mockLocationLookup[lookupKey]
+
+  if (!resolvedLocation) {
+    return {
+      city: /^\d{5}$/.test(cleanLocation) ? '' : cleanLocation,
+      latitude: null,
+      longitude: null,
+      source: 'manual',
+      zipCode: /^\d{5}$/.test(cleanLocation) ? cleanLocation : '',
+    }
+  }
+
+  return {
+    ...resolvedLocation,
+    city: resolvedLocation.city || (/^\d{5}$/.test(cleanLocation) ? '' : cleanLocation),
+    source: 'manual',
+    zipCode: resolvedLocation.zipCode || (/^\d{5}$/.test(cleanLocation) ? cleanLocation : ''),
+  }
+}
+
+function getDistanceMiles(firstLocation, secondLocation) {
+  if (
+    !Number.isFinite(firstLocation?.latitude) ||
+    !Number.isFinite(firstLocation?.longitude) ||
+    !Number.isFinite(secondLocation?.latitude) ||
+    !Number.isFinite(secondLocation?.longitude)
+  ) {
+    return null
+  }
+
+  const earthRadiusMiles = 3958.8
+  const toRadians = (degrees) => (degrees * Math.PI) / 180
+  const latitudeDifference = toRadians(secondLocation.latitude - firstLocation.latitude)
+  const longitudeDifference = toRadians(secondLocation.longitude - firstLocation.longitude)
+  const firstLatitude = toRadians(firstLocation.latitude)
+  const secondLatitude = toRadians(secondLocation.latitude)
+  const haversine =
+    Math.sin(latitudeDifference / 2) ** 2 +
+    Math.cos(firstLatitude) *
+      Math.cos(secondLatitude) *
+      Math.sin(longitudeDifference / 2) ** 2
+
+  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+}
+
+function formatDistance(distanceMiles) {
+  if (!Number.isFinite(distanceMiles)) {
+    return ''
+  }
+
+  if (distanceMiles < 10) {
+    return `${distanceMiles.toFixed(1)} miles`
+  }
+
+  return `${Math.round(distanceMiles)} miles`
 }
 
 function conditionMatches(condition, keywords) {
@@ -824,6 +999,7 @@ function hasLifestyleAnswer(profile, field, values) {
 }
 
 function buildWeeklyEventRecommendations({
+  activeLocation,
   events,
   familyMembers,
   locationTarget,
@@ -979,8 +1155,14 @@ function buildWeeklyEventRecommendations({
     },
   ].filter((signal) => signal.visible)
   const now = new Date()
+  const weekEnd = new Date(now)
+  weekEnd.setDate(now.getDate() + 7)
   const eventRecommendations = events
-    .filter((event) => new Date(event.startsAt) >= now)
+    .filter((event) => {
+      const eventDate = new Date(event.startsAt)
+
+      return eventDate >= now && eventDate <= weekEnd
+    })
     .map((event) => {
       const matchingSignals = signals.filter((signal) =>
         event.tags.includes(signal.tag),
@@ -992,9 +1174,12 @@ function buildWeeklyEventRecommendations({
         (total, signal) => total + signal.score,
         0,
       )
+      const distanceMiles = getDistanceMiles(activeLocation, event.coordinates)
 
       return {
         ...event,
+        calculatedDistanceMiles: distanceMiles,
+        distance: formatDistance(distanceMiles) || event.distance,
         directionsUrl: buildGoogleMapsDirectionsUrl(event, locationTarget),
         hasLocation: hasValidEventLocation(event),
         relevanceScore,
@@ -1002,6 +1187,11 @@ function buildWeeklyEventRecommendations({
       }
     })
     .filter((event) => event.relevanceScore > 0)
+    .filter(
+      (event) =>
+        Number.isFinite(event.calculatedDistanceMiles) &&
+        event.calculatedDistanceMiles <= eventSearchRadiusMiles,
+    )
 
   const personalizedEvents = eventRecommendations.filter(
     (event) => !event.tags.includes('general') || event.relevanceScore > 8,
@@ -1018,6 +1208,13 @@ function buildWeeklyEventRecommendations({
 
       if (relevanceDifference !== 0) {
         return relevanceDifference
+      }
+
+      const distanceDifference =
+        firstEvent.calculatedDistanceMiles - secondEvent.calculatedDistanceMiles
+
+      if (distanceDifference !== 0) {
+        return distanceDifference
       }
 
       return new Date(firstEvent.startsAt) - new Date(secondEvent.startsAt)
@@ -1757,11 +1954,8 @@ function App() {
   const [successMessage, setSuccessMessage] = useState('')
   const [habitProgress, setHabitProgress] = useState(savedAppState.habitProgress)
   const [activeConditionName, setActiveConditionName] = useState(null)
-  const [manualLocation, setManualLocation] = useState(
-    savedAppState.manualLocation,
-  )
-  const [userCoordinates, setUserCoordinates] = useState(
-    savedAppState.userCoordinates,
+  const [activeLocation, setActiveLocation] = useState(
+    savedAppState.activeLocation,
   )
   const [locationStatus, setLocationStatus] = useState(
     savedAppState.locationStatus,
@@ -1825,11 +2019,9 @@ function App() {
     : null
   const disclaimerText =
     'This educational tool organizes family history and lifestyle information. It does not provide a diagnosis or replace professional medical advice.'
-  const wellnessLocationTarget = getLocationOriginTarget({
-    manualLocation,
-    userCoordinates,
-  })
+  const wellnessLocationTarget = getLocationOriginTarget(activeLocation)
   const weeklyEvents = buildWeeklyEventRecommendations({
+    activeLocation,
     events: getMockWeeklyEvents(),
     familyMembers,
     locationTarget: wellnessLocationTarget,
@@ -1842,7 +2034,7 @@ function App() {
     null
   const weeklyEventMapUrl = selectedEvent
     ? buildEventMapEmbedUrl(selectedEvent)
-    : ''
+    : buildLocationMapEmbedUrl(activeLocation)
   function getRelationshipCount(group, ignoredMemberId = null) {
     return familyMembers.filter(
       (member) =>
@@ -1994,8 +2186,7 @@ function App() {
       familyDiagnosisAge,
       editingFamilyMemberId,
       habitProgress,
-      manualLocation,
-      userCoordinates,
+      activeLocation,
       locationStatus,
       locationMessage,
     })
@@ -2015,8 +2206,7 @@ function App() {
     familyDiagnosisAge,
     editingFamilyMemberId,
     habitProgress,
-    manualLocation,
-    userCoordinates,
+    activeLocation,
     locationStatus,
     locationMessage,
   ])
@@ -2070,10 +2260,14 @@ function App() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setUserCoordinates({
+        setActiveLocation({
+          city: '',
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          source: 'gps',
+          zipCode: '',
         })
+        setSelectedWeeklyEvent(null)
         setLocationStatus('success')
         setLocationMessage(
           'Location added. Only nearby search terms use this location; family health data stays on your device.',
@@ -2090,6 +2284,39 @@ function App() {
         maximumAge: 300000,
         timeout: 10000,
       },
+    )
+  }
+
+  function handleManualLocationSubmit(event) {
+    event.preventDefault()
+
+    const locationInput = getActiveLocationLabel(activeLocation)
+
+    if (!locationInput.trim()) {
+      setLocationStatus('error')
+      setLocationMessage('Enter a city or ZIP code to search near that location.')
+      return
+    }
+
+    const resolvedLocation = geocodeMockLocation(locationInput)
+
+    setActiveLocation(resolvedLocation)
+    setSelectedWeeklyEvent(null)
+
+    if (
+      Number.isFinite(resolvedLocation.latitude) &&
+      Number.isFinite(resolvedLocation.longitude)
+    ) {
+      setLocationStatus('manual')
+      setLocationMessage(
+        `Using ${locationInput.trim()} for this week's event search.`,
+      )
+      return
+    }
+
+    setLocationStatus('error')
+    setLocationMessage(
+      'This mock event dataset cannot resolve that location yet. Real location-based results will need a larger event dataset or backend.',
     )
   }
 
@@ -2337,8 +2564,7 @@ function App() {
     setSuccessMessage('')
     setHabitProgress({})
     setActiveConditionName(null)
-    setManualLocation('')
-    setUserCoordinates(null)
+    setActiveLocation(defaultSavedState.activeLocation)
     setLocationStatus('idle')
     setLocationMessage('')
     setProfileNoListedConditions(false)
@@ -3646,7 +3872,7 @@ function App() {
               </p>
             </div>
 
-            <div className="location-controls">
+            <form className="location-controls" onSubmit={handleManualLocationSubmit}>
               <button
                 className="primary-action"
                 type="button"
@@ -3667,18 +3893,28 @@ function App() {
                 <input
                   id="manual-location"
                   type="text"
-                  value={manualLocation}
+                  value={getActiveLocationLabel(activeLocation)}
                   onChange={(event) => {
-                    setManualLocation(event.target.value)
-                    if (event.target.value.trim()) {
-                      setLocationMessage('Using your manually entered location.')
-                      setLocationStatus('manual')
-                    }
+                    const locationInput = event.target.value
+                    const isZipCode = /^\d{0,5}$/.test(locationInput.trim())
+
+                    setActiveLocation((currentLocation) => ({
+                      ...currentLocation,
+                      city: isZipCode ? '' : locationInput,
+                      latitude: null,
+                      longitude: null,
+                      source: '',
+                      zipCode: isZipCode ? locationInput : '',
+                    }))
                   }}
                   placeholder="Example: Oakland, CA or 94612"
                 />
               </label>
-            </div>
+
+              <button className="secondary-action" type="submit">
+                Search Location <span aria-hidden="true">→</span>
+              </button>
+            </form>
 
             {locationMessage ? (
               <p className={`location-message ${locationStatus}`}>
@@ -3712,8 +3948,9 @@ function App() {
 
                   {weeklyEvents.length === 0 ? (
                     <p className="helper-text">
-                      Complete your health profile to receive personalized weekly
-                      health opportunities.
+                      {activeLocation.source
+                        ? 'No prevention events were found near this location for this week.'
+                        : 'Choose your location to see personalized weekly health opportunities.'}
                     </p>
                   ) : (
                     <div className="weekly-event-list">
@@ -3792,7 +4029,7 @@ function App() {
                   )}
                 </section>
 
-                {selectedEvent ? (
+                {weeklyEventMapUrl ? (
                   <section
                     className="wellness-map-card"
                     aria-labelledby="wellness-map-title"
@@ -3800,16 +4037,20 @@ function App() {
                     <div>
                       <p className="eyebrow">Map</p>
                       <h2 id="wellness-map-title">
-                        {selectedEvent.title}
+                        {selectedEvent
+                          ? selectedEvent.title
+                          : getActiveLocationLabel(activeLocation)}
                       </h2>
                       <p>
-                        {getEventLocationLabel(selectedEvent)}
+                        {selectedEvent
+                          ? getEventLocationLabel(selectedEvent)
+                          : 'Showing your selected location.'}
                       </p>
                     </div>
 
                     <div className="wellness-map-frame">
                       <iframe
-                        key={selectedEvent.id}
+                        key={selectedEvent?.id || getLocationOriginTarget(activeLocation)}
                         src={weeklyEventMapUrl}
                         title="Nearby weekly health event map"
                         loading="lazy"
@@ -3817,14 +4058,16 @@ function App() {
                       />
                     </div>
 
-                    <a
-                      className="secondary-action map-action"
-                      href={selectedEvent.directionsUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open in Google Maps <span aria-hidden="true">→</span>
-                    </a>
+                    {selectedEvent ? (
+                      <a
+                        className="secondary-action map-action"
+                        href={selectedEvent.directionsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open in Google Maps <span aria-hidden="true">→</span>
+                      </a>
+                    ) : null}
                   </section>
                 ) : null}
               </div>
