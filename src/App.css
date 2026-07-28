@@ -765,11 +765,10 @@ body {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.88);
   color: inherit;
-  cursor: pointer;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 14px;
-  align-items: center;
+  align-items: start;
   padding: 14px;
   text-align: left;
   transition:
@@ -792,6 +791,11 @@ body {
   outline-offset: 2px;
 }
 
+.wellness-recommendation-content {
+  display: grid;
+  gap: 10px;
+}
+
 .wellness-recommendation-icon {
   width: 42px;
   height: 42px;
@@ -809,23 +813,26 @@ body {
 }
 
 .wellness-recommendation-card p {
-  margin: 4px 0 0;
+  margin: 0;
   color: var(--muted-strong);
   font-weight: 650;
   line-height: 1.45;
 }
 
-.wellness-supports {
-  font-size: 0.84rem;
+.wellness-reason,
+.wellness-resource-type {
+  font-size: 0.9rem;
 }
 
-.wellness-supports strong {
+.wellness-reason strong,
+.wellness-resource-type strong {
   color: var(--ink);
 }
 
-.recommendation-arrow {
-  color: var(--accent);
-  font-weight: 950;
+.wellness-find-button {
+  justify-self: start;
+  min-height: 38px;
+  padding: 9px 14px;
 }
 
 .map-action {

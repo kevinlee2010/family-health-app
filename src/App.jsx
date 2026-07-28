@@ -617,108 +617,7 @@ const healthCategoryIcons = {
   mental: '🧠',
 }
 
-const wellnessSupportLabels = {
-  cancer: 'Cancer Prevention',
-  cardiovascular: 'Cardiovascular Health',
-  kidney: 'Kidney Health',
-  mental: 'Mental Well-Being',
-  metabolic: 'Metabolic Health',
-  neurological: 'Neurological Health',
-  respiratory: 'Respiratory Health',
-}
-
-const wellnessActionDefinitions = [
-  {
-    id: 'walking-trails',
-    icon: '🚶',
-    name: 'Walking Trails',
-    searchQuery: 'walking trails',
-    supports: ['cardiovascular', 'mental', 'metabolic', 'neurological', 'kidney'],
-    explanation:
-      'Walking supports heart health, endurance, stress relief, and time away from screens.',
-  },
-  {
-    id: 'parks',
-    icon: '🌿',
-    name: 'Parks',
-    searchQuery: 'parks',
-    supports: ['cardiovascular', 'mental', 'cancer', 'respiratory', 'neurological'],
-    explanation:
-      'Parks make regular movement and stress-relief activities easier to access.',
-  },
-  {
-    id: 'primary-care-clinics',
-    icon: '🩺',
-    name: 'Primary Care Clinics',
-    searchQuery: 'primary care clinics',
-    supports: ['cancer', 'cardiovascular', 'kidney', 'metabolic'],
-    explanation:
-      'A primary care visit is a good place to discuss family history, screenings, cholesterol, and blood pressure.',
-  },
-  {
-    id: 'recreation-centers',
-    icon: '🏃',
-    name: 'Recreation Centers',
-    searchQuery: 'recreation centers gyms',
-    supports: ['cardiovascular', 'metabolic', 'respiratory', 'neurological'],
-    explanation:
-      'Recreation centers can support regular cardio, strength training, and healthy routines.',
-  },
-  {
-    id: 'smoking-cessation',
-    icon: '🚭',
-    name: 'Smoking Cessation Support',
-    searchQuery: 'smoking cessation programs',
-    supports: ['cancer', 'respiratory', 'cardiovascular'],
-    explanation:
-      'Quit-support resources can reduce several long-term prevention concerns.',
-  },
-  {
-    id: 'farmers-markets',
-    icon: '🥬',
-    name: 'Farmers Markets',
-    searchQuery: 'farmers markets',
-    supports: ['metabolic', 'cardiovascular', 'kidney'],
-    explanation:
-      'Fresh produce can make balanced meals and long-term nutrition habits easier.',
-  },
-  {
-    id: 'healthy-grocery-stores',
-    icon: '🛒',
-    name: 'Healthy Grocery Stores',
-    searchQuery: 'healthy grocery stores',
-    supports: ['metabolic', 'cardiovascular', 'kidney'],
-    explanation:
-      'Nearby grocery options can support simple, repeatable nutrition choices.',
-  },
-  {
-    id: 'yoga-mindfulness',
-    icon: '🧘',
-    name: 'Yoga or Mindfulness Studios',
-    searchQuery: 'yoga mindfulness studios',
-    supports: ['mental', 'neurological'],
-    explanation:
-      'Mindfulness and gentle movement can support stress management and recovery routines.',
-  },
-  {
-    id: 'indoor-recreation',
-    icon: '🏊',
-    name: 'Indoor Recreation',
-    searchQuery: 'indoor recreation centers indoor swimming pools',
-    supports: ['respiratory', 'cardiovascular', 'metabolic'],
-    explanation:
-      'Indoor activity spaces can help when weather, pollen, or air quality makes outdoor movement harder.',
-  },
-  {
-    id: 'education-programs',
-    icon: '💡',
-    name: 'Health Education Programs',
-    searchQuery: 'nutrition education diabetes prevention program health education',
-    supports: ['metabolic', 'cancer', 'kidney', 'neurological'],
-    explanation:
-      'Education programs can help turn family-history patterns into better questions and habits.',
-  },
-]
+const closeFamilyRelationships = ['Mother', 'Father', 'Sibling']
 
 function createId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -835,48 +734,299 @@ function buildGoogleMapsEmbedUrl(searchQuery, locationTarget) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`
 }
 
-const wellnessRiskWeight = {
-  High: 3,
-  Increased: 2,
-  Average: 1,
+function conditionMatches(condition, keywords) {
+  const conditionKey = getIllnessKey(condition)
+
+  return keywords.some((keyword) => conditionKey.includes(getIllnessKey(keyword)))
 }
 
-function buildHealthyActionRecommendations({ locationTarget, topAreas }) {
-  const topAreaMap = new Map(topAreas.map((area) => [area.id, area]))
+function getFamilyConditionReports(familyMembers, keywords) {
+  return familyMembers.flatMap((member) =>
+    member.illnesses
+      .filter((illness) => !isNoIllness(illness))
+      .filter((illness) => conditionMatches(illness, keywords))
+      .map((illness) => ({
+        condition: illness,
+        isCloseRelative: closeFamilyRelationships.includes(member.relationship),
+        relationship: member.relationship,
+      })),
+  )
+}
 
-  return wellnessActionDefinitions
-    .map((action) => {
-      const supportedAreas = action.supports
-        .map((categoryId) => topAreaMap.get(categoryId))
-        .filter(Boolean)
-      const supportScore = supportedAreas.reduce(
-        (total, area) =>
-          total + wellnessRiskWeight[area.riskLevel] + area.observationCount,
-        0,
-      )
+function getCloseReportCount(reports) {
+  return reports.filter((report) => report.isCloseRelative).length
+}
 
-      return {
+function joinReadableList(items) {
+  if (items.length <= 1) {
+    return items[0] || ''
+  }
+
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`
+  }
+
+  return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`
+}
+
+function getRelativeLabel(relationship) {
+  if (relationship === 'Mother') return 'your mother'
+  if (relationship === 'Father') return 'your father'
+  if (relationship === 'Sibling') return 'a sibling'
+  if (relationship === 'Grandparent') return 'a grandparent'
+
+  return `a ${relationship.toLowerCase()}`
+}
+
+function buildFamilyReportReason(reports) {
+  const entries = reports
+    .slice(0, 3)
+    .map(
+      (report) =>
+        `${getRelativeLabel(report.relationship)} reported ${report.condition}`,
+    )
+
+  if (reports.length > 3) {
+    entries.push('other relatives reported related conditions')
+  }
+
+  return `${joinReadableList(entries)}.`
+}
+
+function hasLifestyleAnswer(profile, field, values) {
+  return values.includes(profile[field])
+}
+
+function buildLocalPreventionActions({
+  familyMembers,
+  locationTarget,
+  profile,
+  profileIllnesses,
+}) {
+  const actions = new Map()
+  const addAction = (action) => {
+    const existingAction = actions.get(action.id)
+
+    if (!existingAction || action.score > existingAction.score) {
+      actions.set(action.id, {
         ...action,
         mapsUrl: buildGoogleMapsSearchUrl(action.searchQuery, locationTarget),
-        supportScore,
-        supportedAreas,
-        supportLabels: supportedAreas.map(
-          (area) => wellnessSupportLabels[area.id] || area.name,
-        ),
-      }
-    })
-    .filter((action) => action.supportedAreas.length > 0)
-    .sort((firstAction, secondAction) => {
-      const supportCountDifference =
-        secondAction.supportedAreas.length - firstAction.supportedAreas.length
+      })
+    }
+  }
+  const hasCurrentProfileCondition = (keywords) =>
+    profileIllnesses
+      .filter((illness) => !isNoIllness(illness))
+      .some((illness) => conditionMatches(illness, keywords))
 
-      if (supportCountDifference !== 0) {
-        return supportCountDifference
-      }
+  const cardiovascularReports = getFamilyConditionReports(familyMembers, [
+    'heart disease',
+    'heart attack',
+    'high blood pressure',
+    'hypertension',
+    'high cholesterol',
+    'stroke',
+  ])
+  const cholesterolReports = getFamilyConditionReports(familyMembers, [
+    'heart disease',
+    'heart attack',
+    'high cholesterol',
+    'stroke',
+  ])
+  const bloodPressureReports = getFamilyConditionReports(familyMembers, [
+    'high blood pressure',
+    'hypertension',
+    'stroke',
+  ])
+  const diabetesReports = getFamilyConditionReports(familyMembers, [
+    'type 2 diabetes',
+  ])
+  const cancerReports = getFamilyConditionReports(familyMembers, [
+    'breast cancer',
+    'colon cancer',
+  ])
+  const mentalWellnessReports = getFamilyConditionReports(familyMembers, [
+    'depression',
+    'anxiety',
+  ])
 
-      return secondAction.supportScore - firstAction.supportScore
+  const currentSmoking = profile.smokingStatus === 'Current'
+  const lowActivity = hasLifestyleAnswer(profile, 'exercise', [
+    'Rarely',
+    '1-2 days/week',
+  ])
+  const nutritionOpportunity =
+    hasLifestyleAnswer(profile, 'dietQuality', ['Poor', 'Fair']) ||
+    hasLifestyleAnswer(profile, 'fruitVegIntake', [
+      '0-1 servings',
+      '2 servings',
+    ])
+  const highStress = hasLifestyleAnswer(profile, 'stressLevel', [
+    'High',
+    'Very high',
+  ])
+  const knownBloodPressure =
+    profile.knownHighBloodPressure === 'Yes' ||
+    hasCurrentProfileCondition(['high blood pressure', 'hypertension'])
+  const knownCholesterol =
+    profile.knownHighCholesterol === 'Yes' ||
+    hasCurrentProfileCondition(['high cholesterol'])
+  const diabetesSignal =
+    profile.diabetesStatus === 'Prediabetes' ||
+    profile.diabetesStatus === 'Diabetes' ||
+    hasCurrentProfileCondition(['type 2 diabetes'])
+
+  if (bloodPressureReports.length || knownBloodPressure) {
+    addAction({
+      icon: '🩺',
+      id: 'blood-pressure-screening',
+      reason: bloodPressureReports.length
+        ? buildFamilyReportReason(bloodPressureReports)
+        : 'Your profile includes known high blood pressure.',
+      resourceType: 'Pharmacies or primary-care clinics',
+      score: 28 + bloodPressureReports.length + getCloseReportCount(bloodPressureReports),
+      searchQuery: 'blood pressure screening pharmacy primary care clinic',
+      title: 'Get a blood pressure screening',
     })
-    .slice(0, 5)
+  }
+
+  if (cholesterolReports.length || knownCholesterol) {
+    addAction({
+      icon: '❤️',
+      id: 'cholesterol-screening',
+      reason: cholesterolReports.length
+        ? buildFamilyReportReason(cholesterolReports)
+        : 'Your profile includes known high cholesterol.',
+      resourceType: 'Primary-care clinics',
+      score: 27 + cholesterolReports.length + getCloseReportCount(cholesterolReports),
+      searchQuery: 'primary care clinic cholesterol screening',
+      title: 'Discuss cholesterol screening',
+    })
+  }
+
+  if (cardiovascularReports.length && nutritionOpportunity) {
+    addAction({
+      icon: '🥗',
+      id: 'registered-dietitian',
+      reason:
+        `${buildFamilyReportReason(cardiovascularReports)} Your nutrition answers show an opportunity for heart-supportive habits.`,
+      resourceType: 'Registered dietitians',
+      score: 22 + cardiovascularReports.length + getCloseReportCount(cardiovascularReports),
+      searchQuery: 'registered dietitian nutrition counseling',
+      title: 'Find a registered dietitian',
+    })
+  }
+
+  if (diabetesReports.length || diabetesSignal) {
+    addAction({
+      icon: '🩸',
+      id: 'diabetes-prevention-program',
+      reason: diabetesReports.length
+        ? buildFamilyReportReason(diabetesReports)
+        : 'Your profile includes prediabetes or diabetes.',
+      resourceType: 'Diabetes prevention programs',
+      score: 29 + diabetesReports.length + getCloseReportCount(diabetesReports),
+      searchQuery: 'diabetes prevention program',
+      title: 'Find a diabetes prevention program',
+    })
+
+    addAction({
+      icon: '🧪',
+      id: 'glucose-screening',
+      reason: diabetesReports.length
+        ? buildFamilyReportReason(diabetesReports)
+        : 'Your profile includes prediabetes or diabetes.',
+      resourceType: 'Primary-care clinics or labs',
+      score: 24 + diabetesReports.length + getCloseReportCount(diabetesReports),
+      searchQuery: 'HbA1c glucose screening clinic',
+      title: 'Get an HbA1c or glucose screening',
+    })
+  }
+
+  if ((diabetesReports.length || diabetesSignal) && nutritionOpportunity) {
+    addAction({
+      icon: '🥬',
+      id: 'nutrition-counseling',
+      reason:
+        `${diabetesReports.length ? buildFamilyReportReason(diabetesReports) : 'Your profile includes prediabetes or diabetes.'} Your food responses suggest nutrition counseling could be useful.`,
+      resourceType: 'Nutrition counseling',
+      score: 23 + diabetesReports.length + getCloseReportCount(diabetesReports),
+      searchQuery: 'nutrition counseling registered dietitian',
+      title: 'Find nutrition counseling',
+    })
+  }
+
+  if (cancerReports.length) {
+    addAction({
+      icon: '🧬',
+      id: 'screening-timeline',
+      reason: buildFamilyReportReason(cancerReports),
+      resourceType: 'Primary-care clinics',
+      score: 30 + cancerReports.length + getCloseReportCount(cancerReports),
+      searchQuery: 'primary care clinic cancer screening discussion',
+      title: 'Discuss the appropriate screening timeline',
+    })
+  }
+
+  if (cancerReports.length >= 2 || getCloseReportCount(cancerReports) >= 2) {
+    addAction({
+      icon: '🧬',
+      id: 'genetic-counseling',
+      reason: buildFamilyReportReason(cancerReports),
+      resourceType: 'Genetic counseling clinics',
+      score: 25 + cancerReports.length + getCloseReportCount(cancerReports),
+      searchQuery: 'genetic counseling clinic',
+      title: 'Find a genetic counseling clinic',
+    })
+  }
+
+  if (currentSmoking) {
+    addAction({
+      icon: '🚭',
+      id: 'smoking-cessation',
+      reason: 'Your lifestyle profile indicates current smoking or vaping.',
+      resourceType: 'Smoking-cessation programs',
+      score: 32,
+      searchQuery: 'smoking cessation program quit support',
+      title: 'Find smoking-cessation support',
+    })
+  }
+
+  if (lowActivity || cardiovascularReports.length || diabetesReports.length) {
+    addAction({
+      icon: '🚶',
+      id: 'walking-program',
+      reason: lowActivity
+        ? 'Your activity response suggests that a nearby walking program could support a realistic movement routine.'
+        : buildFamilyReportReason([...cardiovascularReports, ...diabetesReports]),
+      resourceType: 'Walking groups or community exercise programs',
+      score:
+        18 +
+        (lowActivity ? 8 : 0) +
+        cardiovascularReports.length +
+        diabetesReports.length,
+      searchQuery: 'walking group community walking program',
+      title: 'Join a nearby walking program',
+    })
+  }
+
+  if (highStress || mentalWellnessReports.length) {
+    addAction({
+      icon: '🧘',
+      id: 'stress-management',
+      reason: highStress
+        ? 'Your stress response suggests that stress-management support could be helpful.'
+        : buildFamilyReportReason(mentalWellnessReports),
+      resourceType: 'Mindfulness, wellness, or mental-health resources',
+      score: 20 + (highStress ? 8 : 0) + mentalWellnessReports.length,
+      searchQuery: 'mindfulness stress management mental health wellness center',
+      title: 'Find a stress-management resource',
+    })
+  }
+
+  return [...actions.values()]
+    .sort((firstAction, secondAction) => secondAction.score - firstAction.score)
+    .slice(0, 4)
 }
 
 function getLifestylePriority(profile) {
@@ -1919,20 +2069,24 @@ function App() {
     manualLocation,
     userCoordinates,
   })
-  const healthyActionRecommendations = buildHealthyActionRecommendations({
+  const localPreventionActions = buildLocalPreventionActions({
+    familyMembers,
     locationTarget: wellnessLocationTarget,
-    topAreas: familyHealthSummary.topAreas,
+    profile: profileForm,
+    profileIllnesses,
   })
-  const selectedHealthyAction =
-    healthyActionRecommendations.find(
+  const selectedLocalPreventionAction =
+    localPreventionActions.find(
       (action) => action.id === selectedHealthyActionId,
     ) ||
-    healthyActionRecommendations[0] ||
-    wellnessActionDefinitions[0]
-  const healthyActionMapUrl = buildGoogleMapsEmbedUrl(
-    selectedHealthyAction.searchQuery,
-    wellnessLocationTarget,
-  )
+    localPreventionActions[0] ||
+    null
+  const localPreventionMapUrl = selectedLocalPreventionAction
+    ? buildGoogleMapsEmbedUrl(
+        selectedLocalPreventionAction.searchQuery,
+        wellnessLocationTarget,
+      )
+    : ''
   function getRelationshipCount(group, ignoredMemberId = null) {
     return familyMembers.filter(
       (member) =>
@@ -3712,62 +3866,69 @@ function App() {
         </section>
       ) : null}
 
-      {activeView === 'coach' && hasPersonalizedAssessmentData ? (
+      {activeView === 'coach' ? (
         <section className="wellness-panel" aria-labelledby="wellness-recommendations-title">
-          <section className="location-card" aria-labelledby="location-title">
-            <div>
-              <p className="eyebrow">Location</p>
-              <h2 id="location-title">Find resources near you</h2>
-              <p>
-                Use your current location, or enter a city or ZIP code. Maps
-                searches use only the activity type and location, not your family
-                history.
-              </p>
-            </div>
+          {hasPersonalizedAssessmentData ? (
+            <>
+              <section className="location-card" aria-labelledby="location-title">
+                <div>
+                  <p className="eyebrow">Location</p>
+                  <h2 id="location-title">Find resources near you</h2>
+                  <p>
+                    Use your current location, or enter a city or ZIP code. Maps
+                    searches use only the activity type and location, not your
+                    family history.
+                  </p>
+                </div>
 
-            <div className="location-controls">
-              <button
-                className="primary-action"
-                type="button"
-                onClick={requestUserLocation}
-                disabled={locationStatus === 'loading'}
-              >
-                {locationStatus === 'loading'
-                  ? 'Requesting location...'
-                  : 'Use My Location'}
-                <span aria-hidden="true">→</span>
-              </button>
+                <div className="location-controls">
+                  <button
+                    className="primary-action"
+                    type="button"
+                    onClick={requestUserLocation}
+                    disabled={locationStatus === 'loading'}
+                  >
+                    {locationStatus === 'loading'
+                      ? 'Requesting location...'
+                      : 'Use My Location'}
+                    <span aria-hidden="true">→</span>
+                  </button>
 
-              <label className="field-group location-field" htmlFor="manual-location">
-                City or ZIP code
-                <input
-                  id="manual-location"
-                  type="text"
-                  value={manualLocation}
-                  onChange={(event) => {
-                    setManualLocation(event.target.value)
-                    if (event.target.value.trim()) {
-                      setLocationMessage('Using your manually entered location.')
-                      setLocationStatus('manual')
-                    }
-                  }}
-                  placeholder="Example: Oakland, CA or 94612"
-                />
-              </label>
-            </div>
+                  <label
+                    className="field-group location-field"
+                    htmlFor="manual-location"
+                  >
+                    City or ZIP code
+                    <input
+                      id="manual-location"
+                      type="text"
+                      value={manualLocation}
+                      onChange={(event) => {
+                        setManualLocation(event.target.value)
+                        if (event.target.value.trim()) {
+                          setLocationMessage(
+                            'Using your manually entered location.',
+                          )
+                          setLocationStatus('manual')
+                        }
+                      }}
+                      placeholder="Example: Oakland, CA or 94612"
+                    />
+                  </label>
+                </div>
 
-            {locationMessage ? (
-              <p className={`location-message ${locationStatus}`}>
-                {locationMessage}
-              </p>
-            ) : (
-              <p className="helper-text">
-                Add a location to make Maps searches more useful.
-              </p>
-            )}
-          </section>
+                {locationMessage ? (
+                  <p className={`location-message ${locationStatus}`}>
+                    {locationMessage}
+                  </p>
+                ) : (
+                  <p className="helper-text">
+                    Add a location to make Maps searches more useful.
+                  </p>
+                )}
+              </section>
 
-          <div className="wellness-layout">
+              <div className="wellness-layout">
             <section
               className="wellness-recommendations"
               aria-labelledby="wellness-recommendations-title"
@@ -3775,79 +3936,106 @@ function App() {
               <div className="section-heading-row">
                 <div>
                   <h2 id="wellness-recommendations-title">
-                    Personalized Recommendations
+                    Local Prevention Resource Finder
                   </h2>
-                  <p>Explore nearby options</p>
                 </div>
               </div>
 
-              {familyMembers.length === 0 ? (
+              {localPreventionActions.length === 0 ? (
                 <p className="helper-text">
-                  Add family history to personalize these suggestions. For now,
-                  the app shows the highest-ranked general prevention areas.
+                  Complete your health profile to receive personalized local
+                  prevention actions.
                 </p>
-              ) : null}
-
-              <div className="wellness-recommendation-list">
-                {healthyActionRecommendations.map((action) => (
-                  <button
-                    className={`wellness-recommendation-card${
-                      selectedHealthyAction.id === action.id ? ' selected' : ''
-                    }`}
-                    key={action.id}
-                    type="button"
-                    onClick={() => setSelectedHealthyActionId(action.id)}
-                  >
-                    <span className="wellness-recommendation-icon" aria-hidden="true">
-                      {action.icon}
-                    </span>
-                    <div>
-                      <h3>{action.name}</h3>
-                      <p className="wellness-supports">
-                        <strong>Supports:</strong> {action.supportLabels.join(', ')}
-                      </p>
-                      <p>{action.explanation}</p>
-                    </div>
-                    <span className="recommendation-arrow" aria-hidden="true">
-                      →
-                    </span>
-                  </button>
-                ))}
-              </div>
+              ) : (
+                <div className="wellness-recommendation-list">
+                  {localPreventionActions.map((action) => (
+                    <article
+                      className={`wellness-recommendation-card${
+                        selectedLocalPreventionAction?.id === action.id
+                          ? ' selected'
+                          : ''
+                      }`}
+                      key={action.id}
+                    >
+                      <span
+                        className="wellness-recommendation-icon"
+                        aria-hidden="true"
+                      >
+                        {action.icon}
+                      </span>
+                      <div className="wellness-recommendation-content">
+                        <h3>{action.title}</h3>
+                        <p className="wellness-reason">
+                          <strong>Why this appears:</strong> {action.reason}
+                        </p>
+                        <p className="wellness-resource-type">
+                          <strong>Nearby resource:</strong> {action.resourceType}
+                        </p>
+                        <button
+                          className="secondary-action wellness-find-button"
+                          type="button"
+                          onClick={() => setSelectedHealthyActionId(action.id)}
+                        >
+                          Find Nearby <span aria-hidden="true">→</span>
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </section>
 
-            <section className="wellness-map-card" aria-labelledby="wellness-map-title">
-              <div>
-                <p className="eyebrow">Map</p>
-                <h2 id="wellness-map-title">
-                  {selectedHealthyAction.name} Near You
-                </h2>
-                <p>
-                  Select an option to update the nearby search. Location uses
-                  browser coordinates, saved city or ZIP, or a general near-me
-                  search.
-                </p>
-              </div>
-
-              <div className="wellness-map-frame">
-                <iframe
-                  src={healthyActionMapUrl}
-                  title="Nearby healthy actions map"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
-              </div>
-
-              <a
-                className="secondary-action map-action"
-                href={selectedHealthyAction.mapsUrl}
-                target="_blank"
-                rel="noreferrer"
+            {selectedLocalPreventionAction ? (
+              <section
+                className="wellness-map-card"
+                aria-labelledby="wellness-map-title"
               >
-                Open in Google Maps <span aria-hidden="true">→</span>
-              </a>
+                <div>
+                  <p className="eyebrow">Map</p>
+                  <h2 id="wellness-map-title">
+                    {selectedLocalPreventionAction.resourceType} Near You
+                  </h2>
+                  <p>
+                    Select Find Nearby on a recommendation to update this shared
+                    map.
+                  </p>
+                </div>
+
+                <div className="wellness-map-frame">
+                  <iframe
+                    src={localPreventionMapUrl}
+                    title="Nearby prevention resource map"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+
+                <a
+                  className="secondary-action map-action"
+                  href={selectedLocalPreventionAction.mapsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open in Google Maps <span aria-hidden="true">→</span>
+                </a>
+              </section>
+            ) : null}
+              </div>
+            </>
+          ) : (
+            <section
+              className="wellness-recommendations"
+              aria-labelledby="wellness-recommendations-title"
+            >
+              <h2 id="wellness-recommendations-title">
+                Local Prevention Resource Finder
+              </h2>
+              <p className="helper-text">
+                Complete your health profile to receive personalized local
+                prevention actions.
+              </p>
             </section>
-          </div>
+          )}
         </section>
       ) : null}
 
