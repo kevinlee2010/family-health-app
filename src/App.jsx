@@ -6,6 +6,10 @@ import {
   buildPersonalizedPreventionSummary,
   buildPreventionInsights,
 } from './preventionInsights'
+import {
+  calculatePreventionScore,
+  getPreventionScoreStatus,
+} from './preventionScore'
 
 const relationships = ['Mother', 'Father', 'Sibling', 'Grandparent']
 const relationshipLimitMessages = {
@@ -607,16 +611,6 @@ function clearSavedAppState() {
 
 const workflowSteps = guidedSteps
 
-const healthCategoryIcons = {
-  cardiovascular: '❤️',
-  metabolic: '🩸',
-  cancer: '🧬',
-  neurological: '🧠',
-  respiratory: '🫁',
-  kidney: '🩺',
-  mental: '🧠',
-}
-
 const closeFamilyRelationships = ['Mother', 'Father', 'Sibling']
 
 function createId() {
@@ -698,10 +692,6 @@ function addIllnessToList(currentIllnesses, illness) {
   }
 
   return [...currentIllnesses, illness]
-}
-
-function getHealthCategoryIcon(categoryId) {
-  return healthCategoryIcons[categoryId] || '🩺'
 }
 
 function getLocationSearchTarget({ manualLocation, userCoordinates }) {
@@ -1029,245 +1019,6 @@ function buildLocalPreventionActions({
     .slice(0, 4)
 }
 
-function getLifestylePriority(profile) {
-  const priorities = []
-  const addPriority = (id, icon, title, detail, scoreImpact) => {
-    if (!priorities.some((priority) => priority.id === id)) {
-      priorities.push({ detail, icon, id, scoreImpact, title })
-    }
-  }
-
-  if (profile.exercise === 'Rarely' || profile.exercise === '1-2 days/week') {
-    addPriority(
-      'movement',
-      '🚶',
-      'Build consistent movement',
-      'Your activity response suggests that short, repeatable walks could make prevention feel more doable.',
-      14,
-    )
-  }
-
-  if (
-    profile.dietQuality === 'Poor' ||
-    profile.dietQuality === 'Fair' ||
-    profile.fruitVegIntake === '0-1 servings' ||
-    profile.fruitVegIntake === '2 servings'
-  ) {
-    addPriority(
-      'nutrition',
-      '🥗',
-      'Improve everyday nutrition',
-      'Your food responses show an opportunity to add more produce, fiber-rich foods, and balanced meals.',
-      12,
-    )
-  }
-
-  if (profile.sleep === 'Less than 6 hours' || profile.sleep === 'More than 9 hours') {
-    addPriority(
-      'sleep',
-      '🌙',
-      'Protect sleep rhythm',
-      'Your sleep response may affect energy, stress, and follow-through on healthy habits.',
-      10,
-    )
-  }
-
-  if (profile.smokingStatus === 'Current') {
-    addPriority(
-      'tobacco',
-      '🚭',
-      'Reduce tobacco or vaping exposure',
-      'Current smoking or vaping is one of the strongest modifiable prevention signals in the intake.',
-      18,
-    )
-  }
-
-  if (profile.waterIntake === 'Less than 3 cups' || profile.waterIntake === '3-5 cups') {
-    addPriority(
-      'hydration',
-      '💧',
-      'Improve hydration',
-      'Your water intake response suggests a simple daily habit target could help.',
-      6,
-    )
-  }
-
-  if (profile.sugaryDrinks === 'Most days' || profile.sugaryDrinks === 'Daily') {
-    addPriority(
-      'sugary-drinks',
-      '🥤',
-      'Cut back sugary drinks',
-      'Frequent sugary drinks can make nutrition, weight, and metabolic prevention goals harder.',
-      9,
-    )
-  }
-
-  if (profile.stressLevel === 'High' || profile.stressLevel === 'Very high') {
-    addPriority(
-      'stress',
-      '🧘',
-      'Lower stress load',
-      'Your stress response suggests breathing, walking, or mindfulness routines could support prevention.',
-      9,
-    )
-  }
-
-  if (profile.screenTime === '8+ hours') {
-    addPriority(
-      'screen-time',
-      '☀️',
-      'Add screen breaks',
-      'Long screen time can crowd out movement, sleep, and outdoor time.',
-      6,
-    )
-  }
-
-  if (
-    profile.preventiveScreenings === 'Not sure' ||
-    profile.preventiveScreenings === 'Need to schedule'
-  ) {
-    addPriority(
-      'screening',
-      '📅',
-      'Check preventive screening timing',
-      'Your screening response suggests it may be worth asking a healthcare professional what is appropriate for your age and family history.',
-      10,
-    )
-  }
-
-  return priorities
-}
-
-function getPositivePreventionSignals(profile, familyHealthSummary) {
-  const positives = []
-
-  if (profile.smokingStatus === 'Never') {
-    positives.push('No smoking or vaping reported.')
-  }
-
-  if (profile.exercise === '3-5 days/week' || profile.exercise === 'Nearly every day') {
-    positives.push('Your exercise routine is already a strong prevention habit.')
-  }
-
-  if (
-    profile.dietQuality === 'Good' ||
-    profile.dietQuality === 'Excellent' ||
-    profile.fruitVegIntake === '3-4 servings' ||
-    profile.fruitVegIntake === '5 or more servings'
-  ) {
-    positives.push('Your nutrition answers show helpful daily choices.')
-  }
-
-  if (profile.sleep === '7-9 hours') {
-    positives.push('Your sleep duration is in a generally supportive range.')
-  }
-
-  if (profile.waterIntake === '6-8 cups' || profile.waterIntake === 'More than 8 cups') {
-    positives.push('Your hydration response is a useful foundation.')
-  }
-
-  if (profile.preventiveScreenings === 'Up to date') {
-    positives.push('You reported being up to date with preventive screenings.')
-  }
-
-  if (
-    familyHealthSummary.categories.filter((category) => category.riskLevel === 'High')
-      .length === 0
-  ) {
-    positives.push('No strong family-health pattern is visible from the entries so far.')
-  }
-
-  return positives.slice(0, 5)
-}
-
-function calculatePreventionScore({ familyHealthSummary, profile }) {
-  const lifestylePriorities = getLifestylePriority(profile)
-  const familyPriorityPenalty = familyHealthSummary.topAreas.reduce((total, category) => {
-    if (category.riskLevel === 'High') {
-      return total + 8
-    }
-
-    if (category.riskLevel === 'Increased') {
-      return total + 4
-    }
-
-    return total
-  }, 0)
-  const lifestylePenalty = lifestylePriorities.reduce(
-    (total, priority) => total + priority.scoreImpact,
-    0,
-  )
-  const positives = getPositivePreventionSignals(profile, familyHealthSummary)
-  const score = Math.max(
-    0,
-    Math.min(100, 100 - familyPriorityPenalty - lifestylePenalty + positives.length * 2),
-  )
-  const familyPriorities = familyHealthSummary.topAreas
-    .filter((category) => category.riskLevel !== 'Average')
-    .map((category) => ({
-      detail: category.explanation,
-      icon: getHealthCategoryIcon(category.id),
-      id: category.id,
-      scoreImpact: category.riskLevel === 'High' ? 16 : 10,
-      title: category.name,
-    }))
-  const topPriorities = [...familyPriorities, ...lifestylePriorities]
-    .sort((first, second) => second.scoreImpact - first.scoreImpact)
-    .slice(0, 3)
-  const improvements = lifestylePriorities
-    .map((priority) => priority.title)
-    .slice(0, 5)
-  const explanation =
-    topPriorities.length > 0
-      ? `Your prevention score summarizes preventive habits, profile completeness, and educational action opportunities. Your biggest opportunities to improve your score are: ${toReadableList(
-          topPriorities.map((priority) => priority.title.toLowerCase()),
-        )}. It is not a medical risk estimate, diagnosis, or prediction.`
-      : 'Your prevention score is starting from a strong place because the current entries do not show major habit gaps or strong family-history patterns. Keep updating your family history and lifestyle answers so the coach can stay useful over time. This is not a medical risk estimate.'
-
-  return {
-    areasForImprovement:
-      improvements.length > 0
-        ? improvements
-        : ['Keep family history updated', 'Review routine checkups', 'Maintain healthy habits'],
-    explanation,
-    positives,
-    score,
-    topPriorities,
-  }
-}
-
-function getPreventionScoreStatus(score) {
-  if (score >= 90) {
-    return {
-      className: 'excellent',
-      label: 'Excellent',
-      tone: '#0f766e',
-    }
-  }
-
-  if (score >= 70) {
-    return {
-      className: 'good',
-      label: 'Good',
-      tone: '#16a34a',
-    }
-  }
-
-  if (score >= 40) {
-    return {
-      className: 'improving',
-      label: 'Improving',
-      tone: '#f59e0b',
-    }
-  }
-
-  return {
-    className: 'needs-attention',
-    label: 'Needs Attention',
-    tone: '#f97366',
-  }
-}
-
 function buildCoachGoals(preventionScore) {
   const goals = [
     {
@@ -1457,17 +1208,6 @@ function ProgressBar({ label = 'Progress', value }) {
   )
 }
 
-function toReadableList(items) {
-  if (items.length <= 1) {
-    return items[0] || ''
-  }
-
-  if (items.length === 2) {
-    return `${items[0]} and ${items[1]}`
-  }
-
-  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`
-}
 function ConditionDetailList({ items, title }) {
   return (
     <section className="condition-detail-section">
@@ -2032,13 +1772,15 @@ function App() {
       }
   const familyHealthSummary = buildFamilyHealthSummary({ familyMembers })
   const profileBmi = calculateBmi(profileForm)
-  const preventionProfile = userProfile || {
+  const preventionProfile = {
+    ...userProfile,
     ...profileForm,
     bmi: profileBmi,
     illnesses: profileIllnesses,
   }
   const preventionScore = calculatePreventionScore({
     familyHealthSummary,
+    familyMembers,
     profile: preventionProfile,
   })
   const preventionInsights = buildPreventionInsights({
@@ -2050,6 +1792,7 @@ function App() {
     preventionScore,
   })
   const preventionScoreStatus = getPreventionScoreStatus(preventionScore.score)
+  const hasPreventionScore = preventionScore.score !== null
   const coachGoals = buildCoachGoals(preventionScore)
   const completedCoachGoals = coachGoals.filter((goal) => habitProgress[goal.id])
   const dashboardActionGoals = coachGoals.slice(0, 3)
@@ -2182,12 +1925,16 @@ function App() {
   ]
   const dashboardSummaryCards = hasPersonalizedAssessmentData
     ? [
-        {
-          icon: '◎',
-          label: 'Prevention Score',
-          value: preventionScore.score,
-          detail: 'Habits and awareness, not a diagnosis',
-        },
+        ...(hasPreventionScore
+          ? [
+              {
+                icon: '◎',
+                label: 'Prevention Score',
+                value: preventionScore.score,
+                detail: 'Habits and awareness, not a diagnosis',
+              },
+            ]
+          : []),
         {
           icon: '🔥',
           label: 'Habit Progress',
@@ -3793,31 +3540,38 @@ function App() {
                 className="score-ring-card compact-score-card"
                 aria-labelledby="prevention-score-heading"
               >
-                <div className="compact-score-layout">
-                  <div
-                    className="score-ring"
-                    style={{
-                      '--score': `${preventionScore.score}%`,
-                      '--score-color': preventionScoreStatus.tone,
-                    }}
-                    aria-label={`Prevention score ${preventionScore.score} out of 100, ${preventionScoreStatus.label}`}
-                  >
-                    <span>{preventionScore.score}</span>
-                    <small>/100</small>
+                {hasPreventionScore ? (
+                  <div className="compact-score-layout">
+                    <div
+                      className="score-ring"
+                      style={{
+                        '--score': `${preventionScore.score}%`,
+                        '--score-color': preventionScoreStatus.tone,
+                      }}
+                      aria-label={`Prevention score ${preventionScore.score} out of 100, ${preventionScoreStatus.label}`}
+                    >
+                      <span>{preventionScore.score}</span>
+                      <small>/100</small>
+                    </div>
+                    <div className="score-title-stack">
+                      <h2 id="prevention-score-heading">Prevention Health Score</h2>
+                      <span
+                        className={`score-status-badge ${preventionScoreStatus.className}`}
+                      >
+                        {preventionScoreStatus.label}
+                      </span>
+                      <p>
+                        A higher score reflects stronger prevention habits and
+                        family-health awareness.
+                      </p>
+                    </div>
                   </div>
+                ) : (
                   <div className="score-title-stack">
                     <h2 id="prevention-score-heading">Prevention Health Score</h2>
-                    <span
-                      className={`score-status-badge ${preventionScoreStatus.className}`}
-                    >
-                      {preventionScoreStatus.label}
-                    </span>
-                    <p>
-                      A higher score reflects stronger prevention habits and
-                      family-health awareness.
-                    </p>
+                    <p>Complete your health profile to calculate your score.</p>
                   </div>
-                </div>
+                )}
               </section>
 
               <section className="prevention-insights-section" aria-labelledby="insights-title">
