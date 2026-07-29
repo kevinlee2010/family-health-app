@@ -1,12 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import { getConditionDetails } from './conditionDetails'
-import { getNextOccurrencePerEvent } from './eventDeduplication'
-import {
-  getLocationForZip,
-  getZipFromAddress,
-  isValidFiveDigitZip,
-} from './eventLocationRanking'
 import { buildFamilyHealthSummary } from './healthCategories'
 import {
   buildPersonalizedPreventionSummary,
@@ -16,15 +10,9 @@ import {
   calculatePreventionScore,
   getPreventionScoreStatus,
 } from './preventionScore'
-import { getParkMapUrl, getParksNearZip } from './parkResources'
-import {
-  getStagedResourceSearch,
-  groupAssignedResourcesByPriorityAction,
-  getUserResourcePriorities,
-} from './resourcePersonalization'
 import {
   getCityForZip,
-  normalizeZip,
+  isSupportedZip,
 } from './zipCodeMap'
 
 const relationships = ['Mother', 'Father', 'Sibling', 'Grandparent']
@@ -627,52 +615,13 @@ function loadSavedAppState() {
   try {
     const savedState = window.localStorage.getItem(storageKey)
 
-    if (!savedState || !savedState.trim().startsWith('{')) {
-      if (savedState) {
-        console.warn('Ignoring malformed saved app state:', savedState)
-      }
-
+    if (!savedState) {
       return defaultSavedState
     }
 
     return normalizeSavedState(JSON.parse(savedState))
-  } catch (error) {
-    console.warn('Could not parse saved app state. Falling back to defaults.', error)
+  } catch {
     return defaultSavedState
-  }
-}
-
-async function parseEventsResponse(response) {
-  const contentType = response.headers.get('content-type') || ''
-  const responseText = await response.text()
-
-  if (!response.ok) {
-    console.error('Events request failed:', response.status, responseText)
-    throw new Error('We could not load events for that ZIP code. Please try again.')
-  }
-
-  if (!/\bapplication\/json\b|\+json\b/i.test(contentType)) {
-    console.error('Events response was not JSON:', responseText)
-    throw new Error('We could not load events for that ZIP code. Please try again.')
-  }
-
-  try {
-    const events = JSON.parse(responseText)
-
-    if (!Array.isArray(events)) {
-      console.error('Events JSON was not an array:', responseText)
-      throw new Error('We could not load events for that ZIP code. Please try again.')
-    }
-
-    return events
-  } catch (error) {
-    console.error('Events response contained malformed JSON:', responseText)
-    throw new Error(
-      error.message === 'We could not load events for that ZIP code. Please try again.'
-        ? error.message
-        : 'We could not load events for that ZIP code. Please try again.',
-      { cause: error },
-    )
   }
 }
 
@@ -789,7 +738,22 @@ function addIllnessToList(currentIllnesses, illness) {
   return [...currentIllnesses, illness]
 }
 
-function getEventDestination(event) {
+function getMapQuery(event) {
+  if (isOnlineEvent(event)) return ''
+  if (event?.address) return event.address
+
+  if (
+    event?.locationName &&
+    event?.city &&
+    normalizeCity(event.locationName) !== normalizeCity(event.city)
+  ) {
+    return `${event.locationName}, ${event.city}, CA`
+  }
+
+  if (Number.isFinite(event?.latitude) && Number.isFinite(event?.longitude)) {
+    return `${event.latitude},${event.longitude}`
+  }
+
   if (
     Number.isFinite(event?.coordinates?.latitude) &&
     Number.isFinite(event?.coordinates?.longitude)
@@ -797,181 +761,66 @@ function getEventDestination(event) {
     return `${event.coordinates.latitude},${event.coordinates.longitude}`
   }
 
-  return event?.address || ''
+  return ''
 }
 
 function getEventLocationLabel(event) {
-  if (event?.attendanceMode === 'online' || event?.isOnline) {
-    return event?.platform ? `Online · ${event.platform}` : 'Online event'
-  }
-
-  return event?.address || event?.location || event?.city || ''
+  return getLocationLabel(event)
 }
 
-function decodeHtmlEntities(value) {
-  return String(value || '')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;|&#39;|&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&ndash;|&#8211;/g, '–')
-    .replace(/&mdash;|&#8212;/g, '—')
+function isOnlineEvent(event) {
+  return event?.attendanceMode === 'online'
 }
 
-function removeEventBoilerplate(value, title = '') {
-  const decodedTitle = decodeHtmlEntities(title).trim()
+function hasSpecificLocation(event) {
+  const hasVenue =
+    event?.locationName &&
+    event?.city &&
+    normalizeCity(event.locationName) !== normalizeCity(event.city) &&
+    normalizeCity(event.locationName) !== 'online'
 
-  return decodeHtmlEntities(value)
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/https?:\/\/\S+/gi, '')
-    .replace(/\S+@\S+\.\S+/gi, '')
-    .replace(/\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/g, '')
-    .replace(/\bpowered by Localist,? the Community Event Platform\b\.?/gi, '')
-    .replace(/\bregistration and participation links?:?[\s\S]*$/i, '')
-    .replace(/\bfor questions or more information[\s\S]*$/i, '')
-    .replace(/\bplanners expect learners to:?[\s\S]*$/i, '')
-    .replace(/\bUCSF .*?accredited[\s\S]*$/i, '')
-    .replace(/\bAMA PRA Category 1 Credit[\s\S]*$/i, '')
-    .replace(/\bCME\b[\s\S]*$/i, '')
-    .replace(/([a-z])\.([A-Z])/g, '$1. $2')
-    .replace(/\s+/g, ' ')
-    .replace(decodedTitle ? new RegExp(`^${escapeRegExp(decodedTitle)}\\s*`, 'i') : /^/, '')
-    .trim()
-}
-
-function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function splitUsefulSentences(value) {
-  return value
-    .split(/(?<=[.!?])\s+/)
-    .map((sentence) => sentence.trim())
-    .filter((sentence) => {
-      if (!sentence) return false
-
-      return !/\b(register|registration|waiver|disclosure|speaker|instructor|sponsor|agenda|contact|email|phone|zoom participants|space is limited)\b/i.test(
-        sentence,
-      )
-    })
-}
-
-function truncateText(value, maxLength = 160) {
-  const text = String(value || '').trim()
-
-  if (text.length <= maxLength) return text
-
-  const shortened = text.slice(0, maxLength)
-  const lastSpace = shortened.lastIndexOf(' ')
-
-  return `${shortened.slice(0, lastSpace > 80 ? lastSpace : maxLength).trim()}...`
-}
-
-function getEventShortDescription(event) {
-  const sourceDescription =
-    event?.shortDescription || event?.summary || event?.description || ''
-  const cleaned = removeEventBoilerplate(sourceDescription, event?.title)
-  const usefulSentences = splitUsefulSentences(cleaned)
-  const description =
-    usefulSentences.length > 0
-      ? usefulSentences.slice(0, 2).join(' ')
-      : cleaned
-
-  return truncateText(description, 160)
-}
-
-function formatEventDate(event) {
-  const rawDate = event?.startsAt || event?.startDate || ''
-
-  if (rawDate) {
-    const date = new Date(rawDate)
-
-    if (!Number.isNaN(date.getTime())) {
-      const hasUsefulTime =
-        rawDate.includes('T') &&
-        !(date.getHours() === 0 && date.getMinutes() === 0)
-
-      return new Intl.DateTimeFormat(undefined, {
-        dateStyle: 'long',
-        timeStyle: hasUsefulTime ? 'short' : undefined,
-      }).format(date)
-    }
-  }
-
-  return decodeHtmlEntities(event?.when || event?.eventDateText || 'Date to be announced')
-}
-
-function formatDistanceMiles(distanceMiles) {
-  if (!Number.isFinite(distanceMiles)) {
-    return ''
-  }
-
-  if (distanceMiles < 0.1) {
-    return 'Less than 0.1 miles away'
-  }
-
-  return `${distanceMiles.toFixed(1)} miles away`
-}
-
-function getDistanceLabel(event) {
-  if (event?.distanceUnavailable) {
-    return 'Distance unavailable'
-  }
-
-  return formatDistanceMiles(event?.distanceMiles)
-}
-
-function getEventModeLabel(event) {
-  return isVirtualEvent(event) ? 'Online Event' : ''
-}
-
-function isVirtualEvent(event) {
   return Boolean(
-    event?.isOnline ||
-      event?.attendanceMode === 'online' ||
-      /online|virtual|zoom|webinar/i.test(
-        `${event?.location || ''} ${event?.address || ''} ${event?.description || ''}`,
-      ),
+    event?.address ||
+      event?.streetAddress ||
+      hasVenue ||
+      (Number.isFinite(event?.latitude) && Number.isFinite(event?.longitude)),
   )
 }
 
-function getEventDetailsUrl(event) {
-  const url =
-    event?.sourceUrl ||
-    event?.originalUrl ||
-    event?.eventLink ||
-    event?.registrationUrl ||
-    ''
-
-  if (!url || /^\/(?!\/)|^#/.test(url)) {
-    return ''
+function getLocationLabel(event) {
+  if (event?.attendanceMode === 'online') {
+    return event.platform ? `Online event · ${event.platform}` : 'Virtual event'
   }
 
-  try {
-    const parsedUrl = new URL(url, window.location.origin)
-
-    if (parsedUrl.origin === window.location.origin) {
-      return ''
-    }
-
-    return parsedUrl.toString()
-  } catch {
-    return ''
+  if (event?.attendanceMode === 'hybrid') {
+    return 'Hybrid event · Online and in person'
   }
+
+  if (
+    event?.locationName &&
+    event?.city &&
+    normalizeCity(event.locationName) !== normalizeCity(event.city)
+  ) {
+    return `${event.locationName} · ${event.city}`
+  }
+
+  return event?.city || event?.locationName || ''
 }
 
-function getEventMapUrl(event) {
-  if (isVirtualEvent(event) || !event?.address) {
-    return ''
-  }
+function getEventLocationActionLabel(event) {
+  return hasSpecificLocation(event) ? 'View location' : ''
+}
 
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    event.address,
-  )}`
+function getOnlineEventUrl(event) {
+  return event?.onlineUrl || event?.registrationUrl || event?.eventLink || ''
+}
+
+function getOnlineEventActionLabel(event) {
+  return event?.registrationRequired ? 'Register for online event' : 'Join online'
 }
 
 function buildEventMapEmbedUrl(event) {
-  const destination = getEventDestination(event) || getEventLocationLabel(event)
+  const destination = getMapQuery(event)
 
   if (!destination) {
     return ''
@@ -980,6 +829,75 @@ function buildEventMapEmbedUrl(event) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(
     destination,
   )}&output=embed`
+}
+
+function buildEventMapsUrl(event) {
+  const destination = getMapQuery(event)
+
+  if (!destination) {
+    return ''
+  }
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    destination,
+  )}`
+}
+
+function cleanEventDescription(value) {
+  return String(value || '')
+    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/\S+@\S+\.\S+/gi, '')
+    .replace(/\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/g, '')
+    .replace(/\b(register here|sponsored by|for more information|classes are tailored)[\s\S]*$/i, '')
+    .replace(/\bheld\s+(mondays?|tuesdays?|wednesdays?|thursdays?|fridays?|saturdays?|sundays?)[^.]*\./gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function truncateText(value, maxLength = 220) {
+  if (value.length <= maxLength) return value
+  const shortened = value.slice(0, maxLength)
+  const lastSpace = shortened.lastIndexOf(' ')
+
+  return `${shortened.slice(0, lastSpace > 0 ? lastSpace : maxLength).trim()}…`
+}
+
+function getEventPreview(event, expandedEventDescriptions) {
+  const cleanedDescription = event.summary || cleanEventDescription(event.description)
+  const isExpanded = Boolean(expandedEventDescriptions[event.id])
+
+  return {
+    fullText: cleanedDescription,
+    isExpanded,
+    shouldTruncate: cleanedDescription.length > 220,
+    visibleText: isExpanded ? cleanedDescription : truncateText(cleanedDescription),
+  }
+}
+
+function formatEventDateTime(event) {
+  const rawDate = event.startsAt || event.when
+
+  if (!rawDate) {
+    return event.when || 'Date to be announced'
+  }
+
+  const parsedDate = new Date(rawDate)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return event.when || rawDate
+  }
+
+  const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    weekday: 'short',
+    day: 'numeric',
+  })
+  const timeFormatter = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+
+  return `${dateFormatter.format(parsedDate)} · ${timeFormatter.format(parsedDate)}`
 }
 
 function getActiveLocationLabel(activeLocation) {
@@ -1013,101 +931,310 @@ function buildLocationMapEmbedUrl(activeLocation) {
   )}&output=embed`
 }
 
-function buildParkMapEmbedUrl(park) {
-  if (!park?.address) {
-    return ''
-  }
-
-  return `https://maps.google.com/maps?q=${encodeURIComponent(
-    park.address,
-  )}&output=embed`
+function getZipFromAddress(address) {
+  return address.match(/\b\d{5}(?:-\d{4})?\b/)?.[0]?.slice(0, 5) || ''
 }
 
-function getParkLocationLabel(park) {
-  return [park?.name, park?.city].filter(Boolean).join(' · ')
+const conditionHealthTopicMap = [
+  {
+    keywords: ['heart disease', 'heart attack'],
+    topics: ['heart-health', 'blood-pressure', 'cholesterol', 'physical-activity'],
+  },
+  {
+    keywords: ['high blood pressure', 'hypertension'],
+    topics: ['blood-pressure', 'heart-health', 'nutrition'],
+  },
+  {
+    keywords: ['high cholesterol'],
+    topics: ['cholesterol', 'heart-health', 'nutrition', 'physical-activity'],
+  },
+  {
+    keywords: ['type 2 diabetes', 'prediabetes', 'obesity'],
+    topics: ['diabetes', 'nutrition', 'physical-activity'],
+  },
+  {
+    keywords: ['stroke'],
+    topics: ['blood-pressure', 'heart-health', 'cholesterol'],
+  },
+  {
+    keywords: ['breast cancer'],
+    topics: ['cancer-prevention'],
+  },
+  {
+    keywords: ['colon cancer', 'colorectal'],
+    topics: ['cancer-prevention', 'nutrition', 'physical-activity'],
+  },
+  {
+    keywords: ['depression', 'anxiety', 'mental health'],
+    topics: ['mental-health'],
+  },
+]
+
+const healthTopicLabels = {
+  'blood-pressure': 'blood pressure prevention',
+  'cancer-prevention': 'cancer prevention',
+  cholesterol: 'cholesterol awareness',
+  diabetes: 'diabetes prevention',
+  'general-prevention': 'preventive health',
+  'heart-health': 'heart health',
+  'mental-health': 'mental wellness',
+  nutrition: 'nutrition',
+  'physical-activity': 'physical activity',
+  vaccination: 'vaccination',
+}
+
+function addTopics(topicSet, topics) {
+  topics.forEach((topic) => topicSet.add(topic))
+}
+
+function getTopicsForCondition(conditionName) {
+  const normalizedCondition = getIllnessKey(conditionName)
+
+  if (!normalizedCondition || isNoIllness(conditionName)) {
+    return []
+  }
+
+  const matchedRule = conditionHealthTopicMap.find((rule) =>
+    rule.keywords.some((keyword) => normalizedCondition.includes(keyword)),
+  )
+
+  return matchedRule?.topics || []
+}
+
+function getUserEventHealthTopics({ familyMembers, profile }) {
+  const topicSet = new Set()
+
+  familyMembers.forEach((member) => {
+    member.illnesses?.forEach((illness) => {
+      addTopics(topicSet, getTopicsForCondition(illness))
+    })
+  })
+
+  profile.illnesses?.forEach((illness) => {
+    addTopics(topicSet, getTopicsForCondition(illness))
+  })
+
+  if (profile.smokingStatus === 'Current') {
+    addTopics(topicSet, [
+      'cancer-prevention',
+      'heart-health',
+      'mental-health',
+      'general-prevention',
+    ])
+  }
+
+  if (profile.exercise === 'Rarely' || profile.exercise === '1-2 days/week') {
+    addTopics(topicSet, ['physical-activity', 'heart-health', 'diabetes'])
+  }
+
+  if (
+    profile.dietQuality === 'Poor' ||
+    profile.dietQuality === 'Fair' ||
+    profile.fruitVegIntake === '0-1 servings' ||
+    profile.fruitVegIntake === '2 servings'
+  ) {
+    addTopics(topicSet, ['nutrition', 'heart-health', 'diabetes'])
+  }
+
+  if (profile.stressLevel === 'High' || profile.stressLevel === 'Very high') {
+    addTopics(topicSet, ['mental-health'])
+  }
+
+  if (profile.knownHighBloodPressure === 'Yes' || profile.knownHighBloodPressure === 'Not sure') {
+    addTopics(topicSet, ['blood-pressure', 'heart-health'])
+  }
+
+  if (profile.knownHighCholesterol === 'Yes' || profile.knownHighCholesterol === 'Not sure') {
+    addTopics(topicSet, ['cholesterol', 'heart-health'])
+  }
+
+  if (
+    profile.diabetesStatus === 'Prediabetes' ||
+    profile.diabetesStatus === 'Type 2 diabetes' ||
+    profile.diabetesStatus === 'Diabetes, not sure what type' ||
+    profile.diabetesStatus === 'Not sure'
+  ) {
+    addTopics(topicSet, ['diabetes', 'nutrition', 'physical-activity'])
+  }
+
+  return [...topicSet]
+}
+
+function getEventPersonalization(event, userHealthTopics) {
+  const eventTopics = Array.isArray(event.healthTopics) ? event.healthTopics : []
+  const overlappingTopics = eventTopics.filter((topic) =>
+    userHealthTopics.includes(topic),
+  )
+
+  if (overlappingTopics.length > 0) {
+    const readableTopics = overlappingTopics
+      .slice(0, 2)
+      .map((topic) => healthTopicLabels[topic] || topic)
+      .join(' and ')
+
+    return {
+      matchCount: overlappingTopics.length,
+      recommendationLabel: 'Recommended for you',
+      recommendationReason: `Recommended because your family history or lifestyle answers relate to ${readableTopics}.`,
+    }
+  }
+
+  return {
+    matchCount: eventTopics.includes('general-prevention') ? 0.5 : 0,
+    recommendationLabel: 'General prevention',
+    recommendationReason:
+      'A general preventive-health event that may support routine wellness habits.',
+  }
+}
+
+function personalizeAndRankEvents(events, userHealthTopics) {
+  return [...events]
+    .map((event) => ({
+      ...event,
+      ...getEventPersonalization(event, userHealthTopics),
+    }))
+    .sort((firstEvent, secondEvent) => {
+      if (secondEvent.matchCount !== firstEvent.matchCount) {
+        return secondEvent.matchCount - firstEvent.matchCount
+      }
+
+      return firstEvent.title.localeCompare(secondEvent.title)
+    })
+}
+
+function normalizeCity(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+
+function getEventCity(event) {
+  return (
+    event?.city ||
+    event?.location?.city ||
+    event?.location?.address?.addressLocality ||
+    event?.addressLocality ||
+    ''
+  )
 }
 
 function normalizeRemoteEvent(event, index) {
   const address = typeof event?.address === 'string' ? event.address : ''
-  const eventLink =
-    typeof event?.eventLink === 'string' && event.eventLink.trim()
-      ? event.eventLink
-      : typeof event?.sourceUrl === 'string' && event.sourceUrl.trim()
-        ? event.sourceUrl
-        : typeof event?.registrationUrl === 'string' && event.registrationUrl.trim()
-          ? event.registrationUrl
-          : ''
+  const locationName =
+    typeof event?.locationName === 'string' && event.locationName.trim()
+      ? event.locationName
+      : typeof event?.location === 'string' && event.location.trim()
+        ? event.location
+        : ''
   const zipCode =
     typeof event?.zipCode === 'string' && /^\d{5}$/.test(event.zipCode)
       ? event.zipCode
-      : getZipFromAddress(address)
-  const isOnline = Boolean(event?.isOnline || event?.attendanceMode === 'online')
+      : getZipFromAddress(`${address} ${locationName}`)
+  const healthTopics = Array.isArray(event?.healthTopics)
+    ? event.healthTopics.filter((topic) => typeof topic === 'string' && topic.trim())
+    : []
+  const eventLink =
+    typeof event?.registrationUrl === 'string' && event.registrationUrl.trim()
+      ? event.registrationUrl
+      : typeof event?.sourceUrl === 'string' && event.sourceUrl.trim()
+        ? event.sourceUrl
+      : typeof event?.eventLink === 'string' && event.eventLink.trim()
+        ? event.eventLink
+        : ''
+  const sourceName =
+    typeof event?.sourceName === 'string' && event.sourceName.trim()
+      ? event.sourceName
+      : typeof event?.source === 'string'
+        ? event.source
+      : ''
+  const attendanceMode = ['online', 'in-person', 'hybrid', 'unknown'].includes(
+    event?.attendanceMode,
+  )
+    ? event.attendanceMode
+    : event?.isOnline
+      ? 'online'
+      : address
+        ? 'in-person'
+        : 'unknown'
 
-  return {
-    attendanceMode:
-      typeof event?.attendanceMode === 'string' ? event.attendanceMode : '',
+  const normalizedEvent = {
     address,
+    addressLocality:
+      typeof event?.addressLocality === 'string' ? event.addressLocality : '',
+    attendanceMode,
     city: typeof event?.city === 'string' ? event.city : '',
     description: typeof event?.description === 'string' ? event.description : '',
+    directionsUrl: '',
     eventLink,
-    eventDateText:
-      typeof event?.eventDateText === 'string' ? event.eventDateText : '',
-    hasLocation: Boolean(address) && !isOnline,
+    hasLocation: Boolean(address),
     id:
       typeof event?.id === 'string' && event.id.trim()
-        ? `${event.id}-${index + 1}`
+        ? event.id
         : `event-${index + 1}`,
     image: typeof event?.image === 'string' ? event.image : '',
-    isOnline,
-    location:
-      typeof event?.locationName === 'string' && event.locationName.trim()
-        ? event.locationName
-        : address,
+    healthTopics,
+    latitude: Number.isFinite(event?.latitude) ? event.latitude : null,
+    location: address || locationName,
+    locationName,
+    longitude: Number.isFinite(event?.longitude) ? event.longitude : null,
+    onlineUrl:
+      typeof event?.onlineUrl === 'string' && event.onlineUrl.trim()
+        ? event.onlineUrl
+        : '',
     platform: typeof event?.platform === 'string' ? event.platform : '',
-    originalUrl: typeof event?.originalUrl === 'string' ? event.originalUrl : '',
+    registrationRequired: Boolean(event?.registrationRequired),
     registrationUrl:
       typeof event?.registrationUrl === 'string' ? event.registrationUrl : '',
-    shortDescription:
-      typeof event?.shortDescription === 'string'
-        ? event.shortDescription
-        : typeof event?.summary === 'string'
-          ? event.summary
-          : '',
-    source:
-      typeof event?.source === 'string' && event.source.trim()
-        ? event.source
-        : typeof event?.sourceName === 'string'
-          ? event.sourceName
-          : '',
-    sourceUrl: typeof event?.sourceUrl === 'string' ? event.sourceUrl : '',
+    source: sourceName,
     startsAt: typeof event?.startDate === 'string' ? event.startDate : '',
+    summary: typeof event?.summary === 'string' ? event.summary : '',
+    streetAddress:
+      typeof event?.streetAddress === 'string' ? event.streetAddress : '',
     title:
       typeof event?.title === 'string' && event.title.trim()
-        ? decodeHtmlEntities(event.title)
+        ? event.title
         : 'Untitled event',
-    when: typeof event?.when === 'string' ? event.when : '',
+    when:
+      typeof event?.eventDateText === 'string' && event.eventDateText.trim()
+        ? event.eventDateText
+        : typeof event?.dateText === 'string' && event.dateText.trim()
+          ? event.dateText
+        : typeof event?.when === 'string'
+          ? event.when
+          : '',
     zipCode,
   }
+
+  normalizedEvent.directionsUrl =
+    typeof event?.directionsUrl === 'string' && event.directionsUrl.trim()
+      ? event.directionsUrl
+      : typeof event?.directionsLink === 'string' && event.directionsLink.trim()
+        ? event.directionsLink
+        : hasSpecificLocation(normalizedEvent) && !isOnlineEvent(normalizedEvent)
+          ? buildEventMapsUrl(normalizedEvent)
+          : ''
+
+  normalizedEvent.hasLocation = hasSpecificLocation(normalizedEvent)
+
+  return normalizedEvent
 }
 
-function getEventFilterResult(events, activeLocation) {
-  const rawZipCode =
-    activeLocation.source === 'manual' ? activeLocation.zipCode : ''
-  const searchedZipCode =
-    activeLocation.source === 'manual'
-      ? normalizeZip(activeLocation.zipCode)
-      : ''
+function getEventFilterResult(events, activeLocation, userHealthTopics) {
+  const searchedZipCode = String(activeLocation.zipCode || '').trim()
+  const personalizeEvents = (matchingEvents) =>
+    personalizeAndRankEvents(matchingEvents, userHealthTopics)
 
   if (!searchedZipCode) {
     return {
-      events,
+      events: personalizeEvents(events),
       status: events.length > 0 ? 'all-events' : 'empty',
       targetCity: '',
       zipCode: '',
     }
   }
 
-  if (!isValidFiveDigitZip(rawZipCode)) {
+  if (!/^\d{5}$/.test(searchedZipCode)) {
     return {
       events: [],
       status: 'invalid-zip',
@@ -1118,7 +1245,7 @@ function getEventFilterResult(events, activeLocation) {
 
   const targetCity = getCityForZip(searchedZipCode)
 
-  if (!targetCity || !getLocationForZip(searchedZipCode)) {
+  if (!targetCity) {
     return {
       events: [],
       status: 'unsupported-zip',
@@ -1127,9 +1254,35 @@ function getEventFilterResult(events, activeLocation) {
     }
   }
 
+  const cityEvents = events.filter(
+    (event) => normalizeCity(getEventCity(event)) === normalizeCity(targetCity),
+  )
+
+  if (import.meta.env.DEV) {
+    console.log('ZIP:', searchedZipCode)
+    console.log('Selected city:', targetCity)
+    console.log(
+      'All event cities:',
+      events.map((event) => getEventCity(event)),
+    )
+    console.log(
+      'Displayed event cities:',
+      cityEvents.map((event) => getEventCity(event)),
+    )
+  }
+
+  if (cityEvents.length > 0) {
+    return {
+      events: personalizeEvents(cityEvents),
+      status: 'mapped-city',
+      targetCity,
+      zipCode: searchedZipCode,
+    }
+  }
+
   return {
-    events,
-    status: 'success',
+    events: [],
+    status: 'supported-empty',
     targetCity,
     zipCode: searchedZipCode,
   }
@@ -1870,12 +2023,10 @@ function App() {
   const [isFamilyFormOpen, setIsFamilyFormOpen] = useState(false)
   const [activeFamilyMenuId, setActiveFamilyMenuId] = useState(null)
   const [selectedWeeklyEvent, setSelectedWeeklyEvent] = useState(null)
-  const [selectedParkId, setSelectedParkId] = useState(null)
-  const [activeResourceTab, setActiveResourceTab] = useState('events')
+  const [expandedEventDescriptions, setExpandedEventDescriptions] = useState({})
   const [weeklyEvents, setWeeklyEvents] = useState([])
   const [weeklyEventsError, setWeeklyEventsError] = useState('')
   const [weeklyEventsStatus, setWeeklyEventsStatus] = useState('loading')
-  const [currentDate, setCurrentDate] = useState(() => new Date())
 
   const selfTreeNode = userProfile
     ? {
@@ -1903,12 +2054,6 @@ function App() {
     familyMembers,
     profile: preventionProfile,
   })
-  const resourcePriorities = getUserResourcePriorities({
-    familyHealthSummary,
-    familyMembers,
-    preventionScore,
-  })
-  const visibleResourcePriorities = resourcePriorities
   const preventionInsights = buildPreventionInsights({
     familyHealthSummary,
     profile: preventionProfile,
@@ -1934,96 +2079,31 @@ function App() {
     : null
   const disclaimerText =
     'This educational tool organizes family history and lifestyle information. It does not provide a diagnosis or replace professional medical advice.'
-  const weeklyEventFilter = getEventFilterResult(weeklyEvents, activeLocation)
-  const recurringWeeklyEvents = getNextOccurrencePerEvent(
-    weeklyEvents,
-    currentDate,
-  )
-  const nearbyParks = weeklyEventFilter.zipCode
-    ? getParksNearZip(weeklyEventFilter.zipCode)
-    : []
-  const stagedResourceSearch = getStagedResourceSearch({
-    events: recurringWeeklyEvents,
-    parks: nearbyParks,
-    priorities: visibleResourcePriorities,
-    zipCode: weeklyEventFilter.zipCode,
-    now: currentDate,
+  const userEventHealthTopics = getUserEventHealthTopics({
+    familyMembers,
+    profile: preventionProfile,
   })
-  const hasExactLocalResourceMatches =
-    weeklyEventFilter.zipCode && stagedResourceSearch.counts.exact > 0
-  const fallbackResourceSections =
-    weeklyEventFilter.zipCode && !hasExactLocalResourceMatches
-      ? stagedResourceSearch.fallbackSections.filter(
-          (section) => section.resources.length > 0,
-        )
-      : []
-  const priorityResourceGroups = weeklyEventFilter.zipCode
-    ? hasExactLocalResourceMatches
-      ? groupAssignedResourcesByPriorityAction(
-        stagedResourceSearch.resources,
-        visibleResourcePriorities,
-      )
-      : groupAssignedResourcesByPriorityAction([], visibleResourcePriorities)
-    : groupAssignedResourcesByPriorityAction([], visibleResourcePriorities)
-  const fallbackResources = fallbackResourceSections.flatMap(
-    (section) => section.resources,
+  const weeklyEventFilter = getEventFilterResult(
+    weeklyEvents,
+    activeLocation,
+    userEventHealthTopics,
   )
-  const groupedWeeklyEvents = priorityResourceGroups.flatMap((group) =>
-    group.actions.flatMap((actionGroup) => actionGroup.resources),
-  )
-  const visibleResourceCards = hasExactLocalResourceMatches
-    ? groupedWeeklyEvents
-    : fallbackResources
-  const hasPriorityEventMatches = visibleResourceCards.length > 0
-  const shouldShowPriorityEventGroups =
-    weeklyEventsStatus === 'success' &&
-    visibleResourcePriorities.length > 0 &&
-    hasExactLocalResourceMatches &&
-    groupedWeeklyEvents.length > 0
-  const shouldShowFallbackResourceSections =
-    weeklyEventsStatus === 'success' &&
-    visibleResourcePriorities.length > 0 &&
-    weeklyEventFilter.status === 'success' &&
-    !hasExactLocalResourceMatches &&
-    fallbackResourceSections.length > 0
-  const shouldShowEventPageEmptyState =
-    weeklyEventsStatus === 'success' &&
-    visibleResourcePriorities.length > 0 &&
-    weeklyEventFilter.status === 'success' &&
-    !hasPriorityEventMatches
+  const displayedWeeklyEvents = weeklyEventFilter.events
   const selectedEvent =
-    visibleResourceCards.find(
-      (event) =>
-        event.id === selectedWeeklyEvent?.id &&
-        event.eventPriorityId === selectedWeeklyEvent?.eventPriorityId,
-    ) ||
-    visibleResourceCards.find((event) => event.id === selectedWeeklyEvent?.id) ||
-    visibleResourceCards[0] ||
+    displayedWeeklyEvents.find((event) => event.id === selectedWeeklyEvent?.id) ||
+    displayedWeeklyEvents[0] ||
     null
-  const selectedPark =
-    nearbyParks.find((park) => park.id === selectedParkId) ||
-    nearbyParks[0] ||
-    null
-  const weeklyEventHeading = weeklyEventFilter.zipCode
-    ? hasExactLocalResourceMatches
-      ? 'Recommended resources near you'
-      : 'No exact local matches were found'
+  const weeklyEventHeading = weeklyEventFilter.targetCity
+    ? `Health events in ${weeklyEventFilter.targetCity}`
     : 'This Week Near You'
   const weeklyEventDescription = weeklyEventFilter.zipCode
-    ? hasExactLocalResourceMatches
-      ? stagedResourceSearch.stageLabel || ''
-      : "We've found the closest available resources based on your health priorities to help you stay on track with your prevention plan."
+    ? weeklyEventFilter.targetCity
+      ? `Showing verified preventive-health events for ${weeklyEventFilter.targetCity}.`
+      : ''
     : 'Upcoming community health opportunities matched to your family history and lifestyle profile.'
-  const activeMapTarget =
-    activeResourceTab === 'parks' && selectedPark
-      ? selectedPark
-      : selectedEvent
-  const weeklyEventMapUrl =
-    activeResourceTab === 'parks' && selectedPark
-      ? buildParkMapEmbedUrl(selectedPark)
-      : selectedEvent && !isVirtualEvent(selectedEvent)
-        ? buildEventMapEmbedUrl(selectedEvent)
-        : buildLocationMapEmbedUrl(activeLocation)
+  const weeklyEventMapUrl = selectedEvent
+    ? buildEventMapEmbedUrl(selectedEvent)
+    : buildLocationMapEmbedUrl(activeLocation)
   function getRelationshipCount(group, ignoredMemberId = null) {
     return familyMembers.filter(
       (member) =>
@@ -2201,16 +2281,6 @@ function App() {
   ])
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setCurrentDate(new Date())
-    }, 60000)
-
-    return () => {
-      window.clearInterval(intervalId)
-    }
-  }, [])
-
-  useEffect(() => {
     const controller = new AbortController()
 
     async function loadWeeklyEvents() {
@@ -2222,7 +2292,15 @@ function App() {
           signal: controller.signal,
         })
 
-        const events = await parseEventsResponse(response)
+        if (!response.ok) {
+          throw new Error(`Unable to load events.json (${response.status}).`)
+        }
+
+        const events = await response.json()
+
+        if (!Array.isArray(events)) {
+          throw new Error('The events data file is not a valid event list.')
+        }
 
         setWeeklyEvents(events.map(normalizeRemoteEvent))
         setWeeklyEventsStatus('success')
@@ -2304,7 +2382,6 @@ function App() {
           zipCode: '',
         })
         setSelectedWeeklyEvent(null)
-        setSelectedParkId(null)
         setLocationStatus('success')
         setLocationMessage(
           'Location added. Only nearby search terms use this location; family health data stays on your device.',
@@ -2328,15 +2405,14 @@ function App() {
     event.preventDefault()
 
     const locationInput = String(activeLocation.zipCode || '').trim()
-    const normalizedLocationZip = normalizeZip(locationInput)
 
-    if (!locationInput) {
+    if (!locationInput.trim()) {
       setLocationStatus('error')
-      setLocationMessage('Enter a 5-digit ZIP code to search near that location.')
+      setLocationMessage('Enter a valid five-digit ZIP code.')
       return
     }
 
-    if (!isValidFiveDigitZip(locationInput)) {
+    if (!/^\d{5}$/.test(locationInput)) {
       setActiveLocation({
         city: '',
         latitude: null,
@@ -2345,34 +2421,30 @@ function App() {
         zipCode: locationInput,
       })
       setSelectedWeeklyEvent(null)
-      setSelectedParkId(null)
       setLocationStatus('error')
-      setLocationMessage('Enter a valid 5-digit ZIP code.')
+      setLocationMessage('Enter a valid five-digit ZIP code.')
       return
     }
 
-    const city = getCityForZip(normalizedLocationZip)
+    const city = getCityForZip(locationInput)
 
     setActiveLocation({
       city,
       latitude: null,
       longitude: null,
       source: 'manual',
-      zipCode: normalizedLocationZip,
+      zipCode: locationInput,
     })
     setSelectedWeeklyEvent(null)
-    setSelectedParkId(null)
 
-    if (!getLocationForZip(normalizedLocationZip)) {
+    if (!city || !isSupportedZip(locationInput)) {
       setLocationStatus('error')
-      setLocationMessage(
-        'That ZIP code is not supported yet. Try a San Francisco, Daly City, South San Francisco, Oakland, Berkeley, or Fresno ZIP code.',
-      )
+      setLocationMessage('That ZIP code is outside the areas currently supported.')
       return
     }
 
     setLocationStatus('manual')
-    setLocationMessage(`Showing health events near ${normalizedLocationZip} (${city}).`)
+    setLocationMessage(`Showing health events near ${locationInput} (${city}).`)
   }
 
   function addProfileIllness(illness) {
@@ -3965,6 +4037,7 @@ function App() {
                       source: '',
                       zipCode,
                     }))
+                    setSelectedWeeklyEvent(null)
                   }}
                   placeholder="Example: 94132"
                 />
@@ -3987,608 +4060,233 @@ function App() {
           </section>
 
           {hasPersonalizedAssessmentData ? (
-            <div className="wellness-layout">
-              <section
-                className="wellness-recommendations"
-                aria-labelledby="wellness-recommendations-title"
-              >
-                <div className="section-heading-row">
-                  <div>
-                    <h2 id="wellness-recommendations-title">
-                      Find resources near you
-                    </h2>
-                    <p>
-                      Local resources are filtered by your selected city and matched
-                      to prevention categories from your profile.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="resource-recommendation-intro">
-                  <h3>Recommended resources for you</h3>
-                  <p>Based on your top health priorities and prevention plan.</p>
-                </div>
-
-                <div className="resource-tabs" role="tablist" aria-label="Local resource type">
-                  <button
-                    className={`resource-tab${
-                      activeResourceTab === 'events' ? ' active' : ''
-                    }`}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeResourceTab === 'events'}
-                    onClick={() => setActiveResourceTab('events')}
-                  >
-                    Recommended events
-                  </button>
-                  <button
-                    className={`resource-tab${
-                      activeResourceTab === 'parks' ? ' active' : ''
-                    }`}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeResourceTab === 'parks'}
-                    onClick={() => setActiveResourceTab('parks')}
-                  >
-                    Parks nearby
-                  </button>
-                </div>
-
-                {activeResourceTab === 'events' ? (
-                  <>
-                    <div className="section-heading-row compact-heading">
-                      <div>
-                        <h3>{weeklyEventHeading}</h3>
-                        {weeklyEventDescription ? <p>{weeklyEventDescription}</p> : null}
-                      </div>
-                    </div>
-
-                    {weeklyEventsStatus === 'loading' ? (
-                      <p className="helper-text">Loading this week’s events...</p>
-                    ) : null}
-
-                    {weeklyEventsStatus === 'error' ? (
-                      <p className="flow-message error" role="alert">
-                        {weeklyEventsError}
-                      </p>
-                    ) : null}
-
-                    {weeklyEventsStatus === 'success' &&
-                    (weeklyEventFilter.status === 'invalid-zip' ||
-                      weeklyEventFilter.status === 'unsupported-zip') ? (
-                      <div className="resource-empty-state">
-                        <p>
-                          {weeklyEventFilter.status === 'invalid-zip'
-                            ? 'Enter a valid 5-digit ZIP code.'
-                            : 'That ZIP code is outside the areas currently supported.'}
-                        </p>
-                      </div>
-                    ) : null}
-
-                    {shouldShowEventPageEmptyState ? (
-                      <div className="resource-empty-state">
-                        <p>
-                          No matching resources are currently available. Check
-                          back as new community programs are added.
-                        </p>
-                      </div>
-                    ) : null}
-
-                    {shouldShowFallbackResourceSections ? (
-                      <div className="fallback-resource-section-list">
-                        {fallbackResourceSections.map((section) => (
-                          <section className="priority-event-group" key={section.id}>
-                            <div className="priority-event-heading">
-                              <div>
-                                <h3>{section.title}</h3>
-                                <p className="helper-text">{section.description}</p>
-                              </div>
-                            </div>
-
-                            <div className="weekly-event-list">
-                              {section.resources.map((event) => {
-                                const shortDescription = getEventShortDescription(event)
-                                const detailsUrl = getEventDetailsUrl(event)
-                                const isParkResource = event.resourceType === 'park'
-                                const isOrganizationResource =
-                                  event.resourceType === 'organization'
-                                const mapUrl = isParkResource
-                                  ? getParkMapUrl(event)
-                                  : getEventMapUrl(event)
-                                const locationLabel = isOrganizationResource
-                                  ? 'Online resource'
-                                  : getEventLocationLabel(event)
-                                const eventModeLabel =
-                                  isOrganizationResource
-                                    ? ''
-                                    : getEventModeLabel(event)
-                                const distanceLabel =
-                                  eventModeLabel || isOrganizationResource
-                                    ? ''
-                                    : getDistanceLabel(event)
-
-                                return (
-                                  <article
-                                    className={`weekly-event-card${
-                                      selectedEvent?.id === event.id ? ' selected' : ''
-                                    }`}
-                                    key={`${section.id}-${event.id}`}
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-pressed={selectedEvent?.id === event.id}
-                                    onClick={() => {
-                                      setActiveResourceTab('events')
-                                      setSelectedWeeklyEvent(event)
-                                    }}
-                                    onKeyDown={(keyEvent) => {
-                                      if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
-                                        keyEvent.preventDefault()
-                                        setActiveResourceTab('events')
-                                        setSelectedWeeklyEvent(event)
-                                      }
-                                    }}
-                                  >
-                                    {event.image ? (
-                                      <img
-                                        className="weekly-event-image"
-                                        src={event.image}
-                                        alt=""
-                                        loading="lazy"
-                                      />
-                                    ) : null}
-
-                                    <div className="weekly-event-topline">
-                                      <span className="recommendation-badge">
-                                        {event.recommendationLabel ||
-                                          event.resourceSearchStageLabel ||
-                                          'Recommended resource'}
-                                      </span>
-                                      <h3>{event.title}</h3>
-                                      {shortDescription ? (
-                                        <p className="weekly-event-summary">
-                                          {shortDescription}
-                                        </p>
-                                      ) : null}
-                                      {event.eventMatchReason ? (
-                                        <p className="event-match-reason">
-                                          {event.eventMatchReason}
-                                        </p>
-                                      ) : null}
-                                    </div>
-
-                                    <dl className="weekly-event-details">
-                                      {isOrganizationResource ? (
-                                        <div>
-                                          <dt>Resource</dt>
-                                          <dd>Trusted health organization</dd>
-                                        </div>
-                                      ) : isParkResource ? (
-                                        <div>
-                                          <dt>Resource</dt>
-                                          <dd>{event.amenities?.slice(0, 3).join(', ')}</dd>
-                                        </div>
-                                      ) : (
-                                        <div>
-                                          <dt>Date</dt>
-                                          <dd>{formatEventDate(event)}</dd>
-                                        </div>
-                                      )}
-                                      {locationLabel ? (
-                                        <div>
-                                          <dt>Location</dt>
-                                          <dd>{locationLabel}</dd>
-                                        </div>
-                                      ) : null}
-                                      {distanceLabel ? (
-                                        <div>
-                                          <dt>Distance</dt>
-                                          <dd>{distanceLabel}</dd>
-                                        </div>
-                                      ) : null}
-                                      {eventModeLabel ? (
-                                        <div>
-                                          <dt>Event type</dt>
-                                          <dd>
-                                            <span className="event-mode-badge">
-                                              {eventModeLabel}
-                                            </span>
-                                          </dd>
-                                        </div>
-                                      ) : null}
-                                    </dl>
-
-                                    <div className="weekly-event-actions">
-                                      {detailsUrl ? (
-                                        <a
-                                          className="secondary-action"
-                                          href={detailsUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          aria-label={`More information about ${event.title}`}
-                                          onClick={(clickEvent) =>
-                                            clickEvent.stopPropagation()
-                                          }
-                                        >
-                                          More info <span aria-hidden="true">→</span>
-                                        </a>
-                                      ) : null}
-
-                                      {mapUrl ? (
-                                        <a
-                                          className="primary-action"
-                                          href={mapUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={(clickEvent) => {
-                                            clickEvent.stopPropagation()
-                                            setSelectedWeeklyEvent(event)
-                                          }}
-                                        >
-                                          View on map <span aria-hidden="true">→</span>
-                                        </a>
-                                      ) : null}
-                                    </div>
-                                  </article>
-                                )
-                              })}
-                            </div>
-                          </section>
-                        ))}
-                      </div>
-                    ) : null}
-
-                    {shouldShowPriorityEventGroups ? (
-                      <div className="priority-event-group-list">
-                        {priorityResourceGroups.map((group) => (
-                          <section className="priority-event-group" key={group.priority.id}>
-                            <div className="priority-event-heading">
-                              <h3>{group.priority.label}</h3>
-                            </div>
-
-                            <div className="action-resource-list">
-                              {group.actions.map((actionGroup) => (
-                                <section
-                                  className="action-resource-group"
-                                  key={`${group.priority.id}-${actionGroup.action}`}
-                                >
-                                  <h4>{actionGroup.action}</h4>
-                                  <p className="helper-text">
-                                    {stagedResourceSearch.stageLabel || 'Recommended nearby'}
-                                  </p>
-
-                                  {actionGroup.resources.length === 0 ? (
-                                    <p className="helper-text subtle-empty-line">
-                                      No matching local resource available right now.
-                                    </p>
-                                  ) : (
-                                    <div className="weekly-event-list">
-                                      {actionGroup.resources.map((event) => {
-                                  const shortDescription = getEventShortDescription(event)
-                                  const detailsUrl = getEventDetailsUrl(event)
-                                  const mapUrl = getEventMapUrl(event)
-                                  const locationLabel = getEventLocationLabel(event)
-                                  const eventModeLabel = getEventModeLabel(event)
-                                  const distanceLabel = eventModeLabel
-                                    ? ''
-                                    : getDistanceLabel(event)
-                                  const isParkResource = event.resourceType === 'park'
-
-                                  return (
-                                    <article
-                                      className={`weekly-event-card${
-                                        selectedEvent?.id === event.id &&
-                                        selectedEvent?.eventPriorityId === event.eventPriorityId
-                                          ? ' selected'
-                                          : ''
-                                      }`}
-                                      key={`${group.priority.id}-${actionGroup.action}-${event.id}`}
-                                      role="button"
-                                      tabIndex={0}
-                                      aria-pressed={
-                                        selectedEvent?.id === event.id &&
-                                        selectedEvent?.eventPriorityId === event.eventPriorityId
-                                      }
-                                      onClick={() => {
-                                        setActiveResourceTab('events')
-                                        setSelectedWeeklyEvent(event)
-                                      }}
-                                      onKeyDown={(keyEvent) => {
-                                        if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
-                                          keyEvent.preventDefault()
-                                          setActiveResourceTab('events')
-                                          setSelectedWeeklyEvent(event)
-                                        }
-                                      }}
-                                    >
-                                      {event.image ? (
-                                        <img
-                                          className="weekly-event-image"
-                                          src={event.image}
-                                          alt=""
-                                          loading="lazy"
-                                        />
-                                      ) : null}
-
-                                      <div className="weekly-event-topline">
-                                        <span className="recommendation-badge">
-                                          {isParkResource
-                                            ? 'Local activity resource'
-                                            : event.resourceSearchStageLabel ||
-                                              event.recommendationLabel}
-                                        </span>
-                                        <h3>{event.title}</h3>
-                                        {shortDescription ? (
-                                          <p className="weekly-event-summary">
-                                            {shortDescription}
-                                          </p>
-                                        ) : null}
-                                        {event.eventMatchReason ? (
-                                          <p className="event-match-reason">
-                                            {event.eventMatchReason}
-                                          </p>
-                                        ) : null}
-                                      </div>
-
-                                      <dl className="weekly-event-details">
-                                        {isParkResource ? (
-                                          <div>
-                                            <dt>Resource</dt>
-                                            <dd>{event.amenities?.slice(0, 3).join(', ')}</dd>
-                                          </div>
-                                        ) : (
-                                          <div>
-                                            <dt>Date</dt>
-                                            <dd>{formatEventDate(event)}</dd>
-                                          </div>
-                                        )}
-                                        {locationLabel ? (
-                                          <div>
-                                            <dt>Location</dt>
-                                            <dd>{locationLabel}</dd>
-                                          </div>
-                                        ) : null}
-                                        {distanceLabel ? (
-                                          <div>
-                                            <dt>Distance</dt>
-                                            <dd>{distanceLabel}</dd>
-                                          </div>
-                                        ) : null}
-                                        {eventModeLabel ? (
-                                          <div>
-                                            <dt>Event type</dt>
-                                            <dd>
-                                              <span className="event-mode-badge">
-                                                {eventModeLabel}
-                                              </span>
-                                            </dd>
-                                          </div>
-                                        ) : null}
-                                      </dl>
-
-                                      <div className="weekly-event-actions">
-                                        {detailsUrl ? (
-                                          <a
-                                            className="secondary-action"
-                                            href={detailsUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            aria-label={`More information about ${event.title}`}
-                                            onClick={(clickEvent) =>
-                                              clickEvent.stopPropagation()
-                                            }
-                                          >
-                                            More info <span aria-hidden="true">→</span>
-                                          </a>
-                                        ) : null}
-
-                                        {mapUrl ? (
-                                          <a
-                                            className="primary-action"
-                                            href={mapUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={(clickEvent) => {
-                                              clickEvent.stopPropagation()
-                                              setSelectedWeeklyEvent(event)
-                                            }}
-                                          >
-                                            View on map <span aria-hidden="true">→</span>
-                                          </a>
-                                        ) : null}
-                                      </div>
-                                    </article>
-                                  )
-                                      })}
-                                    </div>
-                                  )}
-                                </section>
-                              ))}
-                            </div>
-                          </section>
-                        ))}
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <div className="section-heading-row compact-heading">
-                      <div>
-                        <h3>Parks nearby</h3>
-                        <p>
-                          Parks are limited to the same city as your ZIP code and
-                          ranked by distance when coordinates are available.
-                        </p>
-                      </div>
-                    </div>
-
-                    {weeklyEventFilter.zipCode && nearbyParks.length === 0 ? (
-                      <p className="helper-text">
-                        No park resources are available for this ZIP code yet.
-                      </p>
-                    ) : null}
-
-                    {!weeklyEventFilter.zipCode ? (
-                      <p className="helper-text">
-                        Enter a supported ZIP code to see same-city parks.
-                      </p>
-                    ) : null}
-
-                    {nearbyParks.length > 0 ? (
-                      <div className="weekly-event-list">
-                        {nearbyParks.map((park) => {
-                          const parkMapUrl = getParkMapUrl(park)
-                          const distanceLabel = getDistanceLabel(park)
-
-                          return (
-                            <article
-                              className={`weekly-event-card park-card${
-                                selectedPark?.id === park.id ? ' selected' : ''
-                              }`}
-                              key={park.id}
-                              role="button"
-                              tabIndex={0}
-                              aria-pressed={selectedPark?.id === park.id}
-                              onClick={() => setSelectedParkId(park.id)}
-                              onKeyDown={(keyEvent) => {
-                                if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
-                                  keyEvent.preventDefault()
-                                  setSelectedParkId(park.id)
-                                }
-                              }}
-                            >
-                              <div className="weekly-event-topline">
-                                <span className="recommendation-badge">
-                                  {park.activitySuggestion}
-                                </span>
-                                <h3>{park.name}</h3>
-                                {park.description ? (
-                                  <p className="weekly-event-summary">
-                                    {park.description}
-                                  </p>
-                                ) : null}
-                              </div>
-
-                              <dl className="weekly-event-details">
-                                <div>
-                                  <dt>Location</dt>
-                                  <dd>{park.address}</dd>
-                                </div>
-                                {distanceLabel ? (
-                                  <div>
-                                    <dt>Distance</dt>
-                                    <dd>{distanceLabel}</dd>
-                                  </div>
-                                ) : null}
-                                {park.amenities.length > 0 ? (
-                                  <div>
-                                    <dt>Amenities</dt>
-                                    <dd>{park.amenities.join(', ')}</dd>
-                                  </div>
-                                ) : null}
-                              </dl>
-
-                              {parkMapUrl ? (
-                                <div className="weekly-event-actions">
-                                  <a
-                                    className="primary-action"
-                                    href={parkMapUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(clickEvent) => {
-                                      clickEvent.stopPropagation()
-                                      setSelectedParkId(park.id)
-                                    }}
-                                  >
-                                    View on map <span aria-hidden="true">→</span>
-                                  </a>
-                                </div>
-                              ) : null}
-                            </article>
-                          )
-                        })}
-                      </div>
-                    ) : null}
-                  </>
-                )}
-              </section>
-
-              {weeklyEventMapUrl ? (
+            <>
+              <div className="wellness-layout">
                 <section
-                  className="wellness-map-card"
-                  aria-labelledby="wellness-map-title"
+                  className="wellness-recommendations"
+                  aria-labelledby="wellness-recommendations-title"
                 >
-                  <div>
-                    <p className="eyebrow">Map</p>
-                    <h2 id="wellness-map-title">
-                      {activeResourceTab === 'parks' && selectedPark
-                        ? selectedPark.name
-                        : selectedEvent
+                  <div className="section-heading-row">
+                    <div>
+                      <h2 id="wellness-recommendations-title">
+                        {weeklyEventHeading}
+                      </h2>
+                      {weeklyEventDescription ? <p>{weeklyEventDescription}</p> : null}
+                    </div>
+                  </div>
+
+                  {weeklyEventsStatus === 'loading' ? (
+                    <p className="helper-text">Loading this week’s events...</p>
+                  ) : null}
+
+                  {weeklyEventsStatus === 'error' ? (
+                    <p className="flow-message error" role="alert">
+                      {weeklyEventsError}
+                    </p>
+                  ) : null}
+
+                  {weeklyEventsStatus === 'success' && displayedWeeklyEvents.length === 0 ? (
+                    <p className="helper-text">
+                      {weeklyEventFilter.status === 'invalid-zip'
+                        ? 'Enter a valid five-digit ZIP code.'
+                        : weeklyEventFilter.status === 'unsupported-zip'
+                          ? 'That ZIP code is outside the areas currently supported.'
+                          : weeklyEventFilter.status === 'supported-empty'
+                            ? `No verified upcoming health events are currently available in ${weeklyEventFilter.targetCity}.`
+                            : 'No verified preventive-health events were found for this week. New events are checked daily.'}
+                    </p>
+                  ) : null}
+
+                  {displayedWeeklyEvents.length > 0 ? (
+                    <div className="weekly-event-list">
+                      {displayedWeeklyEvents.map((event) => {
+                        const eventPreview = getEventPreview(
+                          event,
+                          expandedEventDescriptions,
+                        )
+                        const onlineEventUrl = getOnlineEventUrl(event)
+                        const mapActionLabel = getEventLocationActionLabel(event)
+
+                        return (
+                          <article
+                            className={`weekly-event-card${
+                              selectedEvent?.id === event.id ? ' selected' : ''
+                            }`}
+                            key={event.id}
+                            role="button"
+                            tabIndex={0}
+                            aria-pressed={selectedEvent?.id === event.id}
+                            onClick={() => setSelectedWeeklyEvent(event)}
+                            onKeyDown={(keyEvent) => {
+                              if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
+                                keyEvent.preventDefault()
+                                setSelectedWeeklyEvent(event)
+                              }
+                            }}
+                          >
+                            {event.image ? (
+                              <img
+                                className="weekly-event-image"
+                                src={event.image}
+                                alt=""
+                                loading="lazy"
+                              />
+                            ) : null}
+
+                            <div className="weekly-event-topline">
+                              <div>
+                                <h3>{event.title}</h3>
+                                <p>{formatEventDateTime(event)}</p>
+                              </div>
+                            </div>
+
+                            <div className="weekly-event-meta">
+                              <span>{event.recommendationLabel}</span>
+                              <span>{getLocationLabel(event)}</span>
+                              <span>
+                                {event.source}
+                              </span>
+                            </div>
+
+                            {eventPreview.visibleText ? (
+                              <p className="weekly-event-description">
+                                {eventPreview.visibleText}
+                              </p>
+                            ) : null}
+
+                            {eventPreview.shouldTruncate ? (
+                              <button
+                                className="text-action"
+                                type="button"
+                                onClick={(clickEvent) => {
+                                  clickEvent.stopPropagation()
+                                  setExpandedEventDescriptions((currentState) => ({
+                                    ...currentState,
+                                    [event.id]: !currentState[event.id],
+                                  }))
+                                }}
+                              >
+                                {eventPreview.isExpanded ? 'Show less' : 'Show more'}
+                              </button>
+                            ) : null}
+
+                            <div className="weekly-event-actions">
+                              {(isOnlineEvent(event) ||
+                                event.attendanceMode === 'hybrid') &&
+                              onlineEventUrl ? (
+                                <a
+                                  className="primary-action"
+                                  href={onlineEventUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(clickEvent) => clickEvent.stopPropagation()}
+                                >
+                                  {getOnlineEventActionLabel(event)}
+                                  <span aria-hidden="true">→</span>
+                                </a>
+                              ) : null}
+
+                              {event.directionsUrl && mapActionLabel ? (
+                                <a
+                                  className={
+                                    isOnlineEvent(event) ||
+                                    event.attendanceMode === 'hybrid'
+                                      ? 'secondary-action'
+                                      : 'primary-action'
+                                  }
+                                  href={event.directionsUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(clickEvent) => {
+                                    clickEvent.stopPropagation()
+                                    setSelectedWeeklyEvent(event)
+                                  }}
+                                >
+                                  {mapActionLabel}
+                                  <span aria-hidden="true">→</span>
+                                </a>
+                              ) : null}
+
+                              {event.eventLink ? (
+                                <a
+                                  className="secondary-action"
+                                  href={event.eventLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(clickEvent) => clickEvent.stopPropagation()}
+                                >
+                                  More info <span aria-hidden="true">→</span>
+                                </a>
+                              ) : null}
+                            </div>
+                          </article>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    null
+                  )}
+                </section>
+
+                {weeklyEventMapUrl ? (
+                  <section
+                    className="wellness-map-card"
+                    aria-labelledby="wellness-map-title"
+                  >
+                    <div>
+                      <p className="eyebrow">Map</p>
+                      <h2 id="wellness-map-title">
+                        {selectedEvent
                           ? selectedEvent.title
                           : getActiveLocationLabel(activeLocation)}
-                    </h2>
-                    <p>
-                      {activeResourceTab === 'parks' && selectedPark
-                        ? getParkLocationLabel(selectedPark)
-                        : selectedEvent
+                      </h2>
+                      <p>
+                        {selectedEvent
                           ? getEventLocationLabel(selectedEvent)
                           : 'Showing your selected location.'}
-                    </p>
-                  </div>
-
-                  <div className="wellness-map-frame">
-                    <iframe
-                      key={
-                        activeResourceTab === 'parks' && selectedPark
-                          ? selectedPark.id
-                          : selectedEvent?.id || getLocationOriginTarget(activeLocation)
-                      }
-                      src={weeklyEventMapUrl}
-                      title="Nearby health resource map"
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                  </div>
-
-                  {activeMapTarget ? (
-                    <div className="weekly-event-actions">
-                      {activeResourceTab !== 'parks' && getEventDetailsUrl(selectedEvent) ? (
-                        <a
-                          className="secondary-action map-action"
-                          href={getEventDetailsUrl(selectedEvent)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`More information about ${selectedEvent.title}`}
-                        >
-                          More info <span aria-hidden="true">→</span>
-                        </a>
-                      ) : null}
-
-                      {activeResourceTab === 'parks' && selectedPark ? (
-                        <a
-                          className="secondary-action map-action"
-                          href={getParkMapUrl(selectedPark)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          View on map <span aria-hidden="true">→</span>
-                        </a>
-                      ) : null}
-
-                      {activeResourceTab !== 'parks' && getEventMapUrl(selectedEvent) ? (
-                        <a
-                          className="secondary-action map-action"
-                          href={getEventMapUrl(selectedEvent)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          View on map <span aria-hidden="true">→</span>
-                        </a>
-                      ) : null}
+                      </p>
                     </div>
-                  ) : null}
-                </section>
-              ) : null}
-            </div>
+
+                    <div className="wellness-map-frame">
+                      <iframe
+                        key={selectedEvent?.id || getLocationOriginTarget(activeLocation)}
+                        src={weeklyEventMapUrl}
+                        title="Nearby weekly health event map"
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                    </div>
+
+                    {selectedEvent ? (
+                      <div className="weekly-event-actions">
+                        {selectedEvent.eventLink ? (
+                          <a
+                            className="secondary-action map-action"
+                            href={selectedEvent.eventLink}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            More Info <span aria-hidden="true">→</span>
+                          </a>
+                        ) : null}
+
+                        {selectedEvent.directionsUrl ? (
+                          <a
+                            className="secondary-action map-action"
+                            href={selectedEvent.directionsUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {getEventLocationActionLabel(selectedEvent)}
+                            <span aria-hidden="true">→</span>
+                          </a>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
+              </div>
+            </>
           ) : (
             <section
               className="wellness-recommendations"

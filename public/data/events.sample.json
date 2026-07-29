@@ -1,6 +1,7 @@
 [
   {
     "address": "Online",
+    "attendanceMode": "online",
     "city": "San Francisco",
     "cost": "free",
     "dateConfidence": "recurring",
@@ -14,13 +15,17 @@
     "id": "sample-blood-pressure-screening",
     "isOnline": true,
     "isRecurring": true,
-    "lastVerified": "2026-08-03T21:34:57.723Z",
+    "lastVerified": "2026-08-03T21:40:24.520Z",
     "locationName": "Online",
+    "onlineUrl": "https://example.com/sample-blood-pressure",
     "organizer": "Development Sample",
+    "platform": null,
     "registrationUrl": "https://example.com/sample-blood-pressure",
+    "registrationRequired": false,
     "sourceName": "Development Sample",
     "sourceUrl": "https://example.com/sample-blood-pressure",
     "startDate": null,
+    "summary": "Learn about blood pressure awareness through a simple preventive-health event. This sample is for local UI testing and people exploring how community resources can support heart-health habits. The main benefit is seeing how event summaries appear without using production data.",
     "title": "Sample Blood Pressure Screening",
     "verificationStatus": "sample-only",
     "zipCode": null

@@ -42,6 +42,8 @@ const entertainmentDomains = [
 ]
 const recurringPattern =
   /\b(today|tomorrow|this week|every monday|every tuesday|every wednesday|every thursday|every friday|every saturday|every sunday|weekly|ongoing|recurring|appointments available|drop-?in|walk-?in)\b/i
+const onlineEventPattern =
+  /\b(zoom|virtual|online|webinar|video conference|join online|remote)\b/i
 const healthTopicRules = [
   ['blood-pressure', /\b(blood pressure|hypertension|bp check|bp screening)\b/i],
   ['heart-health', /\b(heart|heart health|cardiology|stroke prevention|cardiovascular|blood pressure|hypertension|cholesterol)\b/i],
@@ -90,6 +92,117 @@ function normalizeText(value) {
     .replace(/&#39;/g, "'")
     .trim()
     .replace(/\s+/g, ' ')
+}
+
+function cleanScrapedDescription(value) {
+  return normalizeText(value)
+    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/\S+@\S+\.\S+/gi, '')
+    .replace(/\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/g, '')
+    .replace(/\b(register here|sponsored by|for more information|classes are tailored|a signed waiver)[\s\S]*$/i, '')
+    .replace(/\bheld\s+(mondays?|tuesdays?|wednesdays?|thursdays?|fridays?|saturdays?|sundays?)[^.]*\./gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function getEventAudience({ attendanceMode, healthTopics, title }) {
+  const text = normalizeKey(`${title} ${healthTopics.join(' ')}`)
+
+  if (text.includes('neuro-oncology') || text.includes('cancer')) {
+    return 'patients, caregivers, and families navigating cancer care'
+  }
+
+  if (text.includes('fatherhood') || text.includes('parent')) {
+    return 'parents and caregivers looking for practical support'
+  }
+
+  if (text.includes('vaccine') || text.includes('vaccination')) {
+    return 'families who want help staying current on recommended immunizations'
+  }
+
+  if (text.includes('nutrition') || text.includes('cooking')) {
+    return 'people who want realistic ways to build healthier eating habits'
+  }
+
+  if (text.includes('mental') || text.includes('meditation')) {
+    return 'people looking for stress relief and emotional support'
+  }
+
+  if (attendanceMode === 'online') {
+    return 'people who prefer to participate from home'
+  }
+
+  return 'community members interested in preventive health'
+}
+
+function getPrimaryEventBenefit({ healthTopics, title }) {
+  const text = normalizeKey(`${title} ${healthTopics.join(' ')}`)
+
+  if (text.includes('meditation')) {
+    return 'The main benefit is a calmer routine that can support relaxation, focus, and emotional well-being.'
+  }
+
+  if (text.includes('workout') || text.includes('exercise') || text.includes('physical-activity')) {
+    return 'The main benefit is guided movement that can support strength, balance, flexibility, and overall well-being.'
+  }
+
+  if (text.includes('vaccine') || text.includes('vaccination')) {
+    return 'The main benefit is easier access to preventive protection against vaccine-preventable illness.'
+  }
+
+  if (text.includes('cooking') || text.includes('nutrition')) {
+    return 'The main benefit is learning practical food skills that can support everyday nutrition and long-term prevention.'
+  }
+
+  if (text.includes('support group') || text.includes('fatherhood')) {
+    return 'The main benefit is connection, shared problem-solving, and encouragement in a supportive setting.'
+  }
+
+  return 'The main benefit is a practical next step for prevention, awareness, or healthier daily habits.'
+}
+
+function getEventSummaryOpening({ title, attendanceMode, healthTopics }) {
+  const text = normalizeKey(`${title} ${healthTopics.join(' ')}`)
+
+  if (text.includes('meditation')) {
+    return 'Practice guided meditation in a calm, supportive session focused on stress reduction and relaxation.'
+  }
+
+  if (text.includes('neuro-oncology') || text.includes('workout')) {
+    return 'Stay active with a guided exercise class designed around strength, balance, flexibility, and gentle conditioning.'
+  }
+
+  if (text.includes('vaccine') || text.includes('vaccination')) {
+    return 'Get help completing recommended vaccines through a community clinic focused on preventive care.'
+  }
+
+  if (text.includes('cooking') || text.includes('nutrition')) {
+    return 'Build practical cooking and meal-planning skills through a hands-on nutrition class.'
+  }
+
+  if (text.includes('fatherhood') || text.includes('support group')) {
+    return 'Connect with others in a structured support group focused on parenting, family wellness, and shared encouragement.'
+  }
+
+  if (attendanceMode === 'online') {
+    return 'Join a virtual preventive-health session that can be accessed from home.'
+  }
+
+  return 'Attend a community health event focused on prevention, education, and practical wellness support.'
+}
+
+function createEventSummary(event, healthTopics, attendanceMode) {
+  const title = normalizeText(event.title)
+  const cleanedDescription = cleanScrapedDescription(event.description)
+  const context = { attendanceMode, healthTopics, title }
+  const opening = getEventSummaryOpening(context)
+  const audience = getEventAudience(context)
+  const benefit = getPrimaryEventBenefit(context)
+  const sourceHint = cleanedDescription && healthTopics.length === 0
+    ? 'It may be useful for learning about local health resources in a low-pressure setting.'
+    : benefit
+
+  return `${opening} This event is for ${audience}. ${sourceHint}`
 }
 
 function normalizeKey(value) {
@@ -419,14 +532,103 @@ function getAddressText(location) {
 
   if (typeof address === 'string') return address
 
+  return buildFullAddress(address)
+}
+
+function buildFullAddress({
+  streetAddress,
+  addressLocality,
+  addressRegion,
+  postalCode,
+} = {}) {
   return [
-    address.streetAddress,
-    address.addressLocality,
-    address.addressRegion,
-    address.postalCode,
+    streetAddress,
+    [addressLocality, addressRegion].filter(Boolean).join(', '),
+    postalCode,
   ]
     .filter(Boolean)
-    .join(', ') || null
+    .join(' ') || null
+}
+
+function getLocationDetails(location) {
+  const locationType = Array.isArray(location?.['@type'])
+    ? location['@type'].map(normalizeKey)
+    : [normalizeKey(location?.['@type'])]
+  const isVirtualLocation = locationType.includes('virtuallocation')
+
+  if (!location || typeof location === 'string') {
+    return {
+      address: typeof location === 'string' ? location : null,
+      addressLocality: null,
+      addressRegion: null,
+      latitude: null,
+      locationName: null,
+      longitude: null,
+      onlineUrl: null,
+      postalCode: null,
+      streetAddress: null,
+      virtual: false,
+    }
+  }
+
+  const address = location.address || {}
+  const addressObject = typeof address === 'string' ? {} : address
+
+  return {
+    address:
+      typeof address === 'string'
+        ? address
+        : buildFullAddress(addressObject),
+    addressLocality: addressObject.addressLocality || null,
+    addressRegion: addressObject.addressRegion || null,
+    latitude:
+      Number.isFinite(Number(location.geo?.latitude))
+        ? Number(location.geo.latitude)
+        : null,
+    locationName: getFirstString(location.name),
+    longitude:
+      Number.isFinite(Number(location.geo?.longitude))
+        ? Number(location.geo.longitude)
+        : null,
+    onlineUrl: isVirtualLocation ? getFirstString(location.url) : null,
+    postalCode: addressObject.postalCode || null,
+    streetAddress: addressObject.streetAddress || null,
+    virtual: isVirtualLocation,
+  }
+}
+
+function getAttendanceModeFromSchema(value) {
+  const mode = normalizeKey(value)
+
+  if (mode.includes('onlineeventattendancemode')) return 'online'
+  if (mode.includes('offlineeventattendancemode')) return 'in-person'
+  if (mode.includes('mixedeventattendancemode')) return 'hybrid'
+
+  return ''
+}
+
+function inferAttendanceMode({ address, locationDetails, text }) {
+  const normalizedText = normalizeText(text)
+  const hasOnlineSignals =
+    Boolean(locationDetails?.virtual) ||
+    onlineEventPattern.test(normalizedText)
+  const hasInPersonSignals = Boolean(address || locationDetails?.address)
+
+  if (hasOnlineSignals && hasInPersonSignals) return 'hybrid'
+  if (hasOnlineSignals) return 'online'
+  if (hasInPersonSignals) return 'in-person'
+
+  return 'unknown'
+}
+
+function getPlatform(value) {
+  const text = normalizeText(value)
+
+  if (/\bzoom\b/i.test(text)) return 'Zoom'
+  if (/\bteams\b/i.test(text)) return 'Microsoft Teams'
+  if (/\bgoogle meet\b/i.test(text)) return 'Google Meet'
+
+  return ''
 }
 
 function extractJsonLdEvents(html, sourceUrl) {
@@ -440,20 +642,51 @@ function extractJsonLdEvents(html, sourceUrl) {
 
       jsonObjects.forEach((event) => {
         const eventUrl = getAbsoluteUrl(getFirstString(event.url), sourceUrl) || sourceUrl
+        const locationDetails = getLocationDetails(event.location)
+        const offerUrl =
+          typeof event.offers === 'object'
+            ? getFirstString(event.offers.url)
+            : null
+        const onlineUrl =
+          getAbsoluteUrl(locationDetails.onlineUrl, sourceUrl) ||
+          getAbsoluteUrl(offerUrl, sourceUrl) ||
+          (locationDetails.virtual ? eventUrl : null)
+        const text = normalizeText(
+          `${event.name} ${event.description} ${locationDetails.locationName} ${onlineUrl} ${eventUrl}`,
+        )
+        const schemaAttendanceMode = getAttendanceModeFromSchema(event.eventAttendanceMode)
 
         events.push({
-          address: getAddressText(event.location),
+          address: locationDetails.address,
+          addressLocality: locationDetails.addressLocality,
+          addressRegion: locationDetails.addressRegion,
+          attendanceMode:
+            schemaAttendanceMode ||
+            inferAttendanceMode({
+              address: locationDetails.address,
+              locationDetails,
+              text,
+            }),
           description: normalizeText(event.description),
           endDate: getFirstString(event.endDate),
           eventDateText: getFirstString(event.startDate, event.doorTime),
-          isOnline: normalizeKey(event.eventAttendanceMode).includes('online'),
-          locationName:
-            typeof event.location === 'object' ? getFirstString(event.location.name) : null,
+          isOnline:
+            schemaAttendanceMode === 'online' ||
+            Boolean(locationDetails.virtual) ||
+            onlineEventPattern.test(text),
+          latitude: locationDetails.latitude,
+          locationName: locationDetails.locationName,
+          longitude: locationDetails.longitude,
+          onlineUrl,
           organizer:
             typeof event.organizer === 'object' ? getFirstString(event.organizer.name) : null,
+          postalCode: locationDetails.postalCode,
+          platform: getPlatform(text),
           registrationUrl: eventUrl,
+          registrationRequired: Boolean(offerUrl),
           sourceUrl: eventUrl,
           startDate: getFirstString(event.startDate),
+          streetAddress: locationDetails.streetAddress,
           title: normalizeText(event.name),
           cost: event.isAccessibleForFree === true ? 'free' : 'unknown',
         })
@@ -1031,6 +1264,7 @@ function createDevelopmentSampleEvents() {
   return [
     {
       address: 'Online',
+      attendanceMode: 'online',
       city: 'San Francisco',
       cost: 'free',
       dateConfidence: 'recurring',
@@ -1044,11 +1278,16 @@ function createDevelopmentSampleEvents() {
       isRecurring: true,
       lastVerified: new Date().toISOString(),
       locationName: 'Online',
+      onlineUrl: 'https://example.com/sample-blood-pressure',
       organizer: 'Development Sample',
+      platform: null,
       registrationUrl: 'https://example.com/sample-blood-pressure',
+      registrationRequired: false,
       sourceName: 'Development Sample',
       sourceUrl: 'https://example.com/sample-blood-pressure',
       startDate: null,
+      summary:
+        'Learn about blood pressure awareness through a simple preventive-health event. This sample is for local UI testing and people exploring how community resources can support heart-health habits. The main benefit is seeing how event summaries appear without using production data.',
       title: 'Sample Blood Pressure Screening',
       verificationStatus: 'sample-only',
       zipCode: null,
@@ -1057,23 +1296,44 @@ function createDevelopmentSampleEvents() {
 }
 
 function normalizeExtractedEvent(event, source, currentDate) {
+  const address =
+    event.address ||
+    buildFullAddress({
+      streetAddress: event.streetAddress,
+      addressLocality: event.addressLocality,
+      addressRegion: event.addressRegion,
+      postalCode: event.postalCode,
+    })
   const combinedText = normalizeText(
-    `${event.title} ${event.description} ${event.address} ${event.locationName}`,
+    `${event.title} ${event.description} ${address} ${event.locationName}`,
   )
-  const zipCode = getZipFromText(`${event.address} ${combinedText}`)
+  const zipCode =
+    event.postalCode || getZipFromText(`${address} ${event.locationName} ${combinedText}`)
   const city = detectCity(
-    [event.address, event.title, event.description].filter(Boolean).join(' '),
+    [address, event.addressLocality, event.title, event.description].filter(Boolean).join(' '),
     getCityForZip(zipCode) || source.city,
   )
   const dateInfo = isUpcomingOrActiveEvent(event, currentDate)
   const healthTopics = getHealthTopics(combinedText)
-  const eventIsOnline = Boolean(event.isOnline) && !event.address
+  const attendanceMode =
+    event.attendanceMode ||
+    inferAttendanceMode({
+      address,
+      locationDetails: { virtual: Boolean(event.isOnline) },
+      text: `${combinedText} ${event.onlineUrl} ${event.registrationUrl} ${event.sourceUrl}`,
+    })
+  const eventIsOnline = attendanceMode === 'online'
+  const eventIsHybrid = attendanceMode === 'hybrid'
   const locationText = eventIsOnline
     ? 'Online'
-    : getFirstString(event.locationName, event.address, city)
+    : getFirstString(event.locationName, address, city)
+  const summary = createEventSummary(event, healthTopics, attendanceMode)
 
   return {
-    address: event.address || null,
+    address: address || null,
+    addressLocality: event.addressLocality || city || null,
+    addressRegion: event.addressRegion || (city ? 'CA' : null),
+    attendanceMode,
     city,
     cost: event.cost || 'unknown',
     dateConfidence: dateInfo.dateConfidence,
@@ -1085,12 +1345,20 @@ function normalizeExtractedEvent(event, source, currentDate) {
     isOnline: eventIsOnline,
     isRecurring: dateInfo.isRecurring,
     lastVerified: new Date().toISOString(),
+    latitude: Number.isFinite(event.latitude) ? event.latitude : null,
     locationName: locationText,
+    longitude: Number.isFinite(event.longitude) ? event.longitude : null,
+    onlineUrl: event.onlineUrl || (eventIsOnline || eventIsHybrid ? event.registrationUrl || event.sourceUrl || null : null),
     organizer: event.organizer || source.name,
+    postalCode: zipCode || null,
+    platform: event.platform || getPlatform(`${combinedText} ${event.onlineUrl}`) || null,
     registrationUrl: event.registrationUrl || event.sourceUrl || null,
+    registrationRequired: Boolean(event.registrationRequired),
     sourceName: source.name,
     sourceUrl: event.sourceUrl || null,
     startDate: dateInfo.parsedStartDate,
+    streetAddress: event.streetAddress || null,
+    summary,
     title: normalizeText(event.title),
     verificationStatus: 'individual-event',
     zipCode,
