@@ -1,0 +1,28 @@
+[
+  {
+    "address": "Online",
+    "city": "San Francisco",
+    "cost": "free",
+    "dateConfidence": "recurring",
+    "description": "Sample-only preventive health event for local UI development. This file is never merged into production events.json.",
+    "endDate": null,
+    "eventDateText": "weekly",
+    "healthTopics": [
+      "blood-pressure",
+      "heart-health"
+    ],
+    "id": "sample-blood-pressure-screening",
+    "isOnline": true,
+    "isRecurring": true,
+    "lastVerified": "2026-08-03T21:34:57.723Z",
+    "locationName": "Online",
+    "organizer": "Development Sample",
+    "registrationUrl": "https://example.com/sample-blood-pressure",
+    "sourceName": "Development Sample",
+    "sourceUrl": "https://example.com/sample-blood-pressure",
+    "startDate": null,
+    "title": "Sample Blood Pressure Screening",
+    "verificationStatus": "sample-only",
+    "zipCode": null
+  }
+]
