@@ -1,6 +1,6 @@
 [
   {
-    "id": "serpapi-event-7",
+    "id": "serpapi-event-3",
     "title": "2026 Outside Lands Music and Arts Festival - Saturday",
     "startDate": "Aug 8",
     "when": "Sat, 11 AM – 1 PM",
@@ -8,14 +8,14 @@
     "city": "San Francisco",
     "description": "Find tickets for RIO KOSTA at Golden Gate Park in San Francisco on 8/8/2026 at 10:00 AM",
     "eventLink": "https://open.spotify.com/concert/0PNVaujuV46IMThPTyvWHl",
-    "directionsLink": "https://www.google.com/search?sca_esv=7fe2d86af3c866b1&hl=en&gl=us&q=Golden+Gate+Park+Senior+Center&ludocid=14937900420127358296&ibp=gwp%3B0,7",
+    "directionsLink": "https://www.google.com/search?sca_esv=4ae5e3414be49368&hl=en&gl=us&q=Golden+Gate+Park+Senior+Center&ludocid=14937900420127358296&ibp=gwp%3B0,7",
     "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRswtkeud6w0_ABzqoqXqZCHl6sx6lLLs5KVbgV6y2FpvMxzaMfYXMFGe8&s",
     "source": "open.spotify.com",
     "zipCode": "",
     "category": "Other"
   },
   {
-    "id": "serpapi-event-10",
+    "id": "serpapi-event-4",
     "title": "2026 Outside Lands Music and Arts Festival - Sunday",
     "startDate": "Aug 9",
     "when": "Sun, 11 AM – 3 PM",
@@ -23,14 +23,14 @@
     "city": "San Francisco",
     "description": "New song \"Ohio All The Time\" out now! https://momma-band.ffm.to/ohio-all-the-time",
     "eventLink": "https://www.sfgate.com/things-to-do/?_evDiscoveryPath=/event%2F108035765n-momma-outside-lands-2026",
-    "directionsLink": "https://www.google.com/search?sca_esv=7fe2d86af3c866b1&hl=en&gl=us&q=Golden+Gate+Park&ludocid=8196141654667405104&ibp=gwp%3B0,7",
+    "directionsLink": "https://www.google.com/search?sca_esv=4ae5e3414be49368&hl=en&gl=us&q=Golden+Gate+Park&ludocid=8196141654667405104&ibp=gwp%3B0,7",
     "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTTw9HbXFa118LUKwEe8C5DnCJLag3mT6mn1TlDdWip9bAzBKiOuCN9qQI&s",
     "source": "www.sfgate.com",
     "zipCode": "",
     "category": "Other"
   },
   {
-    "id": "serpapi-event-6",
+    "id": "serpapi-event-2",
     "title": "JADE",
     "startDate": "Aug 9",
     "when": "Sun, 10 AM – 2 PM",
@@ -38,9 +38,24 @@
     "city": "San Francisco",
     "description": "Find tickets for JADE at Golden Gate Park in San Francisco on 8/9/2026 at 10:00 AM",
     "eventLink": "https://open.spotify.com/concert/1MEyEYuv1nODE3jE5wvR4E",
-    "directionsLink": "https://www.google.com/search?sca_esv=7fe2d86af3c866b1&hl=en&gl=us&q=Golden+Gate+Park&ludocid=8196141654667405104&ibp=gwp%3B0,7",
+    "directionsLink": "https://www.google.com/search?sca_esv=4ae5e3414be49368&hl=en&gl=us&q=Golden+Gate+Park&ludocid=8196141654667405104&ibp=gwp%3B0,7",
     "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS_aD79eNXkAyir4wJg4BDrL8dVzONDAKVK9E7NjCKwI-gmoqGuDH1n7T4&s",
     "source": "open.spotify.com",
+    "zipCode": "",
+    "category": "Other"
+  },
+  {
+    "id": "serpapi-event-5",
+    "title": "San Francisco Giants vs St. Louis Cardinals au Oracle Park, San Francisco",
+    "startDate": "Sep 9",
+    "when": "Wed, 12:45 – 1:15 PM",
+    "address": "Oracle Park, 24 Willie Mays Plaza, San Francisco, CA",
+    "city": "San Francisco",
+    "description": "Matchup between Cardinals and Giants on Sep 09, 2026",
+    "eventLink": "https://www.nytimes.com/athletic/mlb/game/san-francisco-giants-vs-st.-louis-cardinals/YlqJsWxSOk1e5G5a/",
+    "directionsLink": "https://www.google.com/search?sca_esv=4ae5e3414be49368&hl=en&gl=us&q=Oracle+Park&ludocid=14866146993354707322&ibp=gwp%3B0,7",
+    "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-sfbnaTJL9aFCh4sINrC6ONJDsPRdiSex2QpaboYAzBW5RB-CPad2GKM&s",
+    "source": "www.nytimes.com",
     "zipCode": "",
     "category": "Other"
   }
