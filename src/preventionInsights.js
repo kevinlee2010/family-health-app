@@ -13,111 +13,160 @@ const patternToneByLabel = {
 
 const healthAreaContent = {
   cancer: {
-    actions: [
-      'Consider sharing this cancer history during a preventive care visit.',
-      'Ask whether family history may affect when screening conversations should begin.',
-      'Continue updating cancer history details as you learn more.',
-    ],
-    questions: [
-      'Does my family history affect when I should discuss screening options?',
-      'What additional family-history details would be useful to know?',
-      'Are there general prevention habits that are especially relevant for me?',
+    preventionInsight:
+      'Your reported family history suggests that cancer-prevention awareness may deserve extra attention. Accurate family-history tracking, healthy lifestyle habits, and age-appropriate screening conversations can support informed prevention planning without treating the pattern as a prediction.',
+    strategies: [
+      'Keep family history updated',
+      'Stay physically active',
+      'Limit alcohol intake',
+      'Review screening guidance',
     ],
     sourceName: 'American Cancer Society',
     sourceUrl: 'https://www.cancer.org/cancer/risk-prevention.html',
     title: 'Cancer Prevention',
   },
   cardiovascular: {
-    actions: [
-      'Learn about routine blood pressure and cholesterol checks.',
-      'Review general heart-healthy lifestyle recommendations.',
-      'Consider sharing this family history with a healthcare professional.',
-    ],
-    questions: [
-      'Does my family history affect when I should discuss cholesterol screening?',
-      'How often should my blood pressure generally be checked?',
-      'Which preventive habits are most relevant for heart health?',
+    preventionInsight:
+      'A repeated family pattern of heart disease, high blood pressure, high cholesterol, or stroke may make heart-health habits especially relevant. Physical activity, balanced nutrition, and regular awareness of blood pressure and cholesterol can help address modifiable cardiovascular risk factors.',
+    strategies: [
+      'Monitor blood pressure',
+      'Stay physically active',
+      'Choose heart-healthy foods',
+      'Maintain healthy cholesterol levels',
     ],
     sourceName: 'American Heart Association',
     sourceUrl: 'https://www.heart.org/en/healthy-living',
-    title: 'Heart Health',
+    title: 'Cardiovascular Health',
   },
   kidney: {
-    actions: [
-      'Learn how blood pressure, diabetes, and kidney health can be connected.',
-      'Consider asking what routine health checks are useful for kidney health.',
-      'Keep inherited kidney-condition details updated in your family profile.',
-    ],
-    questions: [
-      'Are there routine checks that help monitor kidney health?',
-      'Does my family history make any kidney-health details important to track?',
-      'What blood pressure or blood sugar information should I know?',
+    preventionInsight:
+      'Your reported family history may make kidney-health awareness useful, especially because blood pressure and blood sugar can affect kidney function over time. Tracking family history and supporting healthy daily habits can help guide preventive conversations.',
+    strategies: [
+      'Monitor blood pressure',
+      'Support healthy blood sugar',
+      'Stay well hydrated',
+      'Keep family history updated',
     ],
     sourceName: 'Centers for Disease Control and Prevention',
     sourceUrl: 'https://www.cdc.gov/kidney-disease/prevention/index.html',
     title: 'Kidney Health',
   },
   mental: {
-    actions: [
-      'Learn about supportive routines for stress, sleep, and mental well-being.',
-      'Consider sharing relevant family mental-health history with a qualified professional.',
-      'Keep track of patterns that may be useful during future care conversations.',
-    ],
-    questions: [
-      'What family-history details are useful to share about mental health?',
-      'Which daily habits can support mental well-being?',
-      'When should someone consider talking with a mental-health professional?',
+    preventionInsight:
+      'A family pattern involving mental-health conditions may make consistent emotional-wellness habits especially valuable. Regular sleep, physical activity, stress management, and strong social connections can support long-term mental well-being.',
+    strategies: [
+      'Maintain regular sleep',
+      'Use stress-management techniques',
+      'Stay physically active',
+      'Maintain social connections',
     ],
     sourceName: 'National Institute of Mental Health',
     sourceUrl: 'https://www.nimh.nih.gov/health/topics/caring-for-your-mental-health',
     title: 'Mental Well-Being',
   },
   metabolic: {
-    actions: [
-      'Learn about routine blood sugar, cholesterol, and weight-related health checks.',
-      'Review general nutrition and movement habits that support metabolic health.',
-      'Consider discussing family history during a routine preventive visit.',
+    preventionInsight:
+      'A family pattern of diabetes or metabolic conditions may make blood-sugar prevention habits especially relevant. Regular movement, balanced meals, weight management, and limiting sugary drinks can help reduce modifiable risk factors.',
+    strategies: [
+      'Stay physically active',
+      'Choose fiber-rich meals',
+      'Limit sugary drinks',
+      'Maintain a healthy weight',
     ],
-    questions: [
-      'Should I discuss blood glucose screening based on my family history?',
-      'Which lifestyle habits are most important for prevention?',
-      'How often are routine metabolic health factors usually reviewed?',
-    ],
-    sourceName: 'American Diabetes Association',
-    sourceUrl: 'https://diabetes.org/healthy-living',
-    title: 'Type 2 Diabetes and Metabolic Health',
+    sourceName: 'National Institute of Diabetes and Digestive and Kidney Diseases',
+    sourceUrl: 'https://www.niddk.nih.gov/health-information/diabetes',
+    title: 'Diabetes Prevention',
   },
   neurological: {
-    actions: [
-      'Learn about general brain-health habits such as movement, sleep, and blood pressure awareness.',
-      'Consider sharing neurological family-history patterns during preventive visits.',
-      'Keep updating family details if new information becomes available.',
-    ],
-    questions: [
-      'Which neurological family-history details are useful to share?',
-      'Are there preventive habits that support long-term brain health?',
-      'Should any related heart or blood pressure history be discussed too?',
+    preventionInsight:
+      'Your reported family history suggests that long-term brain and cardiovascular health may deserve extra attention. Regular movement, consistent sleep, blood-pressure awareness, and continued mental and social engagement can support healthier brain aging.',
+    strategies: [
+      'Stay physically active',
+      'Maintain consistent sleep',
+      'Monitor blood pressure',
+      'Stay socially engaged',
     ],
     sourceName: 'Centers for Disease Control and Prevention',
     sourceUrl: 'https://www.cdc.gov/aging/index.html',
     title: 'Brain and Stroke Prevention',
   },
   respiratory: {
-    actions: [
-      'Learn about air quality, activity choices, and respiratory-health basics.',
-      'Consider noting asthma or COPD history for future healthcare conversations.',
-      'Track family-history details and any personal symptoms separately.',
+    preventionInsight:
+      'A family pattern involving asthma or other respiratory conditions may make lung-health habits more important. Avoiding smoke exposure, staying active, reducing indoor irritants, and paying attention to recurring breathing symptoms can support respiratory health.',
+    strategies: [
+      'Avoid smoke exposure',
+      'Reduce indoor air irritants',
+      'Stay physically active',
+      'Track breathing symptoms',
     ],
-    questions: [
-      'Does my family history make any respiratory details important to track?',
-      'Are there general prevention steps for lung health I should understand?',
-      'When is it useful to discuss breathing symptoms with a professional?',
-    ],
-    sourceName: 'Centers for Disease Control and Prevention',
-    sourceUrl: 'https://www.cdc.gov/asthma/index.html',
+    sourceName: 'American Lung Association',
+    sourceUrl: 'https://www.lung.org/lung-health-diseases/wellness',
     title: 'Respiratory Health',
   },
 }
+
+const conditionSpecificContent = [
+  {
+    categoryId: 'cancer',
+    keywords: ['breast cancer'],
+    preventionInsight:
+      'A reported family pattern of breast cancer may make accurate family-history tracking and screening awareness especially important. Healthy lifestyle habits and awareness of family patterns can support informed prevention planning.',
+    strategies: [
+      'Keep family history updated',
+      'Stay physically active',
+      'Limit alcohol intake',
+      'Review screening guidance',
+    ],
+    sourceName: 'American Cancer Society',
+    sourceUrl: 'https://www.cancer.org/cancer/types/breast-cancer.html',
+    title: 'Breast Cancer Prevention',
+  },
+  {
+    categoryId: 'cancer',
+    keywords: ['colon cancer', 'colorectal cancer'],
+    preventionInsight:
+      'A family pattern of colorectal cancer may make screening awareness and digestive-health habits more relevant. Physical activity, fiber-rich foods, healthy weight management, and accurate family-history records can support prevention planning.',
+    strategies: [
+      'Eat fiber-rich foods',
+      'Stay physically active',
+      'Maintain a healthy weight',
+      'Keep family history updated',
+    ],
+    sourceName: 'American Cancer Society',
+    sourceUrl: 'https://www.cancer.org/cancer/types/colon-rectal-cancer.html',
+    title: 'Colon Cancer Prevention',
+  },
+  {
+    categoryId: 'cardiovascular',
+    keywords: ['high cholesterol', 'cholesterol'],
+    preventionInsight:
+      'Your reported family history suggests that cholesterol awareness may be especially useful. Heart-healthy eating, regular movement, and routine cholesterol conversations can support modifiable cardiovascular prevention factors.',
+    strategies: [
+      'Choose heart-healthy foods',
+      'Stay physically active',
+      'Know cholesterol numbers',
+      'Limit saturated fats',
+    ],
+    sourceName: 'American Heart Association',
+    sourceUrl: 'https://www.heart.org/en/health-topics/cholesterol',
+    title: 'Cholesterol Awareness',
+  },
+  {
+    categoryId: 'cardiovascular',
+    keywords: ['high blood pressure', 'hypertension'],
+    preventionInsight:
+      'Your reported family history suggests that blood-pressure awareness may deserve extra attention. Regular movement, balanced nutrition, sodium awareness, and routine blood-pressure checks can support modifiable heart-health factors.',
+    strategies: [
+      'Monitor blood pressure',
+      'Reduce sodium intake',
+      'Stay physically active',
+      'Choose balanced meals',
+    ],
+    sourceName: 'American Heart Association',
+    sourceUrl: 'https://www.heart.org/en/health-topics/high-blood-pressure',
+    title: 'Blood Pressure Awareness',
+  },
+]
 
 export function getPatternLabel(riskLevel, observationCount = 0) {
   if (observationCount === 0 && riskLevel !== 'Average') {
@@ -199,76 +248,53 @@ function getRankedInsights(insights) {
     .slice(0, 3)
 }
 
-function getWhyItAppears(category, profile) {
-  const familyReasons = category.conditions.flatMap((condition) =>
-    condition.relatives.map(
-      (relative) => `${relative} reported ${condition.conditionName}`,
-    ),
-  )
-  const lifestyleReasons = []
-
-  if (
-    category.id === 'cardiovascular' &&
-    profile.knownHighBloodPressure === 'Yes'
-  ) {
-    lifestyleReasons.push('Profile indicates known high blood pressure')
-  }
-
-  if (
-    (category.id === 'cardiovascular' || category.id === 'metabolic') &&
-    profile.knownHighCholesterol === 'Yes'
-  ) {
-    lifestyleReasons.push('Profile indicates known high cholesterol')
-  }
-
-  if (category.id === 'metabolic' && profile.diabetesStatus && profile.diabetesStatus !== 'No') {
-    lifestyleReasons.push(`Profile diabetes status: ${profile.diabetesStatus}`)
-  }
-
-  if (
-    (category.id === 'cardiovascular' || category.id === 'metabolic') &&
-    (profile.exercise === 'Rarely' || profile.exercise === '1-2 days/week')
-  ) {
-    lifestyleReasons.push('Lifestyle profile indicates limited weekly physical activity')
-  }
-
-  if (profile.smokingStatus === 'Current') {
-    if (
-      category.id === 'cardiovascular' ||
-      category.id === 'cancer' ||
-      category.id === 'respiratory'
-    ) {
-      lifestyleReasons.push('Lifestyle profile indicates current smoking or vaping')
-    }
-  }
-
-  return [...familyReasons, ...lifestyleReasons]
+function normalizeInsightCondition(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\u2019/g, "'")
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\.+$/g, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
 }
 
-export function buildPreventionInsights({ familyHealthSummary, profile }) {
+function getInsightContent(category) {
+  const categoryConditions = category.conditions.map((condition) =>
+    normalizeInsightCondition(condition.conditionName),
+  )
+  const matchedContent = conditionSpecificContent.find(
+    (content) =>
+      content.categoryId === category.id &&
+      content.keywords.some((keyword) =>
+        categoryConditions.some((conditionName) =>
+          conditionName.includes(normalizeInsightCondition(keyword)),
+        ),
+      ),
+  )
+
+  return matchedContent || healthAreaContent[category.id] || {
+    preventionInsight:
+      'Your reported family history may make preventive-health awareness useful in this area. Keeping your profile updated and focusing on practical daily habits can support better conversations about prevention.',
+    sourceName: 'Centers for Disease Control and Prevention',
+    sourceUrl: 'https://www.cdc.gov/',
+    strategies: [
+      'Update family history',
+      'Stay physically active',
+      'Choose balanced meals',
+    ],
+    title: category.name,
+  }
+}
+
+export function buildPreventionInsights({ familyHealthSummary }) {
   const insights = familyHealthSummary.categories.map((category) => {
     const patternLabel =
       category.observationCount === 0
         ? 'Limited Family Information'
         : getPatternLabel(category.riskLevel, category.observationCount)
-    const content = healthAreaContent[category.id] || {
-      actions: [
-        'Continue updating your family health profile as you learn more.',
-        'Consider sharing relevant family history during preventive care visits.',
-      ],
-      questions: [
-        'What family-history details would be useful to know?',
-        'Are there general preventive habits I should focus on?',
-      ],
-      sourceName: 'Centers for Disease Control and Prevention',
-      sourceUrl: 'https://www.cdc.gov/',
-      title: category.name,
-    }
-    const whyItAppears = getWhyItAppears(category, profile)
+    const content = getInsightContent(category)
 
     return {
-      doctorQuestions: content.questions,
-      educationalActions: content.actions,
       evidenceExplanation: getPatternExplanation(patternLabel),
       firstDegreeObservationCount: getFirstDegreeObservationCount(category),
       healthArea: content.title,
@@ -276,10 +302,11 @@ export function buildPreventionInsights({ familyHealthSummary, profile }) {
       conditionCount: category.conditions.length,
       observationCount: category.observationCount,
       patternLabel,
+      preventionInsight: content.preventionInsight,
       sourceName: content.sourceName,
       sourceUrl: content.sourceUrl,
+      strategies: content.strategies,
       tone: getPatternTone(patternLabel),
-      whyItAppears,
     }
   })
 

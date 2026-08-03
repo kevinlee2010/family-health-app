@@ -465,7 +465,7 @@ test('current events database matches broad prevention terms and rejects unrelat
   }
 })
 
-test('staged resource search chooses exact ZIP matches before broader fallbacks', () => {
+test('staged resource search ranks exact ZIP resources before broader recommendations', () => {
   const priorities = getPriorities([
     { illnesses: ['High cholesterol'], relationship: 'Father' },
   ])
@@ -499,12 +499,12 @@ test('staged resource search chooses exact ZIP matches before broader fallbacks'
   assert.equal(search.city, 'San Francisco')
   assert.equal(search.selectedStage, 'exact')
   assert.deepEqual(
-    search.resources.map((resource) => resource.id),
-    ['walk-94132'],
+    search.resources.map((resource) => resource.id).slice(0, 2),
+    ['walk-94132', 'walk-94117'],
   )
 })
 
-test('staged resource search falls back to same-city resources before nearby cities', () => {
+test('staged resource search ranks same-city resources before nearby cities', () => {
   const priorities = getPriorities([
     { illnesses: ['High cholesterol'], relationship: 'Father' },
   ])
@@ -536,12 +536,12 @@ test('staged resource search falls back to same-city resources before nearby cit
 
   assert.equal(search.selectedStage, 'same-city')
   assert.deepEqual(
-    search.resources.map((resource) => resource.id),
-    ['sf-screening'],
+    search.resources.map((resource) => resource.id).slice(0, 2),
+    ['sf-screening', 'organization-cdc'],
   )
 })
 
-test('staged resource search uses online priority resources only as fallback', () => {
+test('staged resource search uses online priority resources and trusted fallbacks', () => {
   const priorities = getPriorities([
     { illnesses: ['Depression'], relationship: 'Sibling' },
   ])
@@ -567,10 +567,283 @@ test('staged resource search uses online priority resources only as fallback', (
 
   assert.equal(search.selectedStage, 'fallback')
   assert.deepEqual(
-    search.resources.map((resource) => resource.id),
-    ['online-mindfulness'],
+    search.resources.map((resource) => resource.id).slice(0, 2),
+    ['online-mindfulness', 'organization-cdc'],
   )
   assert.equal(search.resources[0].distanceMiles, null)
+})
+
+test('recommendation system shows at most five resources and two per health priority', () => {
+  const priorities = getPriorities([
+    { illnesses: ['High cholesterol'], relationship: 'Father' },
+    { illnesses: ['Type 2 diabetes'], relationship: 'Mother' },
+    { illnesses: ['Depression'], relationship: 'Sibling' },
+  ])
+  const search = getStagedResourceSearch({
+    events: [
+      {
+        address: '501 Stanyan St, San Francisco, CA 94117',
+        city: 'San Francisco',
+        id: 'bp-screening',
+        startDate: '2026-08-04T10:00:00-07:00',
+        title: 'Free Blood Pressure Screening',
+      },
+      {
+        address: 'Lake Merced Blvd, San Francisco, CA 94132',
+        city: 'San Francisco',
+        id: 'heart-walk',
+        startDate: '2026-08-05T10:00:00-07:00',
+        title: 'Community Walking Group for Heart Health',
+      },
+      {
+        address: '600 16th Street, San Francisco, CA 94158',
+        city: 'San Francisco',
+        id: 'cholesterol-talk',
+        startDate: '2026-08-06T10:00:00-07:00',
+        title: 'Cholesterol Screening Workshop',
+      },
+      {
+        address: '501 Stanyan St, San Francisco, CA 94117',
+        city: 'San Francisco',
+        id: 'diabetes-cooking',
+        startDate: '2026-08-04T10:00:00-07:00',
+        title: 'Healthy Cooking for Diabetes Prevention',
+      },
+      {
+        address: '501 Stanyan St, San Francisco, CA 94117',
+        city: 'San Francisco',
+        id: 'mindfulness',
+        startDate: '2026-08-04T10:00:00-07:00',
+        title: 'Mindfulness for Stress Support Group',
+      },
+      {
+        address: '501 Stanyan St, San Francisco, CA 94117',
+        city: 'San Francisco',
+        id: 'fitness',
+        startDate: '2026-08-04T10:00:00-07:00',
+        title: 'Community Fitness Class',
+      },
+    ],
+    priorities,
+    zipCode: '94132',
+    now: new Date('2026-07-29T00:00:00-07:00'),
+  })
+  const countsByPriority = search.resources.reduce((counts, resource) => {
+    counts[resource.eventPriorityId] = (counts[resource.eventPriorityId] || 0) + 1
+    return counts
+  }, {})
+
+  assert.ok(search.resources.length <= 5)
+  assert.equal(
+    Object.values(countsByPriority).every((count) => count <= 2),
+    true,
+  )
+})
+
+test('recommendation system excludes clinician-only and academic events', () => {
+  const priorities = getPriorities([
+    { illnesses: ['High cholesterol'], relationship: 'Father' },
+  ])
+  const search = getStagedResourceSearch({
+    events: [
+      {
+        address: '501 Stanyan St, San Francisco, CA 94117',
+        city: 'San Francisco',
+        id: 'community-screening',
+        startDate: '2026-08-04T10:00:00-07:00',
+        title: 'Free Blood Pressure Screening',
+      },
+      {
+        address: '600 16th Street, San Francisco, CA 94158',
+        city: 'San Francisco',
+        description: 'CME symposium for clinicians and faculty.',
+        id: 'cme-symposium',
+        startDate: '2026-08-04T10:00:00-07:00',
+        title: 'Cardiovascular Research Symposium',
+      },
+    ],
+    priorities,
+    zipCode: '94132',
+    now: new Date('2026-07-29T00:00:00-07:00'),
+  })
+
+  assert.equal(
+    search.resources.some((resource) => resource.id === 'community-screening'),
+    true,
+  )
+  assert.equal(
+    search.resources.some((resource) => resource.id === 'cme-symposium'),
+    false,
+  )
+})
+
+test('recommendation system fills short local lists with parks and trusted resources', () => {
+  const priorities = getPriorities([
+    { illnesses: ['High cholesterol'], relationship: 'Father' },
+  ])
+  const search = getStagedResourceSearch({
+    events: [],
+    parks: getParksNearZip('94132'),
+    priorities,
+    zipCode: '94132',
+    now: new Date('2026-07-29T00:00:00-07:00'),
+  })
+
+  assert.equal(search.resources.some((resource) => resource.resourceType === 'park'), true)
+  assert.equal(
+    search.resources.some((resource) => resource.resourceType === 'trusted_organization'),
+    true,
+  )
+  assert.equal(
+    search.resources.filter((resource) => resource.resourceType === 'park').length,
+    1,
+  )
+})
+
+test('recommendation system deduplicates recurring vaccine clinics by soonest occurrence', () => {
+  const priorities = getPriorities([
+    { illnesses: ['Colon cancer'], relationship: 'Grandparent' },
+  ])
+  const search = getStagedResourceSearch({
+    events: [
+      {
+        address: '1900 Sixth St, Berkeley, CA 94710',
+        city: 'Berkeley',
+        id: 'vaccine-aug-4',
+        startDate: '2026-08-04T10:00:00-07:00',
+        title: 'Free Back-to-School Vaccine Clinics',
+      },
+      {
+        address: '1900 Sixth St, Berkeley, CA 94710',
+        city: 'Berkeley',
+        id: 'vaccine-aug-5',
+        startDate: '2026-08-05T10:00:00-07:00',
+        title: 'Free Back-to-School Vaccine Clinics',
+      },
+      {
+        address: '1900 Sixth St, Berkeley, CA 94710',
+        city: 'Berkeley',
+        id: 'colon-screening',
+        startDate: '2026-08-04T10:00:00-07:00',
+        title: 'Colorectal Cancer Screening Workshop',
+      },
+    ],
+    priorities,
+    zipCode: '94702',
+    now: new Date('2026-07-31T00:00:00-07:00'),
+  })
+  const vaccineResources = search.resources.filter((resource) =>
+    /vaccine/i.test(resource.title),
+  )
+
+  assert.equal(vaccineResources.length, 1)
+  assert.equal(vaccineResources[0].id, 'vaccine-aug-4')
+  assert.equal(vaccineResources[0].eventPriorityId, 'general-prevention')
+  assert.equal(vaccineResources[0].resourceType, 'vaccine_clinic')
+})
+
+test('recommendation system deduplicates titles with HTML entities', () => {
+  const priorities = getPriorities([
+    { illnesses: ['High cholesterol'], relationship: 'Father' },
+  ])
+  const search = getStagedResourceSearch({
+    events: [
+      {
+        address: '501 Stanyan St, San Francisco, CA 94117',
+        city: 'San Francisco',
+        id: 'run-plain',
+        startDate: '2026-08-04T10:00:00-07:00',
+        title: '14th Annual Richmond District YMCA Jog in the Fog - 5K Family Fun Run',
+      },
+      {
+        address: '501 Stanyan St, San Francisco, CA 94117',
+        city: 'San Francisco',
+        id: 'run-encoded',
+        startDate: '2026-08-05T10:00:00-07:00',
+        title: '14th Annual Richmond District YMCA Jog in the Fog &#8211; 5K Family Fun Run',
+      },
+    ],
+    priorities,
+    zipCode: '94132',
+    now: new Date('2026-07-31T00:00:00-07:00'),
+  })
+  const runResources = search.resources.filter((resource) =>
+    /jog in the fog/i.test(resource.title),
+  )
+
+  assert.equal(runResources.length, 1)
+  assert.equal(runResources[0].id, 'run-plain')
+})
+
+test('recommendation system does not fill the list with three parks for one action', () => {
+  const priorities = getPriorities([
+    { illnesses: ['High cholesterol'], relationship: 'Father' },
+  ])
+  const search = getStagedResourceSearch({
+    events: [],
+    parks: getParksNearZip('94702'),
+    priorities,
+    zipCode: '94702',
+    now: new Date('2026-07-31T00:00:00-07:00'),
+  })
+
+  assert.equal(
+    search.resources.filter((resource) => resource.resourceType === 'park').length,
+    1,
+  )
+})
+
+test('recommendation system assigns a multi-priority event only once', () => {
+  const priorities = getPriorities([
+    { illnesses: ['High cholesterol'], relationship: 'Father' },
+    { illnesses: ['Type 2 diabetes'], relationship: 'Mother' },
+  ])
+  const search = getStagedResourceSearch({
+    events: [
+      {
+        address: '501 Stanyan St, San Francisco, CA 94117',
+        city: 'San Francisco',
+        description: 'Nutrition and exercise workshop for cholesterol and diabetes prevention.',
+        id: 'nutrition-multi',
+        startDate: '2026-08-04T10:00:00-07:00',
+        title: 'Healthy Cooking and Exercise Workshop',
+      },
+    ],
+    priorities,
+    zipCode: '94132',
+    now: new Date('2026-07-31T00:00:00-07:00'),
+  })
+
+  assert.equal(
+    search.resources.filter((resource) => resource.id === 'nutrition-multi').length,
+    1,
+  )
+})
+
+test('general vaccine clinics are not assigned to disease-specific priorities', () => {
+  const priorities = getPriorities([
+    { illnesses: ['Colon cancer'], relationship: 'Grandparent' },
+  ])
+  const search = getStagedResourceSearch({
+    events: [
+      {
+        address: '1900 Sixth St, Berkeley, CA 94710',
+        city: 'Berkeley',
+        id: 'general-vaccine',
+        startDate: '2026-08-04T10:00:00-07:00',
+        title: 'Free Back-to-School Vaccine Clinics',
+      },
+    ],
+    priorities,
+    zipCode: '94702',
+    now: new Date('2026-07-31T00:00:00-07:00'),
+  })
+  const vaccineResource = search.resources.find(
+    (resource) => resource.id === 'general-vaccine',
+  )
+
+  assert.equal(vaccineResource.eventPriorityId, 'general-prevention')
+  assert.equal(vaccineResource.recommendationLabel, 'General preventive-care resource')
 })
 
 test('assigned staged resources group under prevention actions without duplicates', () => {

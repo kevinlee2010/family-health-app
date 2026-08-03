@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { getConditionDetails } from './conditionDetails'
 import { buildFamilyHealthSummary } from './healthCategories'
@@ -10,7 +10,13 @@ import {
   calculatePreventionScore,
   getPreventionScoreStatus,
 } from './preventionScore'
+import { getParksNearZip } from './parkResources'
 import {
+  getStagedResourceSearch,
+  getUserResourcePriorities,
+} from './resourcePersonalization'
+import {
+  getClosestSupportedZipForCoordinates,
   getCityForZip,
   isSupportedZip,
 } from './zipCodeMap'
@@ -36,11 +42,12 @@ const sexAtBirthOptions = ['Female', 'Male', 'Prefer not to answer']
 const legacyNoIllnessOption = 'None'
 const noListedConditionsLabel = 'None of the conditions listed'
 const noKnownConditionsLabel = 'No known conditions.'
+const legacyDiabetesLabel = ['type', '2', 'diabetes'].join(' ')
 const familyHistoryConditionOptions = [
   'Heart disease',
   'High blood pressure',
   'High cholesterol',
-  'Type 2 diabetes',
+  'Diabetes',
   'Stroke',
   'Breast cancer',
   'Colon cancer',
@@ -86,7 +93,7 @@ const illnessCategories = [
   },
   {
     name: 'Diabetes & Metabolic',
-    illnesses: ['Type 1 Diabetes', 'Type 2 Diabetes', 'Obesity'],
+    illnesses: ['Type 1 Diabetes', 'Diabetes', 'Obesity'],
   },
   {
     name: 'Cancer',
@@ -160,7 +167,7 @@ const starterIllnesses = illnessCategories.flatMap((category) => category.illnes
 const guidedSteps = [
   {
     id: 'dashboard',
-    label: 'Dashboard',
+    label: 'My Profile',
   },
   {
     id: 'family',
@@ -175,7 +182,7 @@ const guidedSteps = [
     label: 'AI Prevention Coach',
   },
 ]
-
+const assessmentTransitionDuration = 850
 const legacyViewMap = {
   actions: 'coach',
   about: 'family',
@@ -193,10 +200,10 @@ const legacyViewMap = {
 }
 
 const viewTabs = [
-  { id: 'dashboard', icon: '⌂', label: 'Dashboard' },
-  { id: 'family', icon: '👥', label: 'Family Health History' },
-  { id: 'lifestyle', icon: '◒', label: 'Lifestyle Assessment' },
-  { id: 'coach', icon: '✦', label: 'AI Prevention Coach' },
+  { id: 'dashboard', icon: '⌂', label: 'My Profile' },
+  { id: 'family', icon: '☷', label: 'Family Health History' },
+  { id: 'lifestyle', icon: '◌', label: 'Lifestyle Assessment' },
+  { id: 'coach', icon: '✧', label: 'AI Prevention Coach' },
 ]
 
 const initialProfileForm = {
@@ -281,7 +288,7 @@ const yesNoUnknownOptions = ['No', 'Yes', 'Not sure', 'Prefer not to answer']
 const diabetesStatusOptions = [
   'No',
   'Prediabetes',
-  'Type 2 diabetes',
+  'Diabetes',
   'Diabetes, not sure what type',
   'Not sure',
   'Prefer not to answer',
@@ -390,7 +397,11 @@ function sanitizeProfileForm(value) {
   return Object.keys(initialProfileForm).reduce(
     (profileForm, key) => ({
       ...profileForm,
-      [key]: asString(value[key]),
+      [key]:
+        key === 'diabetesStatus' &&
+        getIllnessKey(asString(value[key])) === 'diabetes'
+          ? 'Diabetes'
+          : asString(value[key]),
     }),
     { ...initialProfileForm },
   )
@@ -450,7 +461,10 @@ function sanitizeUserProfile(value) {
     preventiveScreenings: asString(value.preventiveScreenings),
     knownHighBloodPressure: asString(value.knownHighBloodPressure),
     knownHighCholesterol: asString(value.knownHighCholesterol),
-    diabetesStatus: asString(value.diabetesStatus),
+    diabetesStatus:
+      getIllnessKey(asString(value.diabetesStatus)) === 'diabetes'
+        ? 'Diabetes'
+        : asString(value.diabetesStatus),
     illnesses: sanitizeDatabaseIllnesses(value.illnesses || value.conditions),
     noListedConditions: Boolean(value.noListedConditions),
     hasUnlistedCondition: Boolean(value.hasUnlistedCondition),
@@ -496,7 +510,9 @@ function sanitizeActiveLocation(value) {
     return { ...defaultSavedState.activeLocation }
   }
 
-  const source = ['manual', 'gps'].includes(value.source) ? value.source : ''
+  const source = ['manual', 'gps', 'current-location'].includes(value.source)
+    ? value.source
+    : ''
   const latitude = Number(value.latitude)
   const longitude = Number(value.longitude)
 
@@ -530,7 +546,7 @@ function sanitizeActiveView(value) {
 }
 
 function sanitizeLocationStatus(value) {
-  return ['idle', 'success', 'error', 'manual'].includes(value)
+  return ['idle', 'success', 'error', 'manual', 'loading'].includes(value)
     ? value
     : 'idle'
 }
@@ -669,8 +685,18 @@ function normalizeIllness(value) {
   return value.trim().replace(/\s+/g, ' ').toLowerCase()
 }
 
+function getDisplayConditionName(value) {
+  return getIllnessKey(value) === 'diabetes' ? 'Diabetes' : value
+}
+
 function getIllnessKey(value) {
-  return normalizeIllness(value).replace(/\s*\([^)]*\)/g, '').replace(/\.+$/g, '')
+  const normalizedIllness = normalizeIllness(value)
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\.+$/g, '')
+
+  return normalizedIllness === legacyDiabetesLabel
+    ? 'diabetes'
+    : normalizedIllness
 }
 
 function isNoIllness(value) {
@@ -687,13 +713,33 @@ function calculateBmi({ heightFeet, heightInches, weight }) {
   const feet = Number(heightFeet)
   const inches = Number(heightInches)
   const pounds = Number(weight)
+  const hasFeet = String(heightFeet).trim() !== ''
+  const hasInches = String(heightInches).trim() !== ''
+  const hasWeight = String(weight).trim() !== ''
   const totalInches = feet * 12 + inches
 
-  if (!pounds || !totalInches || pounds <= 0 || totalInches <= 0) {
+  if (
+    !hasFeet ||
+    !hasInches ||
+    !hasWeight ||
+    !Number.isFinite(feet) ||
+    !Number.isFinite(inches) ||
+    !Number.isFinite(pounds) ||
+    feet < 3 ||
+    feet > 8 ||
+    inches < 0 ||
+    inches > 11 ||
+    pounds <= 0 ||
+    totalInches <= 0
+  ) {
     return null
   }
 
-  return Number(((pounds / (totalInches * totalInches)) * 703).toFixed(1))
+  const heightMeters = totalInches * 0.0254
+  const weightKilograms = pounds * 0.45359237
+  const bmi = weightKilograms / (heightMeters ** 2)
+
+  return Number(bmi.toFixed(1))
 }
 
 function getBmiCategory(bmi) {
@@ -702,18 +748,18 @@ function getBmiCategory(bmi) {
   }
 
   if (bmi < 18.5) {
-    return 'Below the typical adult range'
+    return 'Underweight'
   }
 
   if (bmi < 25) {
-    return 'Typical adult range'
+    return 'Healthy'
   }
 
   if (bmi < 30) {
-    return 'Above the typical adult range'
+    return 'Overweight'
   }
 
-  return 'Well above the typical adult range'
+  return 'Obesity'
 }
 
 function addIllnessToList(currentIllnesses, illness) {
@@ -789,7 +835,7 @@ function hasSpecificLocation(event) {
 
 function getLocationLabel(event) {
   if (event?.attendanceMode === 'online') {
-    return event.platform ? `Online event · ${event.platform}` : 'Virtual event'
+    return event.platform ? `Virtual event · ${event.platform}` : 'Virtual event'
   }
 
   if (event?.attendanceMode === 'hybrid') {
@@ -801,22 +847,20 @@ function getLocationLabel(event) {
     event?.city &&
     normalizeCity(event.locationName) !== normalizeCity(event.city)
   ) {
-    return `${event.locationName} · ${event.city}`
+    return `In-person event · ${event.locationName} · ${event.city}`
   }
 
-  return event?.city || event?.locationName || ''
+  return event?.city || event?.locationName
+    ? `In-person event · ${event.city || event.locationName}`
+    : 'In-person event'
 }
 
 function getEventLocationActionLabel(event) {
+  if (isOnlineEvent(event)) {
+    return ''
+  }
+
   return hasSpecificLocation(event) ? 'View location' : ''
-}
-
-function getOnlineEventUrl(event) {
-  return event?.onlineUrl || event?.registrationUrl || event?.eventLink || ''
-}
-
-function getOnlineEventActionLabel(event) {
-  return event?.registrationRequired ? 'Register for online event' : 'Join online'
 }
 
 function buildEventMapEmbedUrl(event) {
@@ -863,7 +907,10 @@ function truncateText(value, maxLength = 220) {
 }
 
 function getEventPreview(event, expandedEventDescriptions) {
-  const cleanedDescription = event.summary || cleanEventDescription(event.description)
+  const cleanedDescription =
+    event.eventMatchReason ||
+    event.summary ||
+    cleanEventDescription(event.description)
   const isExpanded = Boolean(expandedEventDescriptions[event.id])
 
   return {
@@ -901,6 +948,14 @@ function formatEventDateTime(event) {
 }
 
 function getActiveLocationLabel(activeLocation) {
+  if (
+    activeLocation.source === 'current-location' &&
+    activeLocation.city &&
+    activeLocation.zipCode
+  ) {
+    return `Current location · ${activeLocation.city}, ${activeLocation.zipCode}`
+  }
+
   return activeLocation.zipCode || activeLocation.city || ''
 }
 
@@ -933,173 +988,6 @@ function buildLocationMapEmbedUrl(activeLocation) {
 
 function getZipFromAddress(address) {
   return address.match(/\b\d{5}(?:-\d{4})?\b/)?.[0]?.slice(0, 5) || ''
-}
-
-const conditionHealthTopicMap = [
-  {
-    keywords: ['heart disease', 'heart attack'],
-    topics: ['heart-health', 'blood-pressure', 'cholesterol', 'physical-activity'],
-  },
-  {
-    keywords: ['high blood pressure', 'hypertension'],
-    topics: ['blood-pressure', 'heart-health', 'nutrition'],
-  },
-  {
-    keywords: ['high cholesterol'],
-    topics: ['cholesterol', 'heart-health', 'nutrition', 'physical-activity'],
-  },
-  {
-    keywords: ['type 2 diabetes', 'prediabetes', 'obesity'],
-    topics: ['diabetes', 'nutrition', 'physical-activity'],
-  },
-  {
-    keywords: ['stroke'],
-    topics: ['blood-pressure', 'heart-health', 'cholesterol'],
-  },
-  {
-    keywords: ['breast cancer'],
-    topics: ['cancer-prevention'],
-  },
-  {
-    keywords: ['colon cancer', 'colorectal'],
-    topics: ['cancer-prevention', 'nutrition', 'physical-activity'],
-  },
-  {
-    keywords: ['depression', 'anxiety', 'mental health'],
-    topics: ['mental-health'],
-  },
-]
-
-const healthTopicLabels = {
-  'blood-pressure': 'blood pressure prevention',
-  'cancer-prevention': 'cancer prevention',
-  cholesterol: 'cholesterol awareness',
-  diabetes: 'diabetes prevention',
-  'general-prevention': 'preventive health',
-  'heart-health': 'heart health',
-  'mental-health': 'mental wellness',
-  nutrition: 'nutrition',
-  'physical-activity': 'physical activity',
-  vaccination: 'vaccination',
-}
-
-function addTopics(topicSet, topics) {
-  topics.forEach((topic) => topicSet.add(topic))
-}
-
-function getTopicsForCondition(conditionName) {
-  const normalizedCondition = getIllnessKey(conditionName)
-
-  if (!normalizedCondition || isNoIllness(conditionName)) {
-    return []
-  }
-
-  const matchedRule = conditionHealthTopicMap.find((rule) =>
-    rule.keywords.some((keyword) => normalizedCondition.includes(keyword)),
-  )
-
-  return matchedRule?.topics || []
-}
-
-function getUserEventHealthTopics({ familyMembers, profile }) {
-  const topicSet = new Set()
-
-  familyMembers.forEach((member) => {
-    member.illnesses?.forEach((illness) => {
-      addTopics(topicSet, getTopicsForCondition(illness))
-    })
-  })
-
-  profile.illnesses?.forEach((illness) => {
-    addTopics(topicSet, getTopicsForCondition(illness))
-  })
-
-  if (profile.smokingStatus === 'Current') {
-    addTopics(topicSet, [
-      'cancer-prevention',
-      'heart-health',
-      'mental-health',
-      'general-prevention',
-    ])
-  }
-
-  if (profile.exercise === 'Rarely' || profile.exercise === '1-2 days/week') {
-    addTopics(topicSet, ['physical-activity', 'heart-health', 'diabetes'])
-  }
-
-  if (
-    profile.dietQuality === 'Poor' ||
-    profile.dietQuality === 'Fair' ||
-    profile.fruitVegIntake === '0-1 servings' ||
-    profile.fruitVegIntake === '2 servings'
-  ) {
-    addTopics(topicSet, ['nutrition', 'heart-health', 'diabetes'])
-  }
-
-  if (profile.stressLevel === 'High' || profile.stressLevel === 'Very high') {
-    addTopics(topicSet, ['mental-health'])
-  }
-
-  if (profile.knownHighBloodPressure === 'Yes' || profile.knownHighBloodPressure === 'Not sure') {
-    addTopics(topicSet, ['blood-pressure', 'heart-health'])
-  }
-
-  if (profile.knownHighCholesterol === 'Yes' || profile.knownHighCholesterol === 'Not sure') {
-    addTopics(topicSet, ['cholesterol', 'heart-health'])
-  }
-
-  if (
-    profile.diabetesStatus === 'Prediabetes' ||
-    profile.diabetesStatus === 'Type 2 diabetes' ||
-    profile.diabetesStatus === 'Diabetes, not sure what type' ||
-    profile.diabetesStatus === 'Not sure'
-  ) {
-    addTopics(topicSet, ['diabetes', 'nutrition', 'physical-activity'])
-  }
-
-  return [...topicSet]
-}
-
-function getEventPersonalization(event, userHealthTopics) {
-  const eventTopics = Array.isArray(event.healthTopics) ? event.healthTopics : []
-  const overlappingTopics = eventTopics.filter((topic) =>
-    userHealthTopics.includes(topic),
-  )
-
-  if (overlappingTopics.length > 0) {
-    const readableTopics = overlappingTopics
-      .slice(0, 2)
-      .map((topic) => healthTopicLabels[topic] || topic)
-      .join(' and ')
-
-    return {
-      matchCount: overlappingTopics.length,
-      recommendationLabel: 'Recommended for you',
-      recommendationReason: `Recommended because your family history or lifestyle answers relate to ${readableTopics}.`,
-    }
-  }
-
-  return {
-    matchCount: eventTopics.includes('general-prevention') ? 0.5 : 0,
-    recommendationLabel: 'General prevention',
-    recommendationReason:
-      'A general preventive-health event that may support routine wellness habits.',
-  }
-}
-
-function personalizeAndRankEvents(events, userHealthTopics) {
-  return [...events]
-    .map((event) => ({
-      ...event,
-      ...getEventPersonalization(event, userHealthTopics),
-    }))
-    .sort((firstEvent, secondEvent) => {
-      if (secondEvent.matchCount !== firstEvent.matchCount) {
-        return secondEvent.matchCount - firstEvent.matchCount
-      }
-
-      return firstEvent.title.localeCompare(secondEvent.title)
-    })
 }
 
 function normalizeCity(value) {
@@ -1220,15 +1108,20 @@ function normalizeRemoteEvent(event, index) {
   return normalizedEvent
 }
 
-function getEventFilterResult(events, activeLocation, userHealthTopics) {
+function getEventFilterResult({
+  cityEvents,
+  onlineEvents,
+  activeLocation,
+  resourcePriorities,
+}) {
   const searchedZipCode = String(activeLocation.zipCode || '').trim()
-  const personalizeEvents = (matchingEvents) =>
-    personalizeAndRankEvents(matchingEvents, userHealthTopics)
+  const hasPriorities = resourcePriorities.length > 0
 
   if (!searchedZipCode) {
     return {
-      events: personalizeEvents(events),
-      status: events.length > 0 ? 'all-events' : 'empty',
+      events: [],
+      onlineEvents: [],
+      status: hasPriorities ? 'location-needed' : 'no-priorities',
       targetCity: '',
       zipCode: '',
     }
@@ -1237,6 +1130,7 @@ function getEventFilterResult(events, activeLocation, userHealthTopics) {
   if (!/^\d{5}$/.test(searchedZipCode)) {
     return {
       events: [],
+      onlineEvents: [],
       status: 'invalid-zip',
       targetCity: '',
       zipCode: searchedZipCode,
@@ -1248,92 +1142,207 @@ function getEventFilterResult(events, activeLocation, userHealthTopics) {
   if (!targetCity) {
     return {
       events: [],
+      onlineEvents: [],
       status: 'unsupported-zip',
       targetCity: '',
       zipCode: searchedZipCode,
     }
   }
 
-  const cityEvents = events.filter(
-    (event) => normalizeCity(getEventCity(event)) === normalizeCity(targetCity),
-  )
-
-  if (import.meta.env.DEV) {
-    console.log('ZIP:', searchedZipCode)
-    console.log('Selected city:', targetCity)
-    console.log(
-      'All event cities:',
-      events.map((event) => getEventCity(event)),
-    )
-    console.log(
-      'Displayed event cities:',
-      cityEvents.map((event) => getEventCity(event)),
-    )
-  }
-
-  if (cityEvents.length > 0) {
-    return {
-      events: personalizeEvents(cityEvents),
-      status: 'mapped-city',
-      targetCity,
-      zipCode: searchedZipCode,
-    }
-  }
+  const searchResult = getStagedResourceSearch({
+    events: cityEvents,
+    includeFallbackSections: false,
+    includeTrustedOrganizations: false,
+    originLocation: activeLocation.source === 'current-location'
+      ? activeLocation
+      : null,
+    parks: getParksNearZip(searchedZipCode),
+    priorities: resourcePriorities,
+    zipCode: searchedZipCode,
+  })
+  const onlineSearchResult = getStagedResourceSearch({
+    events: onlineEvents,
+    includeFallbackSections: false,
+    includeGeneralPreventiveResources: false,
+    includeTrustedOrganizations: true,
+    originLocation: activeLocation.source === 'current-location'
+      ? activeLocation
+      : null,
+    parks: [],
+    priorities: resourcePriorities,
+    zipCode: searchedZipCode,
+  })
 
   return {
-    events: [],
-    status: 'supported-empty',
+    events: searchResult.resources,
+    onlineEvents: onlineSearchResult.resources,
+    status: searchResult.resources.length > 0 ? 'mapped-city' : 'supported-empty',
     targetCity,
     zipCode: searchedZipCode,
   }
 }
 
-function buildCoachGoals(preventionScore) {
-  const goals = [
-    {
-      id: 'walk',
-      label: 'Take a 20-minute walk',
-      detail: 'A small movement goal supports several prevention priorities.',
-    },
-    {
-      id: 'water',
-      label: 'Drink one extra glass of water',
-      detail: 'Hydration is a simple daily win.',
-    },
-    {
-      id: 'produce',
-      label: 'Add fruit or vegetables to one meal',
-      detail: 'A small nutrition upgrade is easier to repeat.',
-    },
-  ]
+const dailyGoalBank = {
+  'blood pressure awareness': [
+    'Check your blood pressure if available.',
+    'Take a 20-minute walk.',
+    'Choose a lower-sodium meal today.',
+    'Write down one blood-pressure question for your next visit.',
+  ],
+  'brain and stroke prevention': [
+    'Get regular movement today.',
+    'Prioritize 7-9 hours of sleep tonight.',
+    'Practice a stress-reduction activity.',
+    'Monitor blood pressure if available.',
+  ],
+  'breast cancer prevention': [
+    'Review your family history.',
+    'Learn about screening recommendations.',
+    'Stay physically active.',
+    'Limit alcohol today.',
+  ],
+  'cardiovascular health': [
+    'Take a 20-minute walk.',
+    'Check your blood pressure if available.',
+    'Choose a heart-healthy meal today.',
+    'Read one heart-health prevention tip.',
+  ],
+  'cholesterol awareness': [
+    'Choose a heart-healthy meal today.',
+    'Take a 20-minute walk.',
+    'Limit saturated fats at one meal.',
+    'Read one cholesterol-prevention tip.',
+  ],
+  'colon cancer prevention': [
+    'Eat a fiber-rich meal.',
+    'Stay active for 20 minutes.',
+    'Learn about colorectal screening.',
+    'Update your family history if needed.',
+  ],
+  'diabetes prevention': [
+    'Skip sugary drinks today.',
+    'Walk for 20 minutes.',
+    'Eat a high-fiber meal.',
+    'Check your daily activity goal.',
+  ],
+  'mental well-being': [
+    'Spend 10 minutes relaxing.',
+    'Connect with a friend or family member.',
+    'Take a short walk.',
+    'Maintain a consistent bedtime.',
+  ],
+  'respiratory health': [
+    'Avoid smoke exposure.',
+    'Take a walk outdoors if air quality is good.',
+    'Stay hydrated.',
+    'Monitor recurring breathing symptoms.',
+  ],
+}
 
-  preventionScore.topPriorities.forEach((priority) => {
-    if (priority.id === 'tobacco') {
-      goals.push({
-        id: 'quit-support',
-        label: 'Look up one quit-support resource',
-        detail: 'Support tools can make tobacco or vaping goals less lonely.',
-      })
-    }
+const lifestyleGoalBank = {
+  movement: ['Take a 20-minute walk.', 'Check your daily activity goal.'],
+  nutrition: ['Add fruit or vegetables to one meal.', 'Eat a high-fiber meal.'],
+  screening: [
+    'Write one screening question for your next visit.',
+    'Review one preventive-care recommendation.',
+  ],
+  sleep: ['Maintain a consistent bedtime.', 'Prioritize 7-9 hours of sleep tonight.'],
+  stress: ['Spend 10 minutes relaxing.', 'Practice a stress-reduction activity.'],
+  'sugary-drinks': ['Skip sugary drinks today.', 'Drink one extra glass of water.'],
+  tobacco: ['Look up one quit-support resource.', 'Avoid smoke or vape exposure today.'],
+}
 
-    if (priority.id === 'screening') {
-      goals.push({
-        id: 'screening-question',
-        label: 'Write one screening question for your next visit',
-        detail: 'Clear questions make healthcare conversations easier.',
-      })
-    }
+const fallbackDailyGoals = [
+  'Take a 20-minute walk.',
+  'Drink one extra glass of water.',
+  'Add fruit or vegetables to one meal.',
+  'Review your family history.',
+]
 
-    if (priority.id === 'stress') {
-      goals.push({
-        id: 'breathing',
-        label: 'Try a 5-minute breathing break',
-        detail: 'Short resets can support stress and sleep.',
-      })
-    }
+function getDailyGoalSeed(date = new Date()) {
+  const today = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+  return Math.floor(today.getTime() / 86400000)
+}
+
+function rotateGoals(goals, seed = 0) {
+  if (goals.length <= 1) {
+    return goals
+  }
+
+  const offset = seed % goals.length
+
+  return [...goals.slice(offset), ...goals.slice(0, offset)]
+}
+
+function getGoalSlug(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+function getGoalBankForPriority(priority) {
+  const labelKey = String(priority?.healthArea || priority?.label || '')
+    .trim()
+    .toLowerCase()
+
+  return dailyGoalBank[labelKey] || []
+}
+
+function addUniqueGoal(goalLabels, label) {
+  const normalizedGoal = getGoalSlug(label)
+
+  if (!label || goalLabels.some((goal) => getGoalSlug(goal) === normalizedGoal)) {
+    return
+  }
+
+  goalLabels.push(label)
+}
+
+function buildCoachGoals({ preventionInsights = [], preventionScore = {} }) {
+  const seed = getDailyGoalSeed()
+  const rankedPriorities = preventionInsights.slice(0, 3)
+  const goalLabels = []
+
+  rankedPriorities.forEach((priority, priorityIndex) => {
+    const targetCount = priorityIndex === 0 ? 2 : 1
+    let selectedForPriority = 0
+    const rotatedGoals = rotateGoals(
+      getGoalBankForPriority(priority),
+      seed + priorityIndex,
+    )
+
+    rotatedGoals.slice(0, targetCount + 2).forEach((goal) => {
+      const previousGoalCount = goalLabels.length
+
+      if (selectedForPriority < targetCount) {
+        addUniqueGoal(goalLabels, goal)
+      }
+
+      if (goalLabels.length > previousGoalCount) {
+        selectedForPriority += 1
+      }
+    })
   })
 
-  return goals.slice(0, 5)
+  if (goalLabels.length < 4) {
+    preventionScore.topPriorities?.forEach((priority, priorityIndex) => {
+      rotateGoals(
+        lifestyleGoalBank[priority.id] || [],
+        seed + priorityIndex,
+      ).forEach((goal) => addUniqueGoal(goalLabels, goal))
+    })
+  }
+
+  rotateGoals(fallbackDailyGoals, seed).forEach((goal) =>
+    addUniqueGoal(goalLabels, goal),
+  )
+
+  return goalLabels.slice(0, 4).map((label) => ({
+    id: `daily-${getDailyGoalSeed()}-${getGoalSlug(label)}`,
+    label,
+  }))
 }
 
 function getCoachMessage({ completedCount, totalGoals }) {
@@ -1346,7 +1355,7 @@ function getCoachMessage({ completedCount, totalGoals }) {
   }
 
   if (completedCount > 0) {
-    return `Nice progress. You completed ${completedCount} of ${totalGoals} coach goals today, so keep the next step small and repeatable.`
+    return `Great progress! You've completed ${completedCount} of ${totalGoals} goals today.`
   }
 
   return 'Build healthy habits one step at a time.'
@@ -1391,6 +1400,8 @@ function ConditionButton({
   onOpenConditionDetails,
   className = 'illness-pill',
 }) {
+  const displayName = getDisplayConditionName(conditionName)
+
   return (
     <button
       className={`condition-button ${className}`}
@@ -1400,13 +1411,17 @@ function ConditionButton({
         onOpenConditionDetails(conditionName)
       }}
     >
-      {conditionName}
+      {displayName}
     </button>
   )
 }
 
 function ConditionTag({ conditionName, className = 'illness-pill' }) {
-  return <span className={`condition-tag ${className}`}>{conditionName}</span>
+  return (
+    <span className={`condition-tag ${className}`}>
+      {getDisplayConditionName(conditionName)}
+    </span>
+  )
 }
 
 function ClickableConditionTag({
@@ -1429,7 +1444,6 @@ function ClickableConditionTag({
 
 function QuestionCard({
   children,
-  helper,
   required = false,
   title,
 }) {
@@ -1440,7 +1454,6 @@ function QuestionCard({
           {title}
           {required ? <span aria-label="required"> *</span> : null}
         </h2>
-        {helper ? <p>{helper}</p> : null}
       </div>
       {children}
     </section>
@@ -1491,7 +1504,7 @@ function ConditionDetailList({ items, title }) {
 }
 
 function ConditionDetailsModal({ conditionName, details, onClose }) {
-  const displayName = details?.name || conditionName
+  const displayName = getDisplayConditionName(details?.name || conditionName)
 
   return (
     <div className="condition-modal-backdrop" onClick={onClose}>
@@ -1799,7 +1812,7 @@ function IllnessPicker({
                         }
                         onClick={() => selectSuggestion(illness)}
                       >
-                        {illness}
+                        {getDisplayConditionName(illness)}
                       </button>
                     </li>
                   ))}
@@ -1875,7 +1888,7 @@ function IllnessPicker({
                     className="selected-illness-remove"
                     type="button"
                     onClick={() => onRemoveIllness(illness)}
-                    aria-label={`Remove ${illness}`}
+                    aria-label={`Remove ${getDisplayConditionName(illness)}`}
                   >
                     <span aria-hidden="true">&times;</span>
                   </button>
@@ -1902,23 +1915,10 @@ function PatternBadge({ explanation, label, tone }) {
   )
 }
 
-function DoctorQuestions({ questions }) {
-  return (
-    <section className="insight-detail-block">
-      <h4>Questions you may want to ask</h4>
-      <ul>
-        {questions.map((question) => (
-          <li key={question}>{question}</li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
 function EducationalSource({ sourceName, sourceUrl }) {
   return (
     <section className="insight-detail-block">
-      <h4>Educational source</h4>
+      <h4>Educational Source</h4>
       <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
         {sourceName}
       </a>
@@ -1938,35 +1938,80 @@ function PreventionInsightCard({ insight }) {
           label={insight.patternLabel}
           tone={insight.tone}
         />
-        <span className="view-details-text">View Details</span>
+        <span className="insight-more-link">
+          <span className="more-label">More Info</span>
+          <span className="less-label">Less Info</span>
+          <span aria-hidden="true">→</span>
+        </span>
       </summary>
 
       <div className="insight-expanded-content">
         <section className="insight-detail-block">
-          <h4>Why this appears</h4>
-          <ul>
-            {insight.whyItAppears.map((reason) => (
-              <li key={reason}>{reason}</li>
-            ))}
-          </ul>
+          <h4>Prevention Insight</h4>
+          <p>{insight.preventionInsight}</p>
         </section>
 
         <section className="insight-detail-block">
-          <h4>What you can consider</h4>
+          <h4>Key Prevention Strategies</h4>
           <ul>
-            {insight.educationalActions.map((action) => (
-              <li key={action}>{action}</li>
+            {insight.strategies.map((strategy) => (
+              <li key={strategy}>{strategy}</li>
             ))}
           </ul>
         </section>
 
-        <DoctorQuestions questions={insight.doctorQuestions} />
         <EducationalSource
           sourceName={insight.sourceName}
           sourceUrl={insight.sourceUrl}
         />
       </div>
     </details>
+  )
+}
+
+function AssessmentLoadingScreen() {
+  return (
+    <main className="assessment-loading-screen" aria-live="polite">
+      <section className="assessment-loading-content">
+        <div className="assessment-loading-copy">
+          <p className="eyebrow">Family health history</p>
+          <h1>
+            <span>Know Your Family History.</span>
+            <span>Take Control of Your Health.</span>
+          </h1>
+          <p>
+            Build your family health profile to discover inherited health
+            patterns, understand possible prevention topics, and receive
+            personalized educational insights.
+          </p>
+        </div>
+
+        <div className="assessment-loading-highlights">
+          <article>
+            <span aria-hidden="true">◇</span>
+            <strong>Family History</strong>
+            <p>
+              Understand patterns that may be important to discuss with your
+              healthcare provider.
+            </p>
+          </article>
+          <article>
+            <span aria-hidden="true">↗</span>
+            <strong>Actionable</strong>
+            <p>Small, practical prevention steps you can start today.</p>
+          </article>
+          <article>
+            <span aria-hidden="true">◎</span>
+            <strong>Personalized</strong>
+            <p>Guidance tailored to your family history and lifestyle.</p>
+          </article>
+        </div>
+
+        <div className="loading-progress-track" aria-hidden="true">
+          <span></span>
+        </div>
+      </section>
+    </main>
   )
 }
 
@@ -2027,6 +2072,8 @@ function App() {
   const [weeklyEvents, setWeeklyEvents] = useState([])
   const [weeklyEventsError, setWeeklyEventsError] = useState('')
   const [weeklyEventsStatus, setWeeklyEventsStatus] = useState('loading')
+  const [isAssessmentLoading, setIsAssessmentLoading] = useState(false)
+  const [assessmentLoadingTarget, setAssessmentLoadingTarget] = useState('family')
 
   const selfTreeNode = userProfile
     ? {
@@ -2064,12 +2111,11 @@ function App() {
   })
   const preventionScoreStatus = getPreventionScoreStatus(preventionScore.score)
   const hasPreventionScore = preventionScore.score !== null
-  const coachGoals = buildCoachGoals(preventionScore)
+  const coachGoals = buildCoachGoals({
+    preventionInsights,
+    preventionScore,
+  })
   const completedCoachGoals = coachGoals.filter((goal) => habitProgress[goal.id])
-  const dashboardActionGoals = coachGoals.slice(0, 3)
-  const completedDashboardActionGoals = dashboardActionGoals.filter(
-    (goal) => habitProgress[goal.id],
-  )
   const coachMessage = getCoachMessage({
     completedCount: completedCoachGoals.length,
     totalGoals: coachGoals.length,
@@ -2079,18 +2125,43 @@ function App() {
     : null
   const disclaimerText =
     'This educational tool organizes family history and lifestyle information. It does not provide a diagnosis or replace professional medical advice.'
-  const userEventHealthTopics = getUserEventHealthTopics({
+  const resourcePriorities = getUserResourcePriorities({
+    familyHealthSummary,
     familyMembers,
-    profile: preventionProfile,
+    preventionScore,
   })
-  const weeklyEventFilter = getEventFilterResult(
-    weeklyEvents,
-    activeLocation,
-    userEventHealthTopics,
+  const selectedEventCity =
+    activeLocation.zipCode
+      ? getCityForZip(String(activeLocation.zipCode || '').trim())
+      : activeLocation.city || ''
+  const cityEvents = useMemo(() => {
+    if (!selectedEventCity) return []
+
+    return weeklyEvents.filter((event) => {
+      if (event.attendanceMode === 'online') return false
+
+      return (
+        normalizeCity(getEventCity(event)) ===
+        normalizeCity(selectedEventCity)
+      )
+    })
+  }, [weeklyEvents, selectedEventCity])
+  const onlineWeeklyEvents = useMemo(
+    () => weeklyEvents.filter((event) => event.attendanceMode === 'online'),
+    [weeklyEvents],
   )
+  const weeklyEventFilter = getEventFilterResult({
+    activeLocation,
+    cityEvents,
+    onlineEvents: onlineWeeklyEvents,
+    resourcePriorities,
+  })
   const displayedWeeklyEvents = weeklyEventFilter.events
+  const displayedOnlineEvents = weeklyEventFilter.onlineEvents
   const selectedEvent =
-    displayedWeeklyEvents.find((event) => event.id === selectedWeeklyEvent?.id) ||
+    [...displayedWeeklyEvents, ...displayedOnlineEvents].find(
+      (event) => event.id === selectedWeeklyEvent?.id,
+    ) ||
     displayedWeeklyEvents[0] ||
     null
   const weeklyEventHeading = weeklyEventFilter.targetCity
@@ -2098,12 +2169,43 @@ function App() {
     : 'This Week Near You'
   const weeklyEventDescription = weeklyEventFilter.zipCode
     ? weeklyEventFilter.targetCity
-      ? `Showing verified preventive-health events for ${weeklyEventFilter.targetCity}.`
+      ? `Showing the strongest recommendations for ${weeklyEventFilter.targetCity}.`
       : ''
-    : 'Upcoming community health opportunities matched to your family history and lifestyle profile.'
+    : 'Enter a ZIP code to see the top recommendations for your prevention plan.'
   const weeklyEventMapUrl = selectedEvent
     ? buildEventMapEmbedUrl(selectedEvent)
     : buildLocationMapEmbedUrl(activeLocation)
+
+  if (import.meta.env.DEV) {
+    console.log('Entered ZIP:', activeLocation.zipCode)
+    console.log('Selected city:', selectedEventCity)
+    console.log(
+      'All event cities:',
+      weeklyEvents.map((event) => getEventCity(event)),
+    )
+    console.log(
+      'City-filtered event cities:',
+      cityEvents.map((event) => getEventCity(event)),
+    )
+    console.log(
+      'Final displayed event cities:',
+      displayedWeeklyEvents.map((event) => getEventCity(event)),
+    )
+    console.log({
+      coordinates:
+        Number.isFinite(activeLocation.latitude) &&
+        Number.isFinite(activeLocation.longitude)
+          ? {
+              latitude: activeLocation.latitude,
+              longitude: activeLocation.longitude,
+            }
+          : null,
+      detectedCity: activeLocation.city,
+      detectedZip: activeLocation.zipCode,
+      cityResourceCount: cityEvents.length,
+      personalizedResourceCount: displayedWeeklyEvents.length,
+    })
+  }
   function getRelationshipCount(group, ignoredMemberId = null) {
     return familyMembers.filter(
       (member) =>
@@ -2202,7 +2304,7 @@ function App() {
         ...(hasPreventionScore
           ? [
               {
-                icon: '◎',
+                icon: '○',
                 label: 'Prevention Score',
                 value: preventionScore.score,
                 detail: 'Habits and awareness, not a diagnosis',
@@ -2210,13 +2312,13 @@ function App() {
             ]
           : []),
         {
-          icon: '🔥',
+          icon: '◌',
           label: 'Habit Progress',
           value: `${completedCoachGoals.length}/${coachGoals.length}`,
           detail: 'Goals completed today',
         },
         {
-          icon: '📅',
+          icon: '□',
           label: 'Weekly Goals',
           value: coachGoals.length,
           detail: coachMessage,
@@ -2343,6 +2445,21 @@ function App() {
     }
   }, [activeConditionName])
 
+  useEffect(() => {
+    if (!isAssessmentLoading) {
+      return undefined
+    }
+
+    const finishTimer = window.setTimeout(() => {
+      setIsAssessmentLoading(false)
+      changeView(assessmentLoadingTarget)
+    }, assessmentTransitionDuration)
+
+    return () => {
+      window.clearTimeout(finishTimer)
+    }
+  }, [assessmentLoadingTarget, isAssessmentLoading])
+
   function openConditionDetails(conditionName) {
     setActiveConditionName(conditionName)
   }
@@ -2360,6 +2477,28 @@ function App() {
     })
   }
 
+  function startAssessmentTransition(target) {
+    if (isAssessmentLoading || !target || target === activeView) {
+      return
+    }
+
+    setAssessmentLoadingTarget(target)
+    setIsAssessmentLoading(true)
+    setIsNavOpen(false)
+    setSuccessMessage('')
+    setError('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function beginAssessmentWithLoading() {
+    const target =
+      nextIncompleteAssessmentView === 'coach'
+        ? 'family'
+        : nextIncompleteAssessmentView
+
+    startAssessmentTransition(target)
+  }
+
   function requestUserLocation() {
     if (!navigator.geolocation) {
       setLocationStatus('error')
@@ -2370,27 +2509,51 @@ function App() {
     }
 
     setLocationStatus('loading')
-    setLocationMessage('Waiting for location permission...')
+    setLocationMessage('Finding your location...')
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setActiveLocation({
-          city: '',
+        const coordinates = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-          source: 'gps',
-          zipCode: '',
+        }
+        const locationMatch = getClosestSupportedZipForCoordinates(coordinates)
+
+        if (!locationMatch) {
+          setActiveLocation({
+            city: '',
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
+            source: 'current-location',
+            zipCode: '',
+          })
+          setSelectedWeeklyEvent(null)
+          setLocationStatus('error')
+          setLocationMessage(
+            'We could not determine your location. Enter a city or ZIP code instead.',
+          )
+          return
+        }
+
+        setActiveLocation({
+          city: locationMatch.city,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          source: 'current-location',
+          zipCode: locationMatch.zipCode,
         })
         setSelectedWeeklyEvent(null)
         setLocationStatus('success')
         setLocationMessage(
-          'Location added. Only nearby search terms use this location; family health data stays on your device.',
+          `Current location · ${locationMatch.city}, ${locationMatch.zipCode}`,
         )
       },
-      () => {
+      (positionError) => {
         setLocationStatus('error')
         setLocationMessage(
-          'Location permission was not used. You can still enter a city or ZIP code.',
+          positionError.code === positionError.PERMISSION_DENIED
+            ? 'Location access was denied. Enter a city or ZIP code instead.'
+            : 'We could not determine your location. Enter a city or ZIP code instead.',
         )
       },
       {
@@ -2705,7 +2868,7 @@ function App() {
       saveProfileData('Progress saved.')
     }
 
-    changeView(continueTarget)
+    startAssessmentTransition(continueTarget)
   }
 
   function goToPreviousStep() {
@@ -2719,6 +2882,10 @@ function App() {
       ...currentProgress,
       [goalId]: !currentProgress[goalId],
     }))
+  }
+
+  if (isAssessmentLoading) {
+    return <AssessmentLoadingScreen />
   }
 
   return (
@@ -2737,12 +2904,12 @@ function App() {
       <aside
         className={`app-sidebar${isNavOpen ? ' open' : ''}`}
         id="app-sidebar"
-        aria-label="Family health dashboard"
+        aria-label="Family health navigation"
       >
         <button
           className="sidebar-brand"
           type="button"
-          aria-label="Go to Dashboard"
+          aria-label="Go to My Profile"
           onClick={() => changeView('dashboard')}
         >
           <span className="brand-mark" aria-hidden="true">
@@ -2769,6 +2936,19 @@ function App() {
             </button>
           ))}
         </nav>
+
+        <section className="privacy-banner" aria-label="Privacy">
+          <div>
+            <p className="eyebrow">Privacy</p>
+            <p>
+              Your data stays on your device. This app does not send your family
+              health history to a server.
+            </p>
+          </div>
+          <button className="danger-action" type="button" onClick={handleStartOver}>
+            Start Over
+          </button>
+        </section>
       </aside>
 
       <main
@@ -2778,67 +2958,6 @@ function App() {
             : 'app-shell inner-shell'
         }
       >
-        {activeView === 'dashboard' ? (
-          <header className="app-hero">
-            <div className="app-hero-copy">
-              <p className="eyebrow">Family health history</p>
-              <h1>
-                <span>Know Your Family History.</span>
-                <span>Take Control of Your Health.</span>
-              </h1>
-              <p className="app-subtitle">
-                Build your family health profile to discover inherited health
-                patterns, understand possible prevention topics, and receive
-                personalized educational insights.
-              </p>
-            </div>
-
-            <div className="hero-actions">
-              <button
-                className="primary-action hero-primary-action"
-                type="button"
-                onClick={() => changeView('family')}
-              >
-                Continue Your Assessment
-                <span aria-hidden="true">→</span>
-              </button>
-            </div>
-
-            <div className="trust-indicators" aria-label="Trust indicators">
-              <article className="trust-badge">
-                <span className="trust-icon" aria-hidden="true">
-                  🧬
-                </span>
-                <div>
-                  <strong>Family History</strong>
-                  <p>
-                    Understand patterns that may be important to discuss with
-                    your healthcare provider.
-                  </p>
-                </div>
-              </article>
-              <article className="trust-badge">
-                <span className="trust-icon" aria-hidden="true">
-                  💡
-                </span>
-                <div>
-                  <strong>Actionable</strong>
-                  <p>Small, practical prevention steps you can start today.</p>
-                </div>
-              </article>
-              <article className="trust-badge">
-                <span className="trust-icon" aria-hidden="true">
-                  🎯
-                </span>
-                <div>
-                  <strong>Personalized</strong>
-                  <p>Guidance tailored to your family history and lifestyle.</p>
-                </div>
-              </article>
-            </div>
-          </header>
-        ) : null}
-
         {activeView === 'family' ? (
           <header className="page-intro">
             <h1>Family Health History</h1>
@@ -2866,19 +2985,6 @@ function App() {
           </header>
         ) : null}
 
-        <section className="privacy-banner" aria-label="Privacy">
-          <div>
-            <p className="eyebrow">Privacy</p>
-            <p>
-              Your data stays on your device. This app does not send your family
-              health history to a server.
-            </p>
-          </div>
-          <button className="danger-action" type="button" onClick={handleStartOver}>
-            Start Over
-          </button>
-        </section>
-
         {successMessage ? (
           <p className="flow-message success" role="status">
             {successMessage}
@@ -2895,7 +3001,7 @@ function App() {
         <section className="dashboard-panel" aria-labelledby="dashboard-title">
           <div className="dashboard-welcome-card">
             <div>
-              <p className="eyebrow">Dashboard</p>
+              <p className="eyebrow">My Profile</p>
               <h1 id="dashboard-title">Good afternoon!</h1>
               <p>
                 Continue your prevention journey with family history, lifestyle
@@ -2904,69 +3010,22 @@ function App() {
             </div>
           </div>
 
-          <section className="today-actions-card" aria-labelledby="today-actions-title">
-            <div className="section-heading-row">
-              <div>
-                <p className="eyebrow">
-                  {hasPersonalizedAssessmentData
-                    ? 'Personalized daily plan'
-                    : 'General wellness actions'}
-                </p>
-                <h2 id="today-actions-title">Today's Healthy Actions</h2>
-                <p>Build healthy habits one step at a time.</p>
-              </div>
-              <button
-                className="secondary-action"
-                type="button"
-                onClick={() => changeView('coach')}
-              >
-                Open Coach <span aria-hidden="true">→</span>
-              </button>
-            </div>
-
-            <p className="today-actions-progress">
-              {completedDashboardActionGoals.length} of {dashboardActionGoals.length}{' '}
-              completed
-            </p>
-
-            <ul className="today-action-list">
-              {dashboardActionGoals.map((goal) => (
-                <li key={goal.id}>
-                  <label className="today-action-row">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(habitProgress[goal.id])}
-                      onChange={() => toggleHabitGoal(goal.id)}
-                    />
-                    <span className="today-action-check" aria-hidden="true" />
-                    <span>
-                      <strong>{goal.label}</strong>
-                    </span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          </section>
-
           <section className="dashboard-assessment-card">
             <div>
-              <h2>
-                {hasPersonalizedAssessmentData
-                  ? 'Continue your assessment'
-                  : 'Start your health profile'}
-              </h2>
+              <h2>Start your health profile</h2>
               <p>
-                {hasPersonalizedAssessmentData
-                  ? 'Complete your family history and lifestyle profile.'
-                  : 'Add your family history and lifestyle information to receive personalized prevention insights and daily recommendations.'}
+                Add your family history and lifestyle information to receive
+                personalized prevention insights and local health
+                recommendations.
               </p>
             </div>
             <button
               className="primary-action"
               type="button"
-              onClick={() => changeView(nextIncompleteAssessmentView)}
+              onClick={beginAssessmentWithLoading}
+              disabled={isAssessmentLoading}
             >
-              {hasPersonalizedAssessmentData ? 'Continue Your Assessment' : 'Begin Assessment'}
+              Begin Assessment
               <span aria-hidden="true">→</span>
             </button>
           </section>
@@ -2993,10 +3052,10 @@ function App() {
                   <div className="section-heading-row">
                     <div>
                       <p className="eyebrow">Family Insights</p>
-                      <h2>What your profile shows</h2>
+                      <h2>Family Insights</h2>
                     </div>
                     <button
-                      className="secondary-action"
+                      className="text-action"
                       type="button"
                       onClick={() => changeView('coach')}
                     >
@@ -3027,7 +3086,10 @@ function App() {
                               <span aria-hidden="true">{priority.icon}</span>
                               <span>{priority.title}</span>
                             </span>
-                            <strong>Open Coach</strong>
+                            <span className="priority-recommendation">
+                              Recommended based on your profile.
+                            </span>
+                            <strong>View suggestions →</strong>
                           </button>
                         </li>
                       ))
@@ -3123,65 +3185,91 @@ function App() {
                 </label>
               </div>
 
-              <div className="body-measure-grid">
-                <label className="field-group" htmlFor="profile-height-feet">
-                  Height feet
-                  <input
-                    id="profile-height-feet"
-                    type="number"
-                    min="0"
-                    value={profileForm.heightFeet}
-                    onChange={(event) =>
-                      setProfileForm((currentProfile) => ({
-                        ...currentProfile,
-                        heightFeet: event.target.value,
-                      }))
-                    }
-                    placeholder="5"
-                  />
-                </label>
-
-                <label className="field-group" htmlFor="profile-height-inches">
-                  Height inches
-                  <input
-                    id="profile-height-inches"
-                    type="number"
-                    min="0"
-                    max="11"
-                    value={profileForm.heightInches}
-                    onChange={(event) =>
-                      setProfileForm((currentProfile) => ({
-                        ...currentProfile,
-                        heightInches: event.target.value,
-                      }))
-                    }
-                    placeholder="8"
-                  />
-                </label>
-
-                <label className="field-group" htmlFor="profile-weight">
-                  Weight
-                  <input
-                    id="profile-weight"
-                    type="number"
-                    min="0"
-                    value={profileForm.weight}
-                    onChange={(event) =>
-                      setProfileForm((currentProfile) => ({
-                        ...currentProfile,
-                        weight: event.target.value,
-                      }))
-                    }
-                    placeholder="Pounds"
-                  />
-                </label>
-
-                <div className="bmi-card" aria-live="polite">
-                  <span>BMI</span>
-                  <strong>{profileBmi || '--'}</strong>
-                  <p>{getBmiCategory(profileBmi)}</p>
+              <section className="body-measure-card" aria-labelledby="body-measure-title">
+                <div className="body-measure-heading">
+                  <h3 id="body-measure-title">Body Measurements</h3>
                 </div>
-              </div>
+
+                <div className="body-measure-grid">
+                  <fieldset className="height-fieldset">
+                    <legend>Height</legend>
+                    <div className="height-input-row">
+                      <label className="field-group" htmlFor="profile-height-feet">
+                        Feet
+                        <div className="unit-input">
+                          <input
+                            id="profile-height-feet"
+                            type="number"
+                            min="3"
+                            max="8"
+                            value={profileForm.heightFeet}
+                            onChange={(event) =>
+                              setProfileForm((currentProfile) => ({
+                                ...currentProfile,
+                                heightFeet: event.target.value,
+                              }))
+                            }
+                            placeholder="5"
+                          />
+                          <span>ft</span>
+                        </div>
+                      </label>
+
+                      <label className="field-group" htmlFor="profile-height-inches">
+                        Inches
+                        <div className="unit-input">
+                          <input
+                            id="profile-height-inches"
+                            type="number"
+                            min="0"
+                            max="11"
+                            value={profileForm.heightInches}
+                            onChange={(event) =>
+                              setProfileForm((currentProfile) => ({
+                                ...currentProfile,
+                                heightInches: event.target.value,
+                              }))
+                            }
+                            placeholder="8"
+                          />
+                          <span>in</span>
+                        </div>
+                      </label>
+                    </div>
+                  </fieldset>
+
+                  <label className="field-group weight-field" htmlFor="profile-weight">
+                    Weight
+                    <div className="unit-input">
+                      <input
+                        id="profile-weight"
+                        type="number"
+                        min="1"
+                        value={profileForm.weight}
+                        onChange={(event) =>
+                          setProfileForm((currentProfile) => ({
+                            ...currentProfile,
+                            weight: event.target.value,
+                          }))
+                        }
+                        placeholder="150"
+                      />
+                      <span>lb</span>
+                    </div>
+                  </label>
+
+                  <div className="bmi-card" aria-live="polite">
+                    <span>Estimated BMI</span>
+                    <strong>{profileBmi || '--'}</strong>
+                    <p>{getBmiCategory(profileBmi)}</p>
+                  </div>
+                </div>
+
+                <p className="bmi-note">
+                  Body Mass Index (BMI) is an educational estimate and does not
+                  measure body composition.
+                </p>
+              </section>
             </section>
 
             <section className="profile-form-section">
@@ -3384,7 +3472,7 @@ function App() {
                               <span className="family-condition-row">
                                 {visibleConditions.map((illness) => (
                                   <span className="family-condition-chip" key={illness}>
-                                    {illness}
+                                    {getDisplayConditionName(illness)}
                                   </span>
                                 ))}
                                 {hiddenConditionCount > 0 ? (
@@ -3552,10 +3640,10 @@ function App() {
 
                         return (
                           <div className="condition-toggle-row" key={condition}>
-                            <span>{condition}</span>
+                            <span>{getDisplayConditionName(condition)}</span>
                             <div
                               className="yes-no-toggle"
-                              aria-label={`${condition} condition status`}
+                              aria-label={`${getDisplayConditionName(condition)} condition status`}
                             >
                               <button
                                 className={isSelected ? 'active' : ''}
@@ -3641,10 +3729,7 @@ function App() {
           <h2 className="panel-title" id="lifestyle-title">Daily habits</h2>
 
           <div className="flow-card-grid">
-            <QuestionCard
-              helper="Small, realistic changes are easier to maintain."
-              title="Weekly exercise frequency"
-            >
+            <QuestionCard title="Weekly exercise frequency">
               <ChoiceButtons
                 label="Weekly exercise frequency"
                 name="exercise"
@@ -3659,10 +3744,7 @@ function App() {
               />
             </QuestionCard>
 
-            <QuestionCard
-              helper="Used only for educational prevention suggestions."
-              title="Daily fruit and vegetable intake"
-            >
+            <QuestionCard title="Daily fruit and vegetable intake">
               <ChoiceButtons
                 label="Daily fruit and vegetable intake"
                 name="fruitVegIntake"
@@ -3797,10 +3879,7 @@ function App() {
               />
             </QuestionCard>
 
-            <QuestionCard
-              helper="Choose what fits. The app does not decide what screenings you need."
-              title="Preventive screenings"
-            >
+            <QuestionCard title="Preventive screenings">
               <ChoiceButtons
                 label="Preventive screenings"
                 name="preventiveScreenings"
@@ -3835,25 +3914,18 @@ function App() {
           <section className="coach-daily-panel" aria-labelledby="daily-coach-title">
             <div className="coach-daily-header">
               <div>
-                <p className="eyebrow">Weekly encouragement</p>
-                <h2 id="daily-coach-title">{coachMessage}</h2>
+                <h2 id="daily-coach-title">Today's Goals</h2>
+                <p>
+                  Complete personalized actions based on your health priorities.
+                </p>
               </div>
-              <button
-                className="secondary-action"
-                type="button"
-                onClick={() =>
-                  document
-                    .querySelector('#wellness-recommendations-title')
-                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }
-              >
-                See This Week <span aria-hidden="true">→</span>
-              </button>
+              <span className="today-goal-count">
+                {completedCoachGoals.length} of {coachGoals.length} completed
+              </span>
             </div>
 
             <div className="coach-daily-grid">
               <section className="coach-card compact-coach-card">
-                <p className="eyebrow">Today's goals</p>
                 <ul className="habit-list">
                   {coachGoals.map((goal) => (
                     <li key={goal.id}>
@@ -3977,7 +4049,8 @@ function App() {
               <button
                 className="primary-action"
                 type="button"
-                onClick={() => changeView(nextIncompleteAssessmentView)}
+                onClick={beginAssessmentWithLoading}
+                disabled={isAssessmentLoading}
               >
                 Begin Assessment <span aria-hidden="true">→</span>
               </button>
@@ -4091,9 +4164,13 @@ function App() {
                         ? 'Enter a valid five-digit ZIP code.'
                         : weeklyEventFilter.status === 'unsupported-zip'
                           ? 'That ZIP code is outside the areas currently supported.'
-                          : weeklyEventFilter.status === 'supported-empty'
-                            ? `No verified upcoming health events are currently available in ${weeklyEventFilter.targetCity}.`
-                            : 'No verified preventive-health events were found for this week. New events are checked daily.'}
+                          : weeklyEventFilter.status === 'no-priorities'
+                            ? 'Complete your family history and lifestyle profile to receive personalized recommendations.'
+                              : weeklyEventFilter.status === 'location-needed'
+                                ? 'Enter a ZIP code to see personalized local recommendations.'
+                                : weeklyEventFilter.status === 'supported-empty'
+                                  ? `No matching in-person resources are currently available in ${weeklyEventFilter.targetCity}.`
+                                  : 'No verified preventive-health recommendations were found. New resources are checked daily.'}
                     </p>
                   ) : null}
 
@@ -4104,7 +4181,6 @@ function App() {
                           event,
                           expandedEventDescriptions,
                         )
-                        const onlineEventUrl = getOnlineEventUrl(event)
                         const mapActionLabel = getEventLocationActionLabel(event)
 
                         return (
@@ -4171,21 +4247,6 @@ function App() {
                             ) : null}
 
                             <div className="weekly-event-actions">
-                              {(isOnlineEvent(event) ||
-                                event.attendanceMode === 'hybrid') &&
-                              onlineEventUrl ? (
-                                <a
-                                  className="primary-action"
-                                  href={onlineEventUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(clickEvent) => clickEvent.stopPropagation()}
-                                >
-                                  {getOnlineEventActionLabel(event)}
-                                  <span aria-hidden="true">→</span>
-                                </a>
-                              ) : null}
-
                               {event.directionsUrl && mapActionLabel ? (
                                 <a
                                   className={
@@ -4226,6 +4287,93 @@ function App() {
                   ) : (
                     null
                   )}
+
+                  {displayedOnlineEvents.length > 0 ? (
+                    <section
+                      className="online-resource-section"
+                      aria-labelledby="online-resources-title"
+                    >
+                      <h3 id="online-resources-title">
+                        Relevant online resources
+                      </h3>
+                      <div className="weekly-event-list">
+                        {displayedOnlineEvents.map((event) => {
+                          const eventPreview = getEventPreview(
+                            event,
+                            expandedEventDescriptions,
+                          )
+
+                          return (
+                            <article
+                              className={`weekly-event-card${
+                                selectedEvent?.id === event.id ? ' selected' : ''
+                              }`}
+                              key={event.id}
+                              role="button"
+                              tabIndex={0}
+                              aria-pressed={selectedEvent?.id === event.id}
+                              onClick={() => setSelectedWeeklyEvent(event)}
+                              onKeyDown={(keyEvent) => {
+                                if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
+                                  keyEvent.preventDefault()
+                                  setSelectedWeeklyEvent(event)
+                                }
+                              }}
+                            >
+                              <div className="weekly-event-topline">
+                                <div>
+                                  <h3>{event.title}</h3>
+                                  <p>{formatEventDateTime(event)}</p>
+                                </div>
+                              </div>
+
+                              <div className="weekly-event-meta">
+                                <span>{event.recommendationLabel}</span>
+                                <span>{getLocationLabel(event)}</span>
+                                <span>{event.source}</span>
+                              </div>
+
+                              {eventPreview.visibleText ? (
+                                <p className="weekly-event-description">
+                                  {eventPreview.visibleText}
+                                </p>
+                              ) : null}
+
+                              {eventPreview.shouldTruncate ? (
+                                <button
+                                  className="text-action"
+                                  type="button"
+                                  onClick={(clickEvent) => {
+                                    clickEvent.stopPropagation()
+                                    setExpandedEventDescriptions((currentState) => ({
+                                      ...currentState,
+                                      [event.id]: !currentState[event.id],
+                                    }))
+                                  }}
+                                >
+                                  {eventPreview.isExpanded ? 'Show less' : 'Show more'}
+                                </button>
+                              ) : null}
+
+                              <div className="weekly-event-actions">
+                                {event.eventLink ? (
+                                  <a
+                                    className="secondary-action"
+                                    href={event.eventLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(clickEvent) => clickEvent.stopPropagation()}
+                                  >
+                                    More info <span aria-hidden="true">→</span>
+                                  </a>
+                                ) : null}
+                              </div>
+                            </article>
+                          )
+                        })}
+                      </div>
+                    </section>
+                  ) : null}
                 </section>
 
                 {weeklyEventMapUrl ? (
@@ -4317,6 +4465,7 @@ function App() {
           <button
             className="primary-action"
             type="button"
+            disabled={isAssessmentLoading}
             onClick={() => {
               if (finishTarget) {
                 changeView(finishTarget)
@@ -4326,7 +4475,7 @@ function App() {
               goToNextStep()
             }}
           >
-            {finishTarget ? 'Finish' : 'Continue'}
+            {finishTarget ? 'Finish' : 'Save and Continue'}
             <span aria-hidden="true">→</span>
           </button>
         </div>

@@ -84,3 +84,10 @@ test('normalizes titles without combining genuinely different events', () => {
     normalizeEventTitle('Free Cooking Class Series'),
   )
 })
+
+test('normalizes encoded punctuation in recurring event titles', () => {
+  assert.equal(
+    normalizeEventTitle('14th Annual Richmond District YMCA Jog in the Fog - 5K Family Fun Run'),
+    normalizeEventTitle('14th Annual Richmond District YMCA Jog in the Fog &#8211; 5K Family Fun Run'),
+  )
+})

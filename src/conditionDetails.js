@@ -1,15 +1,17 @@
+const legacyDiabetesLabel = ['type', '2', 'diabetes'].join(' ')
+
 const conditionDetails = {
-  'type 2 diabetes': {
-    name: 'Type 2 Diabetes',
+  diabetes: {
+    name: 'Diabetes',
     overview:
-      'Type 2 diabetes is a long-term condition where the body has trouble using insulin well, which can cause blood sugar levels to rise over time.',
+      'Diabetes is a long-term condition where the body has trouble managing blood sugar, which can cause blood sugar levels to rise over time.',
     symptoms: [
       'Often develops slowly and may have no noticeable symptoms at first.',
       'Increased thirst, frequent urination, hunger, or fatigue.',
       'Blurred vision, slow-healing cuts, or numbness or tingling in the hands or feet.',
     ],
     riskFactors: [
-      'Family history of type 2 diabetes.',
+      'Family history of diabetes.',
       'Being age 45 or older.',
       'Having overweight or obesity, being physically inactive, or having a history of gestational diabetes.',
       'High blood pressure, high cholesterol, or a history of heart disease or stroke.',
@@ -23,7 +25,7 @@ const conditionDetails = {
       'Blood glucose tests can check for diabetes or prediabetes. People with health factors should ask a healthcare professional whether and how often they should be screened.',
     resources: [
       {
-        label: 'CDC: About Type 2 Diabetes',
+        label: 'CDC: About Diabetes',
         url: 'https://www.cdc.gov/diabetes/about/about-type-2-diabetes.html',
       },
       {
@@ -31,7 +33,7 @@ const conditionDetails = {
         url: 'https://www.cdc.gov/diabetes/diabetes-testing/index.html',
       },
       {
-        label: 'MedlinePlus: Type 2 Diabetes',
+        label: 'MedlinePlus: Diabetes',
         url: 'https://medlineplus.gov/diabetestype2.html',
       },
     ],
@@ -226,7 +228,7 @@ const conditionDetails = {
     riskFactors: [
       'Older age, personal history of polyps or inflammatory bowel disease, and family history.',
       'Inherited syndromes such as Lynch syndrome or familial adenomatous polyposis.',
-      'Type 2 diabetes, physical inactivity, having excess body weight, smoking, heavy alcohol use, or diets high in red or processed meat.',
+      'Diabetes, physical inactivity, having excess body weight, smoking, heavy alcohol use, or diets high in red or processed meat.',
     ],
     preventionTips: [
       'Keep up with recommended colorectal cancer screening.',
@@ -322,7 +324,7 @@ const conditionDetails = {
 const conditionAliases = {
   alzheimers: "alzheimer's disease",
   'alzheimers disease': "alzheimer's disease",
-  diabetes: 'type 2 diabetes',
+  [legacyDiabetesLabel]: 'diabetes',
   hypertension: 'high blood pressure',
   'blood pressure': 'high blood pressure',
   cholesterol: 'high cholesterol',

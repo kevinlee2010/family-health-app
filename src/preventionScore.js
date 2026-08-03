@@ -5,13 +5,13 @@ const noKnownConditionKeys = new Set([
 ])
 
 const healthCategoryIcons = {
-  cancer: '🧬',
-  cardiovascular: '❤️',
-  kidney: '🩺',
-  mental: '🧠',
-  metabolic: '🩸',
-  neurological: '🧠',
-  respiratory: '🫁',
+  cancer: '◇',
+  cardiovascular: '♡',
+  kidney: '○',
+  mental: '◌',
+  metabolic: '◍',
+  neurological: '◎',
+  respiratory: '△',
 }
 
 function normalize(value) {
@@ -85,7 +85,7 @@ function getScreeningAwarenessScore(profile) {
   const diabetesScore = getCategoryScore(profile.diabetesStatus, {
     No: 3,
     Prediabetes: 3,
-    'Type 2 diabetes': 3,
+    Diabetes: 3,
     'Diabetes, not sure what type': 3,
     'Not sure': 1,
     'Prefer not to answer': 0,
@@ -181,7 +181,7 @@ function getLifestylePriority(profile) {
   if (profile.exercise === 'Rarely' || profile.exercise === '1-2 days/week') {
     addPriority(
       'movement',
-      '🚶',
+      '↗',
       'Build consistent movement',
       'Your activity response suggests that short, repeatable walks could make prevention feel more doable.',
       20,
@@ -196,7 +196,7 @@ function getLifestylePriority(profile) {
   ) {
     addPriority(
       'nutrition',
-      '🥗',
+      '◇',
       'Improve everyday nutrition',
       'Your food responses show an opportunity to add more produce, fiber-rich foods, and balanced meals.',
       15,
@@ -206,7 +206,7 @@ function getLifestylePriority(profile) {
   if (profile.sleep === 'Less than 6 hours' || profile.sleep === 'More than 9 hours') {
     addPriority(
       'sleep',
-      '🌙',
+      '◒',
       'Protect sleep rhythm',
       'Your sleep response may affect energy, stress, and follow-through on healthy habits.',
       10,
@@ -216,7 +216,7 @@ function getLifestylePriority(profile) {
   if (profile.smokingStatus === 'Current') {
     addPriority(
       'tobacco',
-      '🚭',
+      '!',
       'Reduce tobacco or vaping exposure',
       'Current smoking or vaping is one of the strongest modifiable prevention signals in the intake.',
       20,
@@ -226,7 +226,7 @@ function getLifestylePriority(profile) {
   if (profile.waterIntake === 'Less than 3 cups' || profile.waterIntake === '3-5 cups') {
     addPriority(
       'hydration',
-      '💧',
+      '◦',
       'Improve hydration',
       'Your water intake response suggests a simple daily habit target could help.',
       6,
@@ -236,7 +236,7 @@ function getLifestylePriority(profile) {
   if (profile.sugaryDrinks === 'Most days' || profile.sugaryDrinks === 'Daily') {
     addPriority(
       'sugary-drinks',
-      '🥤',
+      '−',
       'Cut back sugary drinks',
       'Frequent sugary drinks can make nutrition, weight, and metabolic prevention goals harder.',
       9,
@@ -246,7 +246,7 @@ function getLifestylePriority(profile) {
   if (profile.stressLevel === 'High' || profile.stressLevel === 'Very high') {
     addPriority(
       'stress',
-      '🧘',
+      '◌',
       'Lower stress load',
       'Your stress response suggests breathing, walking, or mindfulness routines could support prevention.',
       10,
@@ -256,7 +256,7 @@ function getLifestylePriority(profile) {
   if (profile.screenTime === '8+ hours') {
     addPriority(
       'screen-time',
-      '☀️',
+      '□',
       'Add screen breaks',
       'Long screen time can crowd out movement, sleep, and outdoor time.',
       6,
@@ -269,7 +269,7 @@ function getLifestylePriority(profile) {
   ) {
     addPriority(
       'screening',
-      '📅',
+      '✓',
       'Check preventive screening timing',
       'Your screening response suggests it may be worth asking a healthcare professional what is appropriate for your age and family history.',
       15,
@@ -280,7 +280,7 @@ function getLifestylePriority(profile) {
 }
 
 function getHealthCategoryIcon(categoryId) {
-  return healthCategoryIcons[categoryId] || '🩺'
+  return healthCategoryIcons[categoryId] || '○'
 }
 
 function getScoringBreakdown({ familyMembers, profile }) {

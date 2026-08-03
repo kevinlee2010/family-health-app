@@ -7,6 +7,7 @@ import {
   getZipFromAddress,
   isValidCoordinatePair,
 } from './eventLocationRanking.js'
+import { normalizeEventTitle } from './eventDeduplication.js'
 import { getCityForZip, normalizeZip } from './zipCodeMap.js'
 
 const noConditionValues = new Set([
@@ -69,8 +70,8 @@ const healthPriorityDefinitions = [
     id: 'diabetes',
     label: 'Diabetes prevention',
     matchLabel: 'Matches your diabetes-prevention plan',
-    includes: 'Includes type 2 diabetes, nutrition, activity, and blood-sugar screening conversations.',
-    familyKeywords: ['type 2 diabetes', 'diabetes', 'obesity'],
+    includes: 'Includes diabetes, nutrition, activity, and blood-sugar screening conversations.',
+    familyKeywords: ['diabetes', 'obesity'],
     eventKeywords: [
       'diabetes',
       'blood sugar',
@@ -269,6 +270,68 @@ const stagedResourceDiagnosticsEnabled =
   globalThis?.localStorage?.getItem?.('resourceSearchDebug') === '1' ||
   globalThis?.process?.env?.RESOURCE_SEARCH_DEBUG === '1'
 
+const professionalOnlyTerms = [
+  'academic conference',
+  'career development',
+  'clinician only',
+  'clinicians only',
+  'cme',
+  'conference',
+  'continuing medical education',
+  'faculty',
+  'grand rounds',
+  'keynote',
+  'medical conference',
+  'research',
+  'research seminar',
+  'symposium',
+]
+
+const unrelatedResourceTerms = [
+  'baby storytime',
+  'toddler storytime',
+]
+
+const communityAccessTerms = [
+  'community',
+  'free',
+  'health fair',
+  'screening',
+  'support group',
+  'walking group',
+  'wellness fair',
+  'workshop',
+]
+
+const priorityResourceTerms = [
+  'blood pressure',
+  'community program',
+  'farmers market',
+  'fitness',
+  'health fair',
+  'nutrition',
+  'park',
+  'prevention',
+  'screening',
+  'support group',
+  'walking',
+  'wellness',
+]
+
+const trustedSourceTerms = [
+  'american cancer society',
+  'american diabetes association',
+  'american heart association',
+  'berkeley',
+  'cdc',
+  'department of public health',
+  'health department',
+  'kaiser',
+  'national cancer institute',
+  'nih',
+  'ucsf',
+]
+
 const eventMatchingRules = {
   cardiovascular: {
     strong: [
@@ -294,6 +357,7 @@ const eventMatchingRules = {
       'community health fair',
       'fitness',
       'exercise',
+      'fun run',
       'nutrition',
     ],
     actionKeywords: {
@@ -313,6 +377,7 @@ const eventMatchingRules = {
         'walking group',
         'fitness class',
         'exercise class',
+        'fun run',
         'physical activity',
       ],
     },
@@ -365,6 +430,7 @@ const eventMatchingRules = {
         'walking group',
         'fitness class',
         'exercise class',
+        'fun run',
         'physical activity',
       ],
     },
@@ -583,6 +649,7 @@ const actionResourceRules = {
         'senior exercise',
         'tennis court',
         'exercise class',
+        'fun run',
       ],
       resourceTypes: ['park', 'trail', 'fitness', 'recreation'],
     },
@@ -611,6 +678,7 @@ const actionResourceRules = {
         'exercise class',
         'community exercise',
         'recreation center',
+        'fun run',
       ],
       resourceTypes: ['park', 'trail', 'fitness', 'recreation'],
     },
@@ -978,6 +1046,232 @@ function getResourceDedupeIdentity(resource) {
   ].join('|')
 }
 
+function getRecurringSeriesIdentity(resource) {
+  return [
+    getNormalizedResourceType(resource),
+    normalizeEventTitle(resource.title || resource.name),
+    normalizeSearchText(resource.organizer || resource.source || resource.sourceName || ''),
+    normalizeSearchText(
+      resource.address ||
+        resource.locationName ||
+        resource.venueName ||
+        resource.city ||
+        '',
+    ),
+  ].join('|')
+}
+
+function getNormalizedResourceType(resource) {
+  return resource?.resourceType || classifyResourceType(resource)
+}
+
+function classifyResourceType(resource) {
+  if (resource?.resourceType === 'park') return 'park'
+  if (resource?.resourceType === 'organization' || resource?.resourceType === 'trusted_organization') {
+    return 'trusted_organization'
+  }
+
+  const searchableText = getResourceSearchText(resource)
+
+  if (isOnlineResource(resource)) return 'online_education'
+  if (textContainsKeyword(searchableText, 'farmers market')) return 'farmers_market'
+  if (
+    textContainsKeyword(searchableText, 'walking group') ||
+    textContainsKeyword(searchableText, 'walking club')
+  ) {
+    return 'walking_group'
+  }
+  if (
+    textContainsKeyword(searchableText, 'fitness class') ||
+    textContainsKeyword(searchableText, 'exercise class') ||
+    textContainsKeyword(searchableText, 'fun run')
+  ) {
+    return 'fitness_class'
+  }
+  if (
+    textContainsKeyword(searchableText, 'vaccine') ||
+    textContainsKeyword(searchableText, 'vaccination') ||
+    textContainsKeyword(searchableText, 'immunization')
+  ) {
+    return 'vaccine_clinic'
+  }
+  if (
+    textContainsKeyword(searchableText, 'blood pressure screening') ||
+    textContainsKeyword(searchableText, 'blood pressure check') ||
+    textContainsKeyword(searchableText, 'screening clinic') ||
+    textContainsKeyword(searchableText, 'health screening')
+  ) {
+    return 'screening'
+  }
+  if (
+    textContainsKeyword(searchableText, 'nutrition') ||
+    textContainsKeyword(searchableText, 'cooking class') ||
+    textContainsKeyword(searchableText, 'healthy cooking')
+  ) {
+    return 'nutrition_class'
+  }
+  if (
+    textContainsKeyword(searchableText, 'support group') ||
+    textContainsKeyword(searchableText, 'caregiver')
+  ) {
+    return 'support_group'
+  }
+  if (
+    textContainsKeyword(searchableText, 'community health') ||
+    textContainsKeyword(searchableText, 'wellness fair') ||
+    textContainsKeyword(searchableText, 'health fair')
+  ) {
+    return 'community_health_event'
+  }
+
+  return 'community_health_event'
+}
+
+function getResourceTypeLimitKey(resource) {
+  return getNormalizedResourceType(resource)
+}
+
+function getResourceUrl(resource) {
+  return (
+    resource?.eventLink ||
+    resource?.sourceUrl ||
+    resource?.originalUrl ||
+    resource?.registrationUrl ||
+    resource?.url ||
+    ''
+  )
+}
+
+function getResourceMapsUrl(resource) {
+  if (isOnlineResource(resource) || !resource?.address) {
+    return ''
+  }
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    resource.address,
+  )}`
+}
+
+function isProfessionalOnlyResource(resource) {
+  if (resource?.resourceType === 'park' || resource?.resourceType === 'organization') {
+    return false
+  }
+
+  return professionalOnlyTerms.some((term) =>
+    textContainsKeyword(getResourceSearchText(resource), term),
+  ) || unrelatedResourceTerms.some((term) =>
+    textContainsKeyword(getResourceSearchText(resource), term),
+  )
+}
+
+function getTrustedSourceScore(resource) {
+  if (resource?.resourceType === 'organization') {
+    return 8
+  }
+
+  const sourceText = [
+    resource?.source,
+    resource?.sourceName,
+    resource?.organizer,
+    getResourceUrl(resource),
+  ].join(' ')
+
+  return trustedSourceTerms.some((term) => textContainsKeyword(sourceText, term)) ? 6 : 0
+}
+
+function getAccessibilityScore(resource) {
+  const searchableText = getResourceSearchText(resource)
+  const accessMatches = communityAccessTerms.filter((term) =>
+    textContainsKeyword(searchableText, term),
+  ).length
+  const priorityMatches = priorityResourceTerms.filter((term) =>
+    textContainsKeyword(searchableText, term),
+  ).length
+
+  return Math.min(10, accessMatches * 2 + priorityMatches)
+}
+
+function getDateScore(resource, now = new Date()) {
+  const timestamp = getEventDateTimestamp(resource)
+
+  if (timestamp === Number.MAX_SAFE_INTEGER || resource?.resourceType === 'park') {
+    return 1
+  }
+
+  const daysUntilEvent = Math.max(
+    0,
+    (timestamp - now.getTime()) / (1000 * 60 * 60 * 24),
+  )
+
+  if (daysUntilEvent <= 7) return 8
+  if (daysUntilEvent <= 30) return 5
+  if (daysUntilEvent <= 90) return 2
+
+  return 0
+}
+
+function getDistanceScore(resource) {
+  if (isOnlineResource(resource) || resource?.resourceType === 'organization') {
+    return 2
+  }
+
+  if (typeof resource?.distanceMiles !== 'number') {
+    return 0
+  }
+
+  if (resource.distanceMiles <= 3) return 10
+  if (resource.distanceMiles <= 10) return 7
+  if (resource.distanceMiles <= 25) return 4
+
+  return 1
+}
+
+function getCityMatchScore(resource) {
+  if (resource?.resourceSearchStage === 'exact') return 12
+  if (resource?.resourceSearchStage === 'same-city') return 10
+  if (resource?.isLocalCity) return 8
+  if (resource?.isOnlineEvent || resource?.resourceType === 'organization') return 2
+
+  return 0
+}
+
+function getRecommendationExplanation(resource, priority, action) {
+  const actionText = action ? ` It supports your plan to ${action.toLowerCase()}.` : ''
+
+  if (priority.id === 'general-prevention') {
+    return `${resource.title} is recommended as a general preventive-health resource.`
+  }
+
+  if (resource.resourceType === 'park') {
+    return `${resource.title} is recommended because ${priority.label.toLowerCase()} is one of your top priorities and nearby parks can make regular movement easier.${actionText}`
+  }
+
+  if (resource.resourceType === 'organization') {
+    return `${resource.title} is recommended as a trusted education source for ${priority.label.toLowerCase()}.${actionText}`
+  }
+
+  return `${resource.title} is recommended because it matches ${priority.label.toLowerCase()} and your prevention plan.${actionText}`
+}
+
+function getBestPriorityMatch(resource, priorities) {
+  const matches = priorities
+    .map((priority, priorityIndex) => ({
+      match: scoreEventForPriority(resource, priority),
+      priority,
+      priorityIndex,
+    }))
+    .filter(({ match }) => match)
+    .sort((first, second) => {
+      if (second.match.score !== first.match.score) {
+        return second.match.score - first.match.score
+      }
+
+      return first.priorityIndex - second.priorityIndex
+    })
+
+  return matches[0] || null
+}
+
 function getResourceSearchText(resource) {
   if (resource?.resourceType === 'park') {
     return [
@@ -1005,12 +1299,63 @@ function createParkResource(park) {
   }
 }
 
+function getCityFromAddressText(address) {
+  const normalizedAddress = normalizeCity(address)
+  const knownCities = [
+    'South San Francisco',
+    'San Francisco',
+    'Daly City',
+    'Berkeley',
+    'Oakland',
+    'Fresno',
+    'Olympic Valley',
+  ]
+
+  return knownCities.find((city) =>
+    normalizedAddress.includes(normalizeCity(city)),
+  ) || ''
+}
+
+function getGeneralPreventiveMatch(resource) {
+  const categories = getEventResourceCategories(resource)
+  const resourceType = getNormalizedResourceType(resource)
+
+  if (
+    !categories.includes('general-prevention') &&
+    ![
+      'farmers_market',
+      'vaccine_clinic',
+      'trusted_organization',
+    ].includes(resourceType)
+  ) {
+    return null
+  }
+
+  return {
+    action: 'Use a general preventive resource',
+    match: {
+      keywords: categories.includes('general-prevention')
+        ? ['general prevention']
+        : [resourceType.replace(/_/g, ' ')],
+      reason: 'Recommended as a general preventive-health resource.',
+      score: 2,
+    },
+    priority: {
+      id: 'general-prevention',
+      label: generalPreventionDefinition.label,
+      score: 1,
+    },
+  }
+}
+
 function getResourceCity(resource) {
   const addressZip = getZipFromAddress(resource?.address)
+  const addressCity = getCityFromAddressText(resource?.address)
 
   return (
     getCityForZip(resource?.zipCode) ||
     getCityForZip(addressZip) ||
+    addressCity ||
     resource?.city ||
     resource?.location?.city ||
     resource?.location?.address?.addressLocality ||
@@ -1042,8 +1387,7 @@ function isOnlineResource(resource) {
   return Boolean(
     resource?.isOnline ||
       resource?.isOnlineEvent ||
-      resource?.attendanceMode === 'online' ||
-      resource?.attendanceMode === 'hybrid',
+      resource?.attendanceMode === 'online',
   )
 }
 
@@ -1243,6 +1587,7 @@ function getTrustedOrganizationsForPriorities(priorities = []) {
         ? `Recommended because ${matchedPriority.label.toLowerCase()} is one of your top health priorities.`
         : 'Recommended as a trusted prevention resource.',
       eventPriorityId: matchedPriority?.id || 'general-prevention',
+      eventLink: organization.url,
       id: `organization-${organization.id}`,
       isOnline: true,
       isOnlineEvent: true,
@@ -1253,7 +1598,7 @@ function getTrustedOrganizationsForPriorities(priorities = []) {
       resourceSearchStage: 'fallback',
       resourceSearchStageLabel: 'Online and statewide resources',
       resourceSearchStageRank: stagedSearchMetadata.fallback.rank,
-      resourceType: 'organization',
+      resourceType: 'trusted_organization',
       shortDescription: organization.description,
       sourceUrl: organization.url,
       title: organization.title,
@@ -1269,11 +1614,11 @@ function createFallbackSections({ buckets, priorities }) {
   ]).filter(
     (resource) =>
       resource.resourceType !== 'park' &&
-      resource.resourceType !== 'organization' &&
+      resource.resourceType !== 'trusted_organization' &&
       !resource.isOnlineEvent,
   )
   const onlineResources = dedupeFallbackResources(buckets.fallback).filter(
-    (resource) => resource.isOnlineEvent && resource.resourceType !== 'organization',
+    (resource) => resource.isOnlineEvent && resource.resourceType !== 'trusted_organization',
   )
   const trustedOrganizations = getTrustedOrganizationsForPriorities(priorities)
   const generalPreventiveResources = dedupeFallbackResources([
@@ -1324,6 +1669,171 @@ function dedupeFallbackResources(resources) {
   })
 
   return [...deduped.values()].sort(compareStagedResources)
+}
+
+function compareRecommendationResources(firstResource, secondResource) {
+  if (secondResource.recommendationScore !== firstResource.recommendationScore) {
+    return secondResource.recommendationScore - firstResource.recommendationScore
+  }
+
+  if (firstResource.resourceType !== secondResource.resourceType) {
+    if (firstResource.resourceType === 'organization') return 1
+    if (secondResource.resourceType === 'organization') return -1
+  }
+
+  return compareStagedResources(firstResource, secondResource)
+}
+
+function dedupeRecurringResources(resources) {
+  const deduped = new Map()
+
+  resources.forEach((resource) => {
+    const key = getRecurringSeriesIdentity(resource)
+
+    if (!key) {
+      return
+    }
+
+    const existing = deduped.get(key)
+
+    if (!existing) {
+      deduped.set(key, resource)
+      return
+    }
+
+    const resourceTimestamp = getEventDateTimestamp(resource)
+    const existingTimestamp = getEventDateTimestamp(existing)
+
+    if (
+      resourceTimestamp < existingTimestamp ||
+      (resourceTimestamp === existingTimestamp &&
+        compareRecommendationResources(resource, existing) < 0)
+    ) {
+      deduped.set(key, resource)
+    }
+  })
+
+  return [...deduped.values()].sort(compareRecommendationResources)
+}
+
+function scoreRecommendationResource(resource, { now = new Date() } = {}) {
+  const scoreParts = {
+    accessibility: getAccessibilityScore(resource),
+    city: getCityMatchScore(resource),
+    date: getDateScore(resource, now),
+    distance: getDistanceScore(resource),
+    preventionAction: resource.actionRelevanceScore || 0,
+    priority: resource.priorityRelevanceScore || 0,
+    trusted: getTrustedSourceScore(resource),
+  }
+  const score = Object.values(scoreParts).reduce((total, value) => total + value, 0)
+
+  return {
+    ...resource,
+    recommendationScore: score,
+    recommendationScoreParts: scoreParts,
+  }
+}
+
+function createPriorityOrganizationResources(priorities) {
+  return getTrustedOrganizationsForPriorities(priorities).map((organization) => {
+    const matchedPriority = priorities.find(
+      (priority) => priority.id === organization.eventPriorityId,
+    )
+
+    return {
+      ...organization,
+      eventMatchReason: matchedPriority
+        ? getRecommendationExplanation(
+            organization,
+            matchedPriority,
+            'learn from trusted preventive-health resources',
+          )
+        : organization.eventMatchReason,
+      priorityRelevanceScore: matchedPriority?.score || 1,
+    }
+  })
+}
+
+function chooseTopRecommendations({
+  candidateResources = [],
+  fallbackSections = [],
+  includeTrustedOrganizations = true,
+  limit = 5,
+  now = new Date(),
+  priorities = [],
+}) {
+  const priorityCounts = new Map()
+  const selected = []
+  const selectedIds = new Set()
+  const fallbackResources = fallbackSections.flatMap((section) => section.resources)
+  const allCandidates = dedupeFallbackResources([
+    ...candidateResources,
+    ...fallbackResources,
+    ...(includeTrustedOrganizations ? createPriorityOrganizationResources(priorities) : []),
+  ])
+    .filter((resource) => !isProfessionalOnlyResource(resource))
+    .map((resource) => scoreRecommendationResource(resource, { now }))
+  const recurringDedupedCandidates = dedupeRecurringResources(allCandidates)
+  const typeCounts = new Map()
+
+  const canSelectResource = (resource, { enforceNewType = true } = {}) => {
+    if (selected.length >= limit || selectedIds.has(getRecurringSeriesIdentity(resource))) {
+      return false
+    }
+
+    const priorityId = resource.eventPriorityId || 'general-prevention'
+    const currentPriorityCount = priorityCounts.get(priorityId) || 0
+
+    if (priorityId !== 'general-prevention' && currentPriorityCount >= 2) {
+      return false
+    }
+
+    const typeKey = getResourceTypeLimitKey(resource)
+    const currentTypeCount = typeCounts.get(typeKey) || 0
+
+    return enforceNewType ? currentTypeCount === 0 : currentTypeCount < 1
+  }
+
+  const selectResource = (resource) => {
+    const priorityId = resource.eventPriorityId || 'general-prevention'
+    const typeKey = getResourceTypeLimitKey(resource)
+
+    selected.push(resource)
+    selectedIds.add(getRecurringSeriesIdentity(resource))
+    priorityCounts.set(priorityId, (priorityCounts.get(priorityId) || 0) + 1)
+    typeCounts.set(typeKey, (typeCounts.get(typeKey) || 0) + 1)
+  }
+
+  recurringDedupedCandidates.forEach((resource) => {
+    if (!canSelectResource(resource, { enforceNewType: true })) {
+      return
+    }
+
+    selectResource(resource)
+  })
+
+  recurringDedupedCandidates.forEach((resource) => {
+    if (!['trusted_organization', 'park', 'farmers_market', 'online_education'].includes(
+      getNormalizedResourceType(resource),
+    )) {
+      return
+    }
+
+    const fallbackResource = {
+      ...resource,
+      eventPriorityId: 'general-prevention',
+      recommendationLabel: 'General preventive resource',
+    }
+
+    if (!canSelectResource(fallbackResource, { enforceNewType: false })) {
+      return
+    }
+
+    selectResource(fallbackResource)
+  })
+
+  return selected
 }
 
 function scoreResourceForAction(resource, priority, action) {
@@ -1719,16 +2229,29 @@ export function groupAssignedResourcesByPriorityAction(
 
 export function getStagedResourceSearch({
   events = [],
+  includeFallbackSections = true,
+  includeGeneralPreventiveResources = true,
+  includeTrustedOrganizations = true,
   minUsefulResults = 3,
   now = new Date(),
+  originLocation = null,
   parks = [],
   priorities = [],
   radiusMiles = defaultRadiusMiles,
   zipCode = '',
 } = {}) {
-  const origin = getLocationForZip(zipCode)
-  const normalizedZip = origin?.zipCode || normalizeZip(zipCode)
-  const selectedCity = origin?.city || getCityForZip(normalizedZip)
+  const zipOrigin = getLocationForZip(zipCode)
+  const normalizedZip = zipOrigin?.zipCode || normalizeZip(zipCode)
+  const selectedCity = zipOrigin?.city || getCityForZip(normalizedZip)
+  const origin =
+    zipOrigin && isValidCoordinatePair(originLocation)
+      ? {
+          city: selectedCity,
+          latitude: Number(originLocation.latitude),
+          longitude: Number(originLocation.longitude),
+          zipCode: normalizedZip,
+        }
+      : zipOrigin
 
   if (!origin || priorities.length === 0) {
     return {
@@ -1756,7 +2279,7 @@ export function getStagedResourceSearch({
       .filter((event) => isFutureOrUndatedEvent(event, now))
       .map((event) => ({
         ...event,
-        resourceType: event.resourceType || 'event',
+        resourceType: event.resourceType || classifyResourceType(event),
       })),
     ...parks.map(createParkResource),
   ]
@@ -1769,7 +2292,28 @@ export function getStagedResourceSearch({
   }
 
   resources.forEach((resource) => {
-    const match = getBestResourceActionMatch(resource, priorities)
+    if (isProfessionalOnlyResource(resource)) {
+      logStagedResourceDiagnostic({
+        city: getResourceCity(resource),
+        coordinates: null,
+        distance: null,
+        eventZip: getResourceZip(resource),
+        included: false,
+        matchedKeywords: [],
+        matchedPriority: '',
+        reason: 'Excluded because it appears to be academic, clinician-only, research, conference, CME, faculty, or career-development content.',
+        relevanceScore: 0,
+        title: resource.title || resource.name,
+      })
+      return
+    }
+
+    const match =
+      getBestResourceActionMatch(resource, priorities) ||
+      (includeGeneralPreventiveResources
+        ? getGeneralPreventiveMatch(resource)
+        : null)
+    const priorityMatch = getBestPriorityMatch(resource, priorities)
     const resourceZip = getResourceZip(resource)
     const resourceCity = getResourceCity(resource)
     const isOnline = isOnlineResource(resource)
@@ -1835,15 +2379,23 @@ export function getStagedResourceSearch({
       city: resourceCity || resource.city,
       distanceMiles,
       distanceUnavailable: !isOnline && distanceMiles === null,
+      directionsUrl: resource.directionsUrl || resource.directionsLink || getResourceMapsUrl(resource),
+      eventLink: getResourceUrl(resource),
       eventCity: resourceCity,
       eventMatchKeywords: match.match.keywords,
-      eventMatchReason: match.match.reason,
+      eventMatchReason: getRecommendationExplanation(
+        resource,
+        match.priority,
+        match.action,
+      ),
       eventPriorityId: match.priority.id,
       isLocalCity:
         normalizeCity(resourceCity) === normalizeCity(selectedCity),
       isOnlineEvent: isOnline,
+      priorityRelevanceScore: priorityMatch?.match?.score || match.priority.score || 0,
       recommendationAction: match.action,
       recommendationLabel: getResourceCategoryDefinition(match.priority.id)?.matchLabel,
+      actionRelevanceScore: match.match.score,
       recommendationScore: match.match.score + locationScore,
       resourceSearchStage: stage,
       resourceSearchStageLabel: metadata.label,
@@ -1899,8 +2451,17 @@ export function getStagedResourceSearch({
     stageOrder.find((stage) => dedupedBuckets[stage].length >= minUsefulResults) ||
     stageOrder.find((stage) => dedupedBuckets[stage].length > 0) ||
     ''
-  const fallbackSections = createFallbackSections({
-    buckets: dedupedBuckets,
+  const fallbackSections = includeFallbackSections
+    ? createFallbackSections({
+        buckets: dedupedBuckets,
+        priorities,
+      })
+    : []
+  const recommendedResources = chooseTopRecommendations({
+    candidateResources: matchedResources,
+    fallbackSections,
+    includeTrustedOrganizations,
+    now,
     priorities,
   })
   const hasFallbackResources = fallbackSections.some(
@@ -1912,10 +2473,10 @@ export function getStagedResourceSearch({
     counts,
     eventsLoaded: events.length,
     fallbackSections,
-    resources: selectedStage ? dedupedBuckets[selectedStage] : [],
+    resources: recommendedResources,
     selectedStage,
     stageLabel: selectedStage ? stagedSearchMetadata[selectedStage].label : '',
-    status: selectedStage || hasFallbackResources ? 'success' : 'empty',
+    status: recommendedResources.length > 0 || hasFallbackResources ? 'success' : 'empty',
     zipCode: normalizedZip,
   }
 }

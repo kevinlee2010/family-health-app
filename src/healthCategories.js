@@ -33,7 +33,6 @@ export const healthCategoryDefinitions = [
       'Conditions related to blood sugar, body weight, and how the body uses and stores energy.',
     keywords: [
       'diabetes',
-      'type 2 diabetes',
       'type 1 diabetes',
       'prediabetes',
       'obesity',

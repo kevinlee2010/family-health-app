@@ -25,8 +25,8 @@ export const assessedConditions = [
   },
   {
     id: conditionIds.type2Diabetes,
-    name: 'Type 2 Diabetes',
-    familyKeywords: ['type 2 diabetes', 'diabetes'],
+    name: 'Diabetes',
+    familyKeywords: ['diabetes'],
   },
   {
     id: conditionIds.highBloodPressure,
@@ -146,9 +146,7 @@ function cholesterolUnknown(context) {
 }
 
 function hasPrediabetesOrDiabetes(context) {
-  return ['Prediabetes', 'Type 2 diabetes', 'Diabetes, not sure what type'].includes(
-    context.userProfile.diabetesStatus,
-  )
+  return normalize(context.userProfile.diabetesStatus).includes('diabetes')
 }
 
 function hasShortSleep(context) {

@@ -1,8 +1,20 @@
 const datePattern =
   /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[\s.]+\d{1,2}(?:,?\s*\d{4})?\b|\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b/gi
 
+function decodeHtmlEntities(value) {
+  return String(value || '')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([a-f\d]+);/gi, (_, code) =>
+      String.fromCharCode(Number.parseInt(code, 16)),
+    )
+    .replace(/&amp;/gi, '&')
+    .replace(/&apos;|&#39;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/&ndash;|&mdash;/gi, '-')
+}
+
 export function normalizeEventTitle(title) {
-  return String(title || '')
+  return decodeHtmlEntities(title)
     .toLowerCase()
     .replace(datePattern, ' ')
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
