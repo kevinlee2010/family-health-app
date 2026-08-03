@@ -316,21 +316,224 @@ export function buildPreventionInsights({ familyHealthSummary }) {
 export function buildPersonalizedPreventionSummary({
   familyHealthSummary,
   preventionScore,
+  profile = {},
 }) {
-  const strongestPattern = familyHealthSummary.topAreas.find(
+  const rankedPatterns = (familyHealthSummary.topAreas || []).filter(
     (category) => category.observationCount > 0,
   )
-  const positiveSignal =
-    preventionScore.positives[0] ||
-    'you are building a clearer family-health record'
-  const learningArea =
-    preventionScore.topPriorities[0]?.title ||
-    strongestPattern?.name ||
-    'routine preventive care'
+  const sentences = [
+    buildPatternSentence(rankedPatterns),
+    buildPositiveHabitSentence({ familyHealthSummary, preventionScore, profile }),
+    buildFocusSentence({
+      preventionScore,
+      profile,
+      strongestPattern: rankedPatterns[0],
+    }),
+  ].filter(Boolean)
 
-  if (!strongestPattern) {
-    return `Your family profile has limited health-history information so far. A positive step is that ${positiveSignal.toLowerCase()}. You may benefit from learning more about ${learningArea.toLowerCase()} and continuing to update your profile as you learn more. These insights are educational and are not a diagnosis.`
+  return cleanSummary(sentences.slice(0, 3).join(' '))
+}
+
+function cleanSummary(value) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/([.!?]){2,}/g, '$1')
+    .replace(/\b(\w+)\s+\1\b/gi, '$1')
+    .trim()
+}
+
+function finishSentence(value) {
+  const cleaned = String(value || '')
+    .trim()
+    .replace(/[.!?]+$/g, '')
+
+  return cleaned ? `${cleaned}.` : ''
+}
+
+function formatList(items) {
+  const uniqueItems = [...new Set(items.filter(Boolean))]
+
+  if (uniqueItems.length === 0) {
+    return ''
   }
 
-  return `Your family profile shows the clearest pattern around ${strongestPattern.name.toLowerCase()}. A positive preventive signal is that ${positiveSignal.toLowerCase()}. You may benefit from learning more about ${learningArea.toLowerCase()} and sharing relevant family history during a future healthcare visit. These insights are educational and are not a diagnosis.`
+  if (uniqueItems.length === 1) {
+    return uniqueItems[0]
+  }
+
+  if (uniqueItems.length === 2) {
+    return `${uniqueItems[0]} and ${uniqueItems[1]}`
+  }
+
+  return `${uniqueItems.slice(0, -1).join(', ')}, and ${uniqueItems.at(-1)}`
+}
+
+function getFriendlyAreaName(category = {}) {
+  const title = String(category.name || category.healthArea || '').trim()
+  const nameById = {
+    cancer: 'cancer history',
+    cardiovascular: 'cardiovascular health',
+    kidney: 'kidney health',
+    mental: 'mental well-being',
+    metabolic: 'diabetes',
+    neurological: 'brain and stroke prevention',
+    respiratory: 'respiratory health',
+  }
+
+  return nameById[category.id] || title.toLowerCase() || 'preventive health'
+}
+
+function buildPatternSentence(rankedPatterns) {
+  if (rankedPatterns.length === 0) {
+    return 'Your family history is still light on mapped condition details, so the clearest next step is building a more complete health record.'
+  }
+
+  const topNames = rankedPatterns.slice(0, 2).map(getFriendlyAreaName)
+
+  if (topNames.length === 1) {
+    return finishSentence(
+      `Your family history suggests the strongest pattern relates to ${topNames[0]}`,
+    )
+  }
+
+  return finishSentence(
+    `Your profile shows stronger family patterns for ${formatList(topNames)} than for other areas`,
+  )
+}
+
+function getPositiveHabitLabels({ familyHealthSummary, preventionScore, profile }) {
+  const labels = []
+
+  if (profile.smokingStatus === 'Never') {
+    labels.push('not smoking')
+  }
+
+  if (profile.exercise === '3-5 days/week' || profile.exercise === 'Nearly every day') {
+    labels.push('regular physical activity')
+  }
+
+  if (
+    profile.dietQuality === 'Good' ||
+    profile.dietQuality === 'Excellent' ||
+    profile.fruitVegIntake === '3-4 servings' ||
+    profile.fruitVegIntake === '5 or more servings'
+  ) {
+    labels.push('balanced nutrition habits')
+  }
+
+  if (profile.sleep === '7-9 hours') {
+    labels.push('supportive sleep habits')
+  }
+
+  if (profile.preventiveScreenings === 'Up to date') {
+    labels.push('staying current with preventive screenings')
+  }
+
+  if (
+    familyHealthSummary?.categories?.length > 0 &&
+    !familyHealthSummary.categories.some((category) => category.observationCount > 0) &&
+    !familyHealthSummary.categories.some((category) => category.riskLevel === 'High')
+  ) {
+    labels.push('no strong family-health pattern standing out yet')
+  }
+
+  if (labels.length > 0) {
+    return labels
+  }
+
+  return (preventionScore.positives || [])
+    .map((positive) =>
+      String(positive)
+        .replace(/[.!?]+$/g, '')
+        .replace(/^your\s+/i, '')
+        .replace(/^you reported\s+/i, '')
+        .replace(/^no smoking or vaping reported$/i, 'not smoking'),
+    )
+    .filter(Boolean)
+    .slice(0, 2)
+}
+
+function buildPositiveHabitSentence({ familyHealthSummary, preventionScore, profile }) {
+  const positives = getPositiveHabitLabels({
+    familyHealthSummary,
+    preventionScore,
+    profile,
+  }).slice(0, 2)
+
+  if (positives.length === 0) {
+    return ''
+  }
+
+  return finishSentence(
+    `Your responses also point to helpful strengths, including ${formatList(positives)}`,
+  )
+}
+
+const priorityFocusById = {
+  cancer: 'keeping family history current and reviewing age-appropriate screening timelines',
+  cardiovascular:
+    'regular movement, heart-healthy nutrition, and blood pressure or cholesterol awareness',
+  hydration: 'steady hydration and simple daily routines',
+  kidney: 'blood pressure awareness, hydration, and routine preventive care',
+  mental: 'consistent sleep, stress management, and supportive relationships',
+  metabolic: 'balanced meals, healthy weight habits, and limiting sugary drinks',
+  movement: 'short, repeatable activity goals',
+  neurological: 'regular movement, quality sleep, and blood pressure awareness',
+  nutrition: 'adding more fiber-rich foods, produce, and balanced meals',
+  respiratory: 'avoiding smoke exposure and staying aware of recurring breathing symptoms',
+  screenings: 'routine preventive visits and screening conversations',
+  sleep: 'a steadier sleep routine',
+  'screen-time': 'regular screen breaks and more movement during the day',
+  stress: 'stress management and restorative routines',
+  'sugary-drinks': 'reducing sugary drinks and choosing balanced meals',
+  tobacco: 'reducing tobacco or vaping exposure with support',
+}
+
+function getPriorityFocus(priority = {}) {
+  return (
+    priorityFocusById[priority.id] ||
+    priorityFocusById[String(priority.title || '').toLowerCase()] ||
+    ''
+  )
+}
+
+function getPatternFocus(pattern) {
+  if (!pattern) {
+    return 'keeping your family history up to date and maintaining practical daily health habits'
+  }
+
+  return (
+    priorityFocusById[pattern.id] ||
+    `${getFriendlyAreaName(pattern)} awareness and routine preventive care`
+  )
+}
+
+function buildFocusSentence({ preventionScore, profile, strongestPattern }) {
+  const focusAreas = (preventionScore.topPriorities || [])
+    .map(getPriorityFocus)
+    .filter(Boolean)
+    .slice(0, 2)
+
+  if (profile.knownHighBloodPressure === 'Not sure') {
+    focusAreas.push('knowing your blood pressure numbers')
+  }
+
+  if (profile.knownHighCholesterol === 'Not sure') {
+    focusAreas.push('knowing your cholesterol numbers')
+  }
+
+  if (
+    profile.preventiveScreenings === 'Not sure' &&
+    !focusAreas.some((focusArea) => focusArea.includes('screening'))
+  ) {
+    focusAreas.push('reviewing which screenings fit your age and family history')
+  }
+
+  const selectedFocusAreas =
+    focusAreas.length > 0 ? [...new Set(focusAreas)].slice(0, 2) : [getPatternFocus(strongestPattern)]
+
+  return finishSentence(
+    `Focusing on ${formatList(selectedFocusAreas)} can strengthen your prevention plan`,
+  )
 }

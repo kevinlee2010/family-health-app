@@ -5745,3 +5745,738 @@ li,
   font-size: 0.78rem;
   font-weight: 400;
 }
+
+/* Clean white profile interface */
+:root {
+  --bg: #f5f6f8;
+  --bg-soft: #f5f6f8;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-blue: #ffffff;
+  --surface-sage: #ffffff;
+  --surface-lavender: #ffffff;
+  --ink: #2f3a46;
+  --muted: #4b5563;
+  --muted-strong: #334e68;
+  --line: #e3e6ea;
+  --line-strong: #d9dee5;
+  --accent: #334e68;
+  --accent-dark: #334e68;
+  --accent-soft: #eef2f6;
+  --blue: #334e68;
+  --blue-soft: #eef2f6;
+  --teal: #334e68;
+  --teal-soft: #f5f6f8;
+  --success: #334e68;
+  --warning: #334e68;
+  --danger: #8a4f4b;
+  --status-green: #eef2f6;
+  --status-green-border: #d9dee5;
+  --status-yellow: #eef2f6;
+  --status-yellow-border: #d9dee5;
+  --status-orange: #eef2f6;
+  --status-orange-border: #d9dee5;
+  --status-red: rgba(138, 79, 75, 0.1);
+  --status-red-border: rgba(138, 79, 75, 0.22);
+  --status-blue: #eef2f6;
+  --status-blue-border: #d9dee5;
+  --status-gray: #f5f6f8;
+  --status-gray-border: #e3e6ea;
+  --radius-md: 14px;
+  --radius-lg: 16px;
+  --shadow: 0 4px 14px rgba(31, 41, 55, 0.04);
+  --shadow-soft: 0 4px 14px rgba(31, 41, 55, 0.04);
+  --shadow-lift: 0 6px 18px rgba(31, 41, 55, 0.06);
+}
+
+html {
+  background: #f5f6f8;
+}
+
+body {
+  background: #f5f6f8;
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 400;
+}
+
+.app-layout {
+  background: #f5f6f8;
+  grid-template-columns: 212px minmax(0, 1fr);
+}
+
+.app-shell {
+  gap: 32px;
+}
+
+.app-main {
+  background: transparent;
+}
+
+.app-sidebar {
+  border-color: #e3e6ea;
+  border-right: 1px solid #e3e6ea;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.sidebar-brand {
+  border-color: var(--line);
+  background: transparent;
+}
+
+.sidebar-brand:hover,
+.sidebar-brand:focus-visible {
+  background: #eef2f6;
+}
+
+.brand-mark {
+  background: #eef2f6;
+  color: #334e68;
+}
+
+.sidebar-brand strong,
+.page-intro h1,
+.dashboard-welcome-card h1,
+.family-grid-heading h1,
+.panel-title,
+.score-title-stack h2,
+.location-card h2,
+.wellness-map-card h2,
+.weekly-event-card h3,
+.coach-daily-header h2,
+.section-heading-row h2,
+.dashboard-assessment-card h2,
+.profile-form-section h2,
+.question-card h3,
+.body-measure-card h3,
+.family-generation-section h3,
+.prevention-insight-card h3,
+.coach-card h3,
+.score-ring span,
+.score-ring small {
+  color: var(--ink);
+}
+
+.sidebar-brand span:not(.brand-mark),
+p,
+li,
+label,
+.helper-text,
+.page-description,
+.profile-disclaimer,
+.app-disclaimer,
+.dashboard-summary-card p,
+.weekly-event-card p,
+.location-card p,
+.wellness-map-card p,
+.dashboard-welcome-card p,
+.dashboard-assessment-card p,
+.insight-panel p,
+.question-card p,
+.body-measure-note,
+.priority-recommendation {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.eyebrow,
+.card-topline,
+.weekly-event-meta,
+.today-goal-count,
+.score-status-badge,
+.pattern-badge {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.page-intro h1,
+.dashboard-welcome-card h1 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.panel-title,
+.section-heading-row h2,
+.dashboard-summary-grid > h2,
+.coach-daily-header h2,
+.location-card h2,
+.wellness-map-card h2 {
+  font-weight: 600;
+}
+
+.card-topline,
+.attention-area-button strong,
+.weekly-event-card h3,
+.prevention-insight-card h3,
+.coach-card h3 {
+  font-weight: 500;
+}
+
+.view-tab {
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.view-tab:hover,
+.view-tab:focus-visible {
+  border-color: transparent;
+  background: #f5f6f8;
+  color: var(--ink);
+}
+
+.view-tab.active {
+  border-color: transparent;
+  background: #eef2f6;
+  color: #334e68;
+}
+
+.view-tab.active .nav-icon,
+.nav-icon,
+.card-icon,
+.category-name-with-icon span:first-child,
+.family-avatar,
+.impact-action-icon {
+  background: transparent;
+  color: #334e68;
+}
+
+.dashboard-panel,
+.profile-panel,
+.family-tree-panel,
+.prevention-score-panel,
+.wellness-panel {
+  border-color: var(--line);
+  background: transparent;
+  box-shadow: none;
+}
+
+.dashboard-shell .dashboard-panel {
+  background: transparent;
+}
+
+.dashboard-welcome-card,
+.dashboard-assessment-card,
+.dashboard-summary-grid,
+.dashboard-content-grid,
+.insight-panel,
+.profile-form-section,
+.question-card,
+.body-measure-card,
+.family-generation-section,
+.prevention-insight-list,
+.score-ring-card,
+.coach-daily-panel,
+.wellness-layout,
+.location-card,
+.wellness-recommendations,
+.wellness-map-card,
+.condition-modal,
+.family-tree-node,
+.drawer-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.dashboard-welcome-card,
+.dashboard-assessment-card,
+.score-ring-card {
+  background: #ffffff;
+}
+
+.insight-panel:first-child,
+.family-insight-feature,
+.coach-daily-panel,
+.wellness-layout {
+  background: #ffffff;
+}
+
+.dashboard-summary-grid,
+.dashboard-content-grid,
+.prevention-insight-list,
+.wellness-layout {
+  gap: 0;
+  overflow: hidden;
+}
+
+.dashboard-summary-grid > h2,
+.coach-daily-header,
+.section-heading-row,
+.wellness-recommendations,
+.wellness-map-card {
+  border-color: var(--line);
+}
+
+.dashboard-summary-card,
+.coach-card,
+.prevention-insight-card,
+.weekly-event-card,
+.family-profile-card,
+.score-detail-card {
+  border-color: var(--line);
+  background: transparent;
+  box-shadow: none;
+}
+
+.dashboard-summary-card strong {
+  color: #334e68;
+  font-weight: 600;
+}
+
+.attention-area-button,
+.habit-check,
+.today-action-row,
+.weekly-event-card,
+.choice-button {
+  border-color: var(--line);
+  background: transparent;
+  box-shadow: none;
+}
+
+.attention-area-button:hover,
+.attention-area-button:focus-visible,
+.weekly-event-card:hover,
+.weekly-event-card.selected,
+.family-profile-card:hover,
+.family-profile-card:focus-within,
+.prevention-insight-card:hover,
+.coach-card:hover,
+.choice-button:hover,
+.dashboard-summary-card:hover {
+  background: #f5f6f8;
+  box-shadow: none;
+  transform: none;
+}
+
+.attention-area-button strong,
+.insight-more-link,
+.text-action,
+.dashboard-shell .text-action,
+.learn-more-button {
+  color: #334e68;
+}
+
+.primary-action,
+.add-illness-button {
+  border: 1px solid #334e68;
+  background: #334e68;
+  color: #ffffff;
+  box-shadow: none;
+  font-weight: 500;
+}
+
+.primary-action:hover:not(:disabled),
+.primary-action:focus-visible:not(:disabled),
+.add-illness-button:hover:not(:disabled),
+.add-illness-button:focus-visible:not(:disabled) {
+  border-color: #263d54;
+  background: #263d54;
+  box-shadow: none;
+}
+
+.secondary-action,
+.map-action,
+.none-illness-button,
+.danger-action,
+.outline-action {
+  border-color: #d9dee5;
+  background: #ffffff;
+  color: #334e68;
+  box-shadow: none;
+  font-weight: 500;
+}
+
+.secondary-action:hover:not(:disabled),
+.secondary-action:focus-visible:not(:disabled),
+.map-action:hover,
+.map-action:focus-visible,
+.none-illness-button:hover,
+.none-illness-button:focus-visible,
+.outline-action:hover,
+.outline-action:focus-visible {
+  border-color: #d9dee5;
+  background: #f5f6f8;
+  color: #334e68;
+}
+
+.danger-action:hover,
+.danger-action:focus-visible {
+  border-color: rgba(138, 79, 75, 0.26);
+  background: rgba(138, 79, 75, 0.08);
+  color: var(--danger);
+}
+
+input,
+select,
+textarea {
+  border-color: var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: none;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: #d9dee5;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #334e68;
+  box-shadow: 0 0 0 3px rgba(51, 78, 104, 0.18);
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #7d8da1;
+}
+
+select option {
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.choice-button.selected,
+.habit-check:has(input:checked),
+.today-action-row:has(input:checked) {
+  border-color: #d9dee5;
+  background: #eef2f6;
+}
+
+.score-ring {
+  background:
+    radial-gradient(circle at center, #ffffff 0 59%, transparent 60%),
+    conic-gradient(var(--score-color, #334e68) var(--score), #e3e6ea 0);
+}
+
+.pattern-badge,
+.score-status-badge,
+.weekly-event-meta span,
+.today-goal-count,
+.event-type-badge,
+.category-chip,
+.condition-chip {
+  border-color: #e3e6ea;
+  background: #f5f6f8;
+  color: #334e68;
+}
+
+.pattern-badge-strong,
+.risk-badge.high,
+.score-status-needs-attention,
+.pattern-badge-notable,
+.risk-badge.increased,
+.score-status-improving,
+.pattern-badge-clear,
+.risk-badge.average,
+.score-status-good,
+.score-status-excellent {
+  background: #eef2f6;
+  color: #334e68;
+}
+
+.wellness-map-card {
+  border-top: 1px solid var(--line);
+}
+
+.map-frame,
+.event-map-frame,
+.resource-map-frame {
+  border-color: var(--line);
+  background: #f5f6f8;
+}
+
+.privacy-note,
+.sidebar-privacy,
+.app-disclaimer {
+  border-color: var(--line);
+  color: #7a8491;
+}
+
+/* Profile Overview stat alignment */
+.profile-overview-section {
+  display: grid;
+  gap: 18px;
+}
+
+.profile-overview-section > h2 {
+  color: #2f3a46;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.dashboard-summary-grid {
+  align-items: stretch;
+  background: #ffffff;
+  border: 1px solid #e3e6ea;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(31, 41, 55, 0.04);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.dashboard-summary-grid > h2 {
+  display: none;
+  grid-column: 1 / -1;
+}
+
+.dashboard-summary-card {
+  align-items: center;
+  border-bottom: 0;
+  border-right: 1px solid #e3e6ea;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  justify-content: center;
+  min-height: 236px;
+  padding: 30px 24px;
+  text-align: center;
+}
+
+.dashboard-summary-card:last-child {
+  border-right: 0;
+}
+
+.dashboard-summary-card .card-topline {
+  display: contents;
+}
+
+.dashboard-summary-card .card-icon {
+  height: 48px;
+  margin: 0 0 12px;
+  order: 1;
+  width: 48px;
+}
+
+.dashboard-summary-card strong {
+  color: #334e68;
+  font-size: 2.35rem;
+  font-weight: 600;
+  line-height: 1;
+  margin: 0 0 8px;
+  order: 2;
+}
+
+.dashboard-summary-card .card-topline span:not(.card-icon) {
+  color: #2f3a46;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0 0 6px;
+  max-width: 12rem;
+  order: 3;
+  text-align: center;
+}
+
+.dashboard-summary-card p {
+  color: #7a8491;
+  display: -webkit-box;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin: 0;
+  max-width: 15rem;
+  min-height: 2.5em;
+  order: 4;
+  overflow: hidden;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+@media (max-width: 980px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell {
+    gap: 22px;
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-summary-card {
+    border-bottom: 1px solid #e3e6ea;
+    border-right: 0;
+    min-height: 210px;
+  }
+
+  .dashboard-summary-card:last-child {
+    border-bottom: 0;
+  }
+}
+
+/* Lighter modern typography scale */
+body {
+  font-weight: 400;
+}
+
+strong,
+b {
+  font-weight: 500;
+}
+
+.page-intro h1 {
+  color: #2f3a46;
+  font-size: clamp(1.875rem, 4vw, 2rem);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.16;
+}
+
+.dashboard-welcome-card h1 {
+  color: #2f3a46;
+  font-size: clamp(1.25rem, 2.4vw, 1.375rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.dashboard-welcome-card p,
+.page-intro p {
+  color: #667085;
+  font-size: 0.98rem;
+  font-weight: 400;
+  line-height: 1.6;
+  max-width: 600px;
+}
+
+.profile-overview-section > h2,
+.section-heading-row h2,
+.dashboard-assessment-card h2,
+.coach-daily-header h2,
+.location-card h2,
+.wellness-map-card h2,
+.profile-form-section h2,
+.family-grid-heading h1,
+.panel-title,
+.score-title-stack h2 {
+  color: #2f3a46;
+  font-size: clamp(1.125rem, 2vw, 1.25rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.question-card h3,
+.body-measure-card h3,
+.family-generation-section h3,
+.prevention-insight-card h3,
+.weekly-event-card h3,
+.coach-card h3,
+.card-topline,
+.dashboard-summary-card .card-topline span:not(.card-icon),
+.attention-area-button strong,
+.family-profile-title-row strong,
+.insight-summary-copy strong {
+  color: #2f3a46;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.dashboard-summary-card strong,
+.score-ring span {
+  color: #334e68;
+  font-weight: 500;
+}
+
+.dashboard-summary-card strong {
+  font-size: 2.25rem;
+}
+
+p,
+li,
+label,
+.helper-text,
+.page-description,
+.profile-disclaimer,
+.app-disclaimer,
+.dashboard-summary-card p,
+.weekly-event-card p,
+.location-card p,
+.wellness-map-card p,
+.dashboard-assessment-card p,
+.insight-panel p,
+.question-card p,
+.body-measure-note,
+.priority-recommendation {
+  color: #667085;
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.eyebrow,
+.weekly-event-meta,
+.today-goal-count,
+.score-status-badge,
+.pattern-badge,
+.event-type-badge,
+.category-chip,
+.condition-chip {
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.sidebar-brand strong,
+.view-tab,
+.primary-action,
+.secondary-action,
+.map-action,
+.none-illness-button,
+.danger-action,
+.outline-action,
+.add-illness-button,
+.text-action,
+.insight-more-link,
+.learn-more-button {
+  font-weight: 500;
+}
+
+.primary-action,
+.secondary-action,
+.map-action,
+.none-illness-button,
+.danger-action,
+.outline-action,
+.add-illness-button {
+  letter-spacing: 0;
+}
+
+.dashboard-greeting {
+  animation: greetingFadeIn 200ms ease-out both;
+  color: #2f3a46;
+  font-size: clamp(1.25rem, 2.4vw, 1.375rem);
+  font-weight: 500;
+  line-height: 1.25;
+  margin-bottom: 7px;
+}
+
+@keyframes greetingFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-greeting {
+    animation: none;
+  }
+}

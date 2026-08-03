@@ -2015,6 +2015,20 @@ function AssessmentLoadingScreen() {
   )
 }
 
+function getGreeting(date = new Date()) {
+  const hour = date.getHours()
+
+  if (hour >= 5 && hour < 12) {
+    return 'Good morning!'
+  }
+
+  if (hour >= 12 && hour < 17) {
+    return 'Good afternoon!'
+  }
+
+  return 'Good evening!'
+}
+
 function App() {
   const [savedAppState] = useState(loadSavedAppState)
   const [activeView, setActiveView] = useState(savedAppState.activeView)
@@ -2074,6 +2088,7 @@ function App() {
   const [weeklyEventsStatus, setWeeklyEventsStatus] = useState('loading')
   const [isAssessmentLoading, setIsAssessmentLoading] = useState(false)
   const [assessmentLoadingTarget, setAssessmentLoadingTarget] = useState('family')
+  const [dashboardGreeting, setDashboardGreeting] = useState(getGreeting)
 
   const selfTreeNode = userProfile
     ? {
@@ -2108,6 +2123,7 @@ function App() {
   const personalizedPreventionSummary = buildPersonalizedPreventionSummary({
     familyHealthSummary,
     preventionScore,
+    profile: preventionProfile,
   })
   const preventionScoreStatus = getPreventionScoreStatus(preventionScore.score)
   const hasPreventionScore = preventionScore.score !== null
@@ -2339,6 +2355,17 @@ function App() {
       : null
   const continueTarget = nextWorkflowStep?.id || 'dashboard'
   const finishTarget = activeView === 'coach' ? 'dashboard' : null
+
+  useEffect(() => {
+    const updateGreeting = () => {
+      setDashboardGreeting(getGreeting())
+    }
+
+    updateGreeting()
+    const greetingInterval = window.setInterval(updateGreeting, 60 * 1000)
+
+    return () => window.clearInterval(greetingInterval)
+  }, [])
 
   useEffect(() => {
     saveAppState({
@@ -3002,7 +3029,9 @@ function App() {
           <div className="dashboard-welcome-card">
             <div>
               <p className="eyebrow">My Profile</p>
-              <h1 id="dashboard-title">Good afternoon!</h1>
+              <h1 className="dashboard-greeting" id="dashboard-title">
+                {dashboardGreeting}
+              </h1>
               <p>
                 Continue your prevention journey with family history, lifestyle
                 habits, local actions, and your AI Prevention Coach.
@@ -3032,20 +3061,23 @@ function App() {
 
           {hasPersonalizedAssessmentData ? (
             <>
-              <div className="dashboard-summary-grid">
-                {dashboardSummaryCards.map((card) => (
-                  <article className="dashboard-summary-card" key={card.label}>
-                    <span className="card-topline">
-                      <span className="card-icon" aria-hidden="true">
-                        {card.icon}
+              <section className="profile-overview-section" aria-labelledby="profile-overview-title">
+                <h2 id="profile-overview-title">Profile Overview</h2>
+                <div className="dashboard-summary-grid">
+                  {dashboardSummaryCards.map((card) => (
+                    <article className="dashboard-summary-card" key={card.label}>
+                      <span className="card-topline">
+                        <span className="card-icon" aria-hidden="true">
+                          {card.icon}
+                        </span>
+                        <span>{card.label}</span>
                       </span>
-                      <span>{card.label}</span>
-                    </span>
-                    <strong>{card.value}</strong>
-                    <p>{card.detail}</p>
-                  </article>
-                ))}
-              </div>
+                      <strong>{card.value}</strong>
+                      <p>{card.detail}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
 
               <div className="dashboard-content-grid">
                 <section className="insight-panel">
