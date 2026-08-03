@@ -150,6 +150,140 @@ body {
   padding: 24px;
 }
 
+.auth-screen {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.auth-card {
+  width: min(440px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+}
+
+.auth-heading {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.auth-heading h1 {
+  color: var(--ink);
+  font-size: 1.65rem;
+  line-height: 1.15;
+  margin: 0 0 6px;
+}
+
+.auth-heading p {
+  color: var(--muted-strong);
+  margin: 0;
+}
+
+.auth-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  justify-content: space-between;
+}
+
+.account-panel,
+.import-profile-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.account-panel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.account-panel p:not(.eyebrow) {
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  margin: 0 0 8px;
+}
+
+.save-status {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--status-gray);
+  color: var(--muted-strong);
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 4px 9px;
+}
+
+.save-status-saving {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.save-status-saved {
+  background: var(--status-green);
+  color: var(--accent-dark);
+}
+
+.save-status-error {
+  background: var(--status-red);
+  color: var(--danger);
+}
+
+.import-profile-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 18px;
+}
+
+.import-profile-card h2 {
+  color: var(--ink);
+  font-size: 1.05rem;
+  margin: 0 0 4px;
+}
+
+.import-profile-card p {
+  color: var(--muted-strong);
+  margin: 0;
+}
+
+.import-profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 700px) {
+  .auth-card {
+    padding: 20px;
+  }
+
+  .import-profile-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .import-profile-actions,
+  .import-profile-actions .primary-action,
+  .import-profile-actions .secondary-action {
+    width: 100%;
+  }
+}
+
 @keyframes loadingCardIn {
   from {
     opacity: 0;

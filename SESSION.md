@@ -4,43 +4,30 @@
 
 Track tag: project development.
 
-This harness now contains:
-- `Agents.md`: Alfred operating guide.
-- `.agents/skills/impeccable/`: installed Impeccable frontend design skill.
-- `team/impeccable.md`: Impeccable specialist profile.
-- `workflows/frontend-design.md`: frontend design workflow.
-- `INTEGRATED_CHATS.md`: integration summary for the four prior chats before this Harness.
-- `.secrets/cloudflare-api-token.txt`: local-only Cloudflare token file.
-
-## Active Project Clusters
-
-Family health / medication tracking:
-- Prior chats describe a React family health tracker with localStorage, family members, condition checklists, medications, and mobile-friendly layout.
-- Needs consolidation into one canonical project folder before further work.
-
-AI Veterinary Scribe:
-- Prior chat describes a veterinary appointment scribe that can generate SOAP notes, treatment plans, follow-up instructions, and client summaries.
-- Needs research validation, safety boundaries, and prototype scope.
+Family Health app:
+- Supabase email/password authentication has been added around the existing React + Vite app.
+- Signed-out users see the authentication flow; signed-in users load a cloud profile from `public.user_profiles` before the app opens.
+- Main profile persistence now uses Supabase upsert by `user_id`; localStorage is retained only for optional one-time import of an existing device profile.
+- The existing risk calculations, prevention insights, recommendation rules, assessment flow, health event pipeline, and ZIP/city filtering were preserved and verified by tests.
 
 Harness and frontend quality:
-- Impeccable is installed and should be used for frontend design tasks.
-- Future UI work should start with `.agents/skills/impeccable/scripts/context.mjs`.
+- Impeccable context was run for this UI task, using product-register guidance.
+- Dev server is running at `http://127.0.0.1:5174/` because port `5173` was already in use.
 
 ## Open Loops
 
-- Full turn history from the prior four threads was not imported; only thread metadata/previews were available.
-- Decide which project cluster is the current priority: family health tracker or AI veterinary scribe.
-- If a frontend project becomes active, run Impeccable init/context setup for that project.
-- If Cloudflare deployment is needed, read the token only from `.secrets/cloudflare-api-token.txt`.
+- Manual Supabase auth testing still needs real project credentials and email delivery configured in Supabase.
+- Verify Supabase redirect URLs include the local/dev and deployed app origins so password reset links return to the app.
+- Confirm `public.user_profiles` RLS policies allow each authenticated user to select, insert, update, and delete only rows where `user_id = auth.uid()`.
+- `src/lib/supabase.js` was created because it was not present in this checkout, despite being listed as already configured in the task.
+- Impeccable hook reported pre-existing CSS findings in `src/App.css` around Inter usage, a side-tab accent, and a layout transition. They were not part of this auth change and were left unchanged.
 
 ## Recommended Next Actions
 
-1. Alfred asks the student to choose the active project cluster.
-2. Alfred routes Nate to consolidate the chosen project's files and identify the canonical project directory.
-3. Alfred routes Impeccable to initialize design context for the chosen frontend.
-4. Alfred routes Stephano for any health or veterinary claims that need sources.
+1. Manually test account creation, email verification, sign-in, incorrect password, session refresh, logout, forgot password, update password, cloud reload, two-user separation, and localStorage import against the real Supabase project.
+2. Add a small automated auth/persistence test harness with mocked Supabase calls if this app will keep growing.
+3. Decide whether Start Over should delete the cloud profile row, as implemented now, or only reset local in-memory state.
 
 ## Flagged Memory Entries
 
-None yet.
-
+- [FLAGGED] 2026-08-03 14:54 PDT | Track tag: project development | `MEMORY.md` was missing at session start even though `Agents.md` requires reading active memory entries. Learned that the harness needs a baseline memory file before future Alfred/Nate continuity workflows can run cleanly. Affected workflow/tool: session-continuity startup.

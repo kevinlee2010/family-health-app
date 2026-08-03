@@ -1,7 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import { AuthFlow } from './auth/AuthFlow'
+import { useAuth } from './auth/useAuth'
 import { getConditionDetails } from './conditionDetails'
+import {
+  deleteUserProfile,
+  loadUserProfile,
+  saveUserProfile,
+} from './data/userProfileService'
 import { buildFamilyHealthSummary } from './healthCategories'
+import { supabase } from './lib/supabase'
 import {
   buildPersonalizedPreventionSummary,
   buildPreventionInsights,
@@ -641,24 +649,6 @@ function loadSavedAppState() {
   }
 }
 
-function saveAppState(nextState) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  try {
-    window.localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        ...nextState,
-        version: 1,
-      }),
-    )
-  } catch {
-    // Local storage can be unavailable in private browsing or restricted modes.
-  }
-}
-
 function clearSavedAppState() {
   if (typeof window === 'undefined') {
     return
@@ -669,6 +659,55 @@ function clearSavedAppState() {
   } catch {
     // Ignore storage cleanup failures so Start Over still clears in-memory state.
   }
+}
+
+function getProfileStateSnapshot({
+  activeLocation,
+  activeView,
+  editingFamilyMemberId,
+  familyDiagnosisAge,
+  familyEarlyDiagnosis,
+  familyMemberName,
+  familyMembers,
+  habitProgress,
+  locationMessage,
+  locationStatus,
+  profileForm,
+  profileHasUnlistedCondition,
+  profileIllnessInput,
+  profileIllnesses,
+  profileNoListedConditions,
+  relationship,
+  selectedIllnesses,
+  userProfile,
+}) {
+  return {
+    activeView,
+    userProfile,
+    profileForm,
+    profileIllnesses,
+    profileIllnessInput,
+    profileNoListedConditions,
+    profileHasUnlistedCondition,
+    familyMembers,
+    familyMemberName,
+    relationship,
+    selectedIllnesses,
+    familyEarlyDiagnosis,
+    familyDiagnosisAge,
+    editingFamilyMemberId,
+    habitProgress,
+    activeLocation,
+    locationStatus,
+    locationMessage,
+  }
+}
+
+function serializeProfileState(profileState) {
+  return JSON.stringify({
+    ...profileState,
+    version: 1,
+  })
 }
 
 const workflowSteps = guidedSteps
@@ -2030,7 +2069,16 @@ function getGreeting(date = new Date()) {
 }
 
 function App() {
-  const [savedAppState] = useState(loadSavedAppState)
+  const { isAuthLoading, isPasswordRecovery, user } = useAuth()
+  const [savedAppState] = useState(defaultSavedState)
+  const [deviceSavedAppState] = useState(loadSavedAppState)
+  const lastSavedProfileStateRef = useRef('')
+  const saveDebounceRef = useRef(null)
+  const [hasLoadedCloudProfile, setHasLoadedCloudProfile] = useState(false)
+  const [cloudProfileStatus, setCloudProfileStatus] = useState('loading')
+  const [cloudProfileError, setCloudProfileError] = useState('')
+  const [saveStatus, setSaveStatus] = useState('idle')
+  const [showDeviceImportPrompt, setShowDeviceImportPrompt] = useState(false)
   const [activeView, setActiveView] = useState(savedAppState.activeView)
   const [userProfile, setUserProfile] = useState(savedAppState.userProfile)
   const [profileForm, setProfileForm] = useState(savedAppState.profileForm)
@@ -2355,6 +2403,86 @@ function App() {
       : null
   const continueTarget = nextWorkflowStep?.id || 'dashboard'
   const finishTarget = activeView === 'coach' ? 'dashboard' : null
+  const currentProfileState = useMemo(
+    () =>
+      getProfileStateSnapshot({
+        activeLocation,
+        activeView,
+        editingFamilyMemberId,
+        familyDiagnosisAge,
+        familyEarlyDiagnosis,
+        familyMemberName,
+        familyMembers,
+        habitProgress,
+        locationMessage,
+        locationStatus,
+        profileForm,
+        profileHasUnlistedCondition,
+        profileIllnessInput,
+        profileIllnesses,
+        profileNoListedConditions,
+        relationship,
+        selectedIllnesses,
+        userProfile,
+      }),
+    [
+      activeLocation,
+      activeView,
+      editingFamilyMemberId,
+      familyDiagnosisAge,
+      familyEarlyDiagnosis,
+      familyMemberName,
+      familyMembers,
+      habitProgress,
+      locationMessage,
+      locationStatus,
+      profileForm,
+      profileHasUnlistedCondition,
+      profileIllnessInput,
+      profileIllnesses,
+      profileNoListedConditions,
+      relationship,
+      selectedIllnesses,
+      userProfile,
+    ],
+  )
+
+  const applySavedState = useCallback((nextSavedState, options = {}) => {
+    const normalizedState = normalizeSavedState(nextSavedState)
+    const targetView = options.openProfile ? 'dashboard' : normalizedState.activeView
+
+    setActiveView(targetView)
+    setUserProfile(normalizedState.userProfile)
+    setProfileForm(normalizedState.profileForm)
+    setProfileIllnesses(normalizedState.profileIllnesses)
+    setProfileIllnessInput(normalizedState.profileIllnessInput)
+    setProfileNoListedConditions(normalizedState.profileNoListedConditions)
+    setProfileHasUnlistedCondition(normalizedState.profileHasUnlistedCondition)
+    setFamilyMembers(normalizedState.familyMembers)
+    setFamilyMemberName(normalizedState.familyMemberName)
+    setRelationship(normalizedState.relationship)
+    setSelectedIllnesses(normalizedState.selectedIllnesses)
+    setFamilyEarlyDiagnosis(normalizedState.familyEarlyDiagnosis)
+    setFamilyDiagnosisAge(normalizedState.familyDiagnosisAge)
+    setEditingFamilyMemberId(normalizedState.editingFamilyMemberId)
+    setHabitProgress(normalizedState.habitProgress)
+    setActiveLocation(normalizedState.activeLocation)
+    setLocationStatus(normalizedState.locationStatus)
+    setLocationMessage(normalizedState.locationMessage)
+    setError('')
+    setSuccessMessage('')
+    setActiveConditionName(null)
+    setIsFamilyFormOpen(false)
+    setActiveFamilyMenuId(null)
+    setSelectedWeeklyEvent(null)
+    setExpandedEventDescriptions({})
+
+    const savedProfileState = getProfileStateSnapshot({
+      ...normalizedState,
+      activeView: targetView,
+    })
+    lastSavedProfileStateRef.current = serializeProfileState(savedProfileState)
+  }, [])
 
   useEffect(() => {
     const updateGreeting = () => {
@@ -2368,46 +2496,93 @@ function App() {
   }, [])
 
   useEffect(() => {
-    saveAppState({
-      activeView,
-      userProfile,
-      profileForm,
-      profileIllnesses,
-      profileIllnessInput,
-      profileNoListedConditions,
-      profileHasUnlistedCondition,
-      familyMembers,
-      familyMemberName,
-      relationship,
-      selectedIllnesses,
-      familyEarlyDiagnosis,
-      familyDiagnosisAge,
-      editingFamilyMemberId,
-      habitProgress,
-      activeLocation,
-      locationStatus,
-      locationMessage,
-    })
-  }, [
-    activeView,
-    userProfile,
-    profileForm,
-    profileIllnesses,
-    profileIllnessInput,
-    profileNoListedConditions,
-    profileHasUnlistedCondition,
-    familyMembers,
-    familyMemberName,
-    relationship,
-    selectedIllnesses,
-    familyEarlyDiagnosis,
-    familyDiagnosisAge,
-    editingFamilyMemberId,
-    habitProgress,
-    activeLocation,
-    locationStatus,
-    locationMessage,
-  ])
+    if (!user) {
+      return undefined
+    }
+
+    let isCurrentLoad = true
+
+    async function loadCloudProfile() {
+      setHasLoadedCloudProfile(false)
+      setCloudProfileStatus('loading')
+      setCloudProfileError('')
+      setSaveStatus('idle')
+      setShowDeviceImportPrompt(false)
+
+      try {
+        const cloudProfile = await loadUserProfile(user.id)
+
+        if (!isCurrentLoad) {
+          return
+        }
+
+        if (cloudProfile) {
+          applySavedState(cloudProfile, { openProfile: true })
+        } else {
+          applySavedState(defaultSavedState, { openProfile: true })
+          setShowDeviceImportPrompt(
+            hasAssessmentData({
+              familyMembers: deviceSavedAppState.familyMembers,
+              profileForm: deviceSavedAppState.profileForm,
+              profileIllnesses: deviceSavedAppState.profileIllnesses,
+            }),
+          )
+        }
+
+        setHasLoadedCloudProfile(true)
+        setCloudProfileStatus('success')
+      } catch (loadError) {
+        if (!isCurrentLoad) {
+          return
+        }
+
+        setCloudProfileError(
+          loadError.message || 'Unable to load your cloud profile.',
+        )
+        setCloudProfileStatus('error')
+      }
+    }
+
+    loadCloudProfile()
+
+    return () => {
+      isCurrentLoad = false
+    }
+  }, [applySavedState, deviceSavedAppState, user])
+
+  useEffect(() => {
+    if (!user || !hasLoadedCloudProfile) {
+      return undefined
+    }
+
+    const serializedProfileState = serializeProfileState(currentProfileState)
+
+    if (serializedProfileState === lastSavedProfileStateRef.current) {
+      return undefined
+    }
+
+    setSaveStatus('saving')
+
+    if (saveDebounceRef.current) {
+      window.clearTimeout(saveDebounceRef.current)
+    }
+
+    saveDebounceRef.current = window.setTimeout(async () => {
+      try {
+        await saveUserProfile(user.id, currentProfileState)
+        lastSavedProfileStateRef.current = serializedProfileState
+        setSaveStatus('saved')
+      } catch {
+        setSaveStatus('error')
+      }
+    }, 1000)
+
+    return () => {
+      if (saveDebounceRef.current) {
+        window.clearTimeout(saveDebounceRef.current)
+      }
+    }
+  }, [currentProfileState, hasLoadedCloudProfile, user])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -2855,7 +3030,48 @@ function App() {
     setActiveFamilyMenuId(null)
   }
 
-  function handleStartOver() {
+  async function handleLogout() {
+    if (saveDebounceRef.current) {
+      window.clearTimeout(saveDebounceRef.current)
+    }
+
+    applySavedState(defaultSavedState, { openProfile: true })
+    setHasLoadedCloudProfile(false)
+    setSaveStatus('idle')
+    setShowDeviceImportPrompt(false)
+    await supabase.auth.signOut()
+  }
+
+  async function importDeviceProfile() {
+    const normalizedDeviceState = normalizeSavedState(deviceSavedAppState)
+    const importedProfileState = getProfileStateSnapshot({
+      ...normalizedDeviceState,
+      activeView: 'dashboard',
+    })
+
+    applySavedState(importedProfileState, { openProfile: true })
+    setShowDeviceImportPrompt(false)
+    setSaveStatus('saving')
+
+    try {
+      await saveUserProfile(user.id, importedProfileState)
+      lastSavedProfileStateRef.current = serializeProfileState(importedProfileState)
+      setSaveStatus('saved')
+      setSuccessMessage('Device profile imported to your account.')
+    } catch {
+      lastSavedProfileStateRef.current = ''
+      setSaveStatus('error')
+      setError('Device profile imported here, but cloud save failed.')
+    }
+  }
+
+  function startFreshCloudProfile() {
+    applySavedState(defaultSavedState, { openProfile: true })
+    setShowDeviceImportPrompt(false)
+    setSuccessMessage('Starting with a fresh account profile.')
+  }
+
+  async function handleStartOver() {
     const confirmed = window.confirm(
       'Start over and clear your profile, family history, and results?',
     )
@@ -2865,29 +3081,16 @@ function App() {
     }
 
     clearSavedAppState()
-    setActiveView('dashboard')
-    setUserProfile(null)
-    setProfileForm(initialProfileForm)
-    setProfileIllnesses([])
-    setProfileIllnessInput('')
-    setFamilyMembers([])
-    setFamilyMemberName('')
-    setRelationship('')
-    setSelectedIllnesses([])
-    setFamilyEarlyDiagnosis(false)
-    setFamilyDiagnosisAge('')
-    setEditingFamilyMemberId(null)
-    setError('')
-    setSuccessMessage('')
-    setHabitProgress({})
-    setActiveConditionName(null)
-    setActiveLocation(defaultSavedState.activeLocation)
-    setLocationStatus('idle')
-    setLocationMessage('')
-    setProfileNoListedConditions(false)
-    setProfileHasUnlistedCondition(false)
-    setIsFamilyFormOpen(false)
-    setActiveFamilyMenuId(null)
+    applySavedState(defaultSavedState, { openProfile: true })
+
+    if (user) {
+      try {
+        await deleteUserProfile(user.id)
+        setSaveStatus('idle')
+      } catch {
+        setError('Could not clear the cloud profile. Please try again.')
+      }
+    }
   }
 
   function goToNextStep() {
@@ -2909,6 +3112,53 @@ function App() {
       ...currentProgress,
       [goalId]: !currentProgress[goalId],
     }))
+  }
+
+  if (isAuthLoading) {
+    return <AssessmentLoadingScreen />
+  }
+
+  if (!user || isPasswordRecovery) {
+    return <AuthFlow />
+  }
+
+  if (cloudProfileStatus === 'loading') {
+    return (
+      <main className="auth-screen">
+        <section className="auth-card" aria-live="polite">
+          <div className="auth-heading">
+            <span className="brand-mark" aria-hidden="true">
+              +
+            </span>
+            <div>
+              <h1>Loading your profile</h1>
+              <p>Preparing your signed-in family health workspace.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
+  if (cloudProfileStatus === 'error') {
+    return (
+      <main className="auth-screen">
+        <section className="auth-card">
+          <div className="auth-heading">
+            <span className="brand-mark" aria-hidden="true">
+              +
+            </span>
+            <div>
+              <h1>Profile unavailable</h1>
+              <p>{cloudProfileError}</p>
+            </div>
+          </div>
+          <button className="secondary-action" type="button" onClick={handleLogout}>
+            Sign out
+          </button>
+        </section>
+      </main>
+    )
   }
 
   if (isAssessmentLoading) {
@@ -2944,9 +3194,28 @@ function App() {
           </span>
           <div>
             <strong>Family Health</strong>
-            <span>Your data stays on your device.</span>
+            <span>Signed-in profile</span>
           </div>
         </button>
+
+        <section className="account-panel" aria-label="Account">
+          <div>
+            <p className="eyebrow">Account</p>
+            <p>{user.email}</p>
+            <span className={`save-status save-status-${saveStatus}`}>
+              {saveStatus === 'saving'
+                ? 'Saving...'
+                : saveStatus === 'saved'
+                  ? 'Saved'
+                  : saveStatus === 'error'
+                    ? 'Save failed'
+                    : 'Ready'}
+            </span>
+          </div>
+          <button className="secondary-action" type="button" onClick={handleLogout}>
+            Log out
+          </button>
+        </section>
 
         <nav className="view-tabs" aria-label="Family health views">
           {viewTabs.map((tab) => (
@@ -2968,8 +3237,8 @@ function App() {
           <div>
             <p className="eyebrow">Privacy</p>
             <p>
-              Your data stays on your device. This app does not send your family
-              health history to a server.
+              Your information is stored with your signed-in account so you can
+              access it across devices. Access is restricted to your account.
             </p>
           </div>
           <button className="danger-action" type="button" onClick={handleStartOver}>
@@ -3022,6 +3291,34 @@ function App() {
           <p className="flow-message error" role="alert">
             {error}
           </p>
+        ) : null}
+
+        {showDeviceImportPrompt ? (
+          <section className="import-profile-card" aria-labelledby="import-profile-title">
+            <div>
+              <h2 id="import-profile-title">Import saved device profile?</h2>
+              <p>
+                We found health-profile information saved on this device. Would
+                you like to add it to your account?
+              </p>
+            </div>
+            <div className="import-profile-actions">
+              <button
+                className="primary-action"
+                type="button"
+                onClick={importDeviceProfile}
+              >
+                Import profile
+              </button>
+              <button
+                className="secondary-action"
+                type="button"
+                onClick={startFreshCloudProfile}
+              >
+                Start fresh
+              </button>
+            </div>
+          </section>
         ) : null}
 
       {activeView === 'dashboard' ? (
@@ -3576,9 +3873,9 @@ function App() {
             </div>
 
             <div className="family-grid-privacy">
-              <strong>Your information is private and secure</strong>
+              <strong>Your information is tied to your account</strong>
               <span>
-                Your family health history is stored locally on your device.
+                Access is restricted to your signed-in account.
               </span>
             </div>
           </section>
