@@ -2101,6 +2101,7 @@ function App() {
     savedAppState.familyMemberName,
   )
   const [relationship, setRelationship] = useState(savedAppState.relationship)
+  const [familyRelationshipMode, setFamilyRelationshipMode] = useState('')
   const [selectedIllnesses, setSelectedIllnesses] = useState(
     savedAppState.selectedIllnesses,
   )
@@ -2307,6 +2308,13 @@ function App() {
   }
 
   const relationshipLimitMessage = getRelationshipLimitMessage(editingFamilyMemberId)
+  const isParentFamilyForm = familyRelationshipMode === 'parent'
+  const shouldShowFamilyDiagnosisAge = selectedIllnesses.length > 0
+  const familyFormRelativeLabel = isParentFamilyForm
+    ? 'parent'
+    : relationship
+      ? relationship.toLowerCase()
+      : 'family member'
   const grandparentMembers = familyMembers.filter(
     (member) => member.relationship === 'Grandparent',
   )
@@ -2347,7 +2355,7 @@ function App() {
       description: 'Up to 2 parents',
       id: 'parents',
       members: parentMembers,
-      placeholderRelationship: '',
+      placeholderRelationship: 'Parent',
       showPlaceholder: parentMembers.length < 2,
       title: 'Parents',
     },
@@ -2461,6 +2469,7 @@ function App() {
     setFamilyMembers(normalizedState.familyMembers)
     setFamilyMemberName(normalizedState.familyMemberName)
     setRelationship(normalizedState.relationship)
+    setFamilyRelationshipMode('')
     setSelectedIllnesses(normalizedState.selectedIllnesses)
     setFamilyEarlyDiagnosis(normalizedState.familyEarlyDiagnosis)
     setFamilyDiagnosisAge(normalizedState.familyDiagnosisAge)
@@ -2879,8 +2888,11 @@ function App() {
   }
 
   function resetFamilyForm(defaultRelationship = '') {
+    const isParentPrompt = defaultRelationship === 'Parent'
+
     setFamilyMemberName('')
-    setRelationship(defaultRelationship)
+    setRelationship(isParentPrompt ? '' : defaultRelationship)
+    setFamilyRelationshipMode(isParentPrompt ? 'parent' : '')
     setSelectedIllnesses([])
     setFamilyEarlyDiagnosis(false)
     setFamilyDiagnosisAge('')
@@ -2904,6 +2916,11 @@ function App() {
 
     setFamilyMemberName(member.name || '')
     setRelationship(member.relationship)
+    setFamilyRelationshipMode(
+      member.relationship === 'Mother' || member.relationship === 'Father'
+        ? 'parent'
+        : '',
+    )
     setSelectedIllnesses(listedConditions)
     setFamilyEarlyDiagnosis(Boolean(member.earlyDiagnosis))
     setFamilyDiagnosisAge(member.diagnosisAge || '')
@@ -2963,7 +2980,11 @@ function App() {
     event.preventDefault()
 
     if (!relationship) {
-      setError('Choose a relationship before adding a family member.')
+      setError(
+        familyRelationshipMode === 'parent'
+          ? 'Choose Mother or Father before saving.'
+          : 'Choose a relative type before saving.',
+      )
       return
     }
 
@@ -2974,6 +2995,8 @@ function App() {
     }
 
     const familyConditions = getFamilyConditionsForSave()
+    const familyDiagnosisAgeForSave =
+      selectedIllnesses.length > 0 ? familyDiagnosisAge : ''
 
     if (editingFamilyMemberId) {
       setFamilyMembers((currentMembers) =>
@@ -2985,7 +3008,7 @@ function App() {
                 relationship,
                 illnesses: familyConditions,
                 earlyDiagnosis: familyEarlyDiagnosis,
-                diagnosisAge: familyDiagnosisAge,
+                diagnosisAge: familyDiagnosisAgeForSave,
               }
             : member,
         ),
@@ -3000,7 +3023,7 @@ function App() {
           relationship,
           illnesses: familyConditions,
           earlyDiagnosis: familyEarlyDiagnosis,
-          diagnosisAge: familyDiagnosisAge,
+          diagnosisAge: familyDiagnosisAgeForSave,
         },
       ])
       setSuccessMessage('Family member added.')
@@ -3008,6 +3031,7 @@ function App() {
 
     setFamilyMemberName('')
     setRelationship('')
+    setFamilyRelationshipMode('')
     setSelectedIllnesses([])
     setFamilyEarlyDiagnosis(false)
     setFamilyDiagnosisAge('')
@@ -3237,8 +3261,9 @@ function App() {
           <div>
             <p className="eyebrow">Privacy</p>
             <p>
-              Your information is stored with your signed-in account so you can
-              access it across devices. Access is restricted to your account.
+              Your information stays private and is never sold for advertising.
+              The information in this app is educational and not a medical
+              diagnosis.
             </p>
           </div>
           <button className="danger-action" type="button" onClick={handleStartOver}>
@@ -3257,7 +3282,7 @@ function App() {
         {activeView === 'family' ? (
           <header className="page-intro">
             <h1>Family Health History</h1>
-            <p>Add your family members and their health conditions.</p>
+            <p>Add your family members to help personalize your prevention insights.</p>
           </header>
         ) : null}
 
@@ -3439,11 +3464,7 @@ function App() {
       {activeView === 'family' ? (
         <section className="profile-panel" aria-labelledby="profile-title">
           <div className="current-health-heading">
-            <h2 className="panel-title" id="profile-title">Current Health</h2>
-            <p>
-              Do you currently have any of these conditions? Choose None of the
-              conditions listed if no current conditions apply.
-            </p>
+            <h2 className="panel-title" id="profile-title">Your Current Health</h2>
           </div>
 
           <form className="profile-form" onSubmit={saveProfile} noValidate>
@@ -3723,18 +3744,12 @@ function App() {
             <div className="family-grid-heading">
               <div>
                 <p className="eyebrow">Family history</p>
-                <h1 id="tree-title">Family Health Tree</h1>
+                <h1 id="tree-title">Your Family Health Tree</h1>
                 <p className="page-description">
-                  Add your family members and their health conditions.
+                  Add your family members to help personalize your prevention
+                  insights.
                 </p>
               </div>
-              <button
-                className="primary-action family-grid-add"
-                type="button"
-                onClick={() => openAddFamilyMember()}
-              >
-                + Add Family Member
-              </button>
             </div>
 
             <div className="family-grid-stack">
@@ -3873,10 +3888,10 @@ function App() {
             </div>
 
             <div className="family-grid-privacy">
-              <strong>Your information is tied to your account</strong>
-              <span>
-                Access is restricted to your signed-in account.
-              </span>
+              <strong>
+                Your information stays private and is securely linked to your
+                account.
+              </strong>
             </div>
           </section>
 
@@ -3893,8 +3908,8 @@ function App() {
                     <p className="eyebrow">Family history</p>
                     <h2 id="form-title">
                       {editingFamilyMemberId
-                        ? 'Edit family member'
-                        : 'Add a family member'}
+                        ? `Edit ${familyFormRelativeLabel}`
+                        : `Add a ${familyFormRelativeLabel}`}
                     </h2>
                   </div>
                   <button
@@ -3918,41 +3933,44 @@ function App() {
                       placeholder="Optional"
                     />
                     <span className="helper-text">
-                      Optional. Use relationship only if you prefer.
+                      Optional. Use a nickname or leave this blank.
                     </span>
                   </label>
 
-                  <label className="field-group" htmlFor="relationship">
-                    Relationship
-                    <select
-                      id="relationship"
-                      value={relationship}
-                      onChange={(event) => {
-                        setRelationship(event.target.value)
-                        setError('')
-                      }}
-                      required
-                    >
-                      <option value="">Choose one</option>
-                      {relationships.map((relationshipOption) => (
-                        <option
-                          disabled={isRelationshipLimitReached(
-                            relationshipOption,
-                            editingFamilyMemberId,
-                          )}
-                          key={relationshipOption}
-                          value={relationshipOption}
-                        >
-                          {relationshipOption}
-                        </option>
-                      ))}
-                    </select>
-                    {relationshipLimitMessage ? (
-                      <span className="limit-message">
-                        {relationshipLimitMessage}
-                      </span>
-                    ) : null}
-                  </label>
+                  {isParentFamilyForm ? (
+                    <fieldset className="parent-choice-fieldset">
+                      <legend>Parent</legend>
+                      <div className="parent-choice-buttons">
+                        {['Mother', 'Father'].map((parentOption) => (
+                          <button
+                            className={
+                              relationship === parentOption
+                                ? 'choice-button selected'
+                                : 'choice-button'
+                            }
+                            disabled={isRelationshipLimitReached(
+                              parentOption,
+                              editingFamilyMemberId,
+                            )}
+                            key={parentOption}
+                            type="button"
+                            aria-pressed={relationship === parentOption}
+                            onClick={() => {
+                              setRelationship(parentOption)
+                              setError('')
+                            }}
+                          >
+                            {parentOption}
+                          </button>
+                        ))}
+                      </div>
+                      {relationshipLimitMessage ? (
+                        <p className="limit-message">
+                          {relationshipLimitMessage}
+                        </p>
+                      ) : null}
+                    </fieldset>
+                  ) : null}
 
                   <fieldset className="illness-fieldset">
                     <legend>Family-history conditions</legend>
@@ -4001,36 +4019,21 @@ function App() {
                     </div>
                   </fieldset>
 
-                  <label className="checkbox-card" htmlFor="family-early-diagnosis">
-                    <input
-                      id="family-early-diagnosis"
-                      type="checkbox"
-                      checked={familyEarlyDiagnosis}
-                      onChange={(event) =>
-                        setFamilyEarlyDiagnosis(event.target.checked)
-                      }
-                    />
-                    <span>
-                      This relative was diagnosed at an unusually young age.
-                    </span>
-                  </label>
-
-                  <label className="field-group" htmlFor="family-diagnosis-age">
-                    Age at diagnosis, if known
-                    <input
-                      id="family-diagnosis-age"
-                      type="number"
-                      min="0"
-                      value={familyDiagnosisAge}
-                      onChange={(event) =>
-                        setFamilyDiagnosisAge(event.target.value)
-                      }
-                      placeholder="Example: 42"
-                    />
-                    <span className="helper-text">
-                      Optional. This helps explain early family-history signals.
-                    </span>
-                  </label>
+                  {shouldShowFamilyDiagnosisAge ? (
+                    <label className="field-group" htmlFor="family-diagnosis-age">
+                      Approximate diagnosis age
+                      <input
+                        id="family-diagnosis-age"
+                        type="number"
+                        min="0"
+                        value={familyDiagnosisAge}
+                        onChange={(event) =>
+                          setFamilyDiagnosisAge(event.target.value)
+                        }
+                        placeholder="Example: 42"
+                      />
+                    </label>
+                  ) : null}
 
                   <p className="form-error" role="alert" aria-live="polite">
                     {error}
@@ -4055,10 +4058,10 @@ function App() {
       {activeView === 'lifestyle' ? (
         <>
         <section className="profile-panel" aria-labelledby="lifestyle-title">
-          <h2 className="panel-title" id="lifestyle-title">Daily habits</h2>
+          <h2 className="panel-title" id="lifestyle-title">Daily Habits</h2>
 
           <div className="flow-card-grid">
-            <QuestionCard title="Weekly exercise frequency">
+            <QuestionCard title="Weekly Exercise">
               <ChoiceButtons
                 label="Weekly exercise frequency"
                 name="exercise"
@@ -4073,7 +4076,7 @@ function App() {
               />
             </QuestionCard>
 
-            <QuestionCard title="Daily fruit and vegetable intake">
+            <QuestionCard title="Daily Fruits & Vegetables">
               <ChoiceButtons
                 label="Daily fruit and vegetable intake"
                 name="fruitVegIntake"
@@ -4088,7 +4091,7 @@ function App() {
               />
             </QuestionCard>
 
-            <QuestionCard title="Smoking or vaping status">
+            <QuestionCard title="Smoking or Vaping">
               <ChoiceButtons
                 label="Smoking or vaping status"
                 name="smokingStatus"
@@ -4103,7 +4106,7 @@ function App() {
               />
             </QuestionCard>
 
-            <QuestionCard title="Alcohol frequency">
+            <QuestionCard title="Alcohol Use">
               <ChoiceButtons
                 label="Alcohol frequency"
                 name="alcoholUse"

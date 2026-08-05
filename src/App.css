@@ -2264,6 +2264,26 @@ input:focus {
   color: var(--ink);
 }
 
+.parent-choice-fieldset {
+  border: 0;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+.parent-choice-fieldset legend {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.parent-choice-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .family-form-backdrop {
   position: fixed;
   inset: 0;
@@ -6612,5 +6632,118 @@ label,
 @media (prefers-reduced-motion: reduce) {
   .dashboard-greeting {
     animation: none;
+  }
+}
+
+.flow-card-grid {
+  gap: 18px;
+}
+
+.question-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+  gap: 16px;
+  padding: 20px;
+}
+
+.question-card-heading h2 {
+  color: var(--ink);
+  font-size: 1.16rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.choice-button-group {
+  gap: 12px;
+}
+
+.choice-button {
+  min-height: 52px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 0.98rem;
+  font-weight: 560;
+  padding: 0 18px;
+}
+
+.choice-button:hover,
+.choice-button:focus-visible {
+  border-color: #334e68;
+  background: #f5f7fa;
+  box-shadow: 0 0 0 3px rgba(51, 78, 104, 0.14);
+  color: #334e68;
+  outline: none;
+  transform: none;
+}
+
+.choice-button.selected,
+.choice-button[aria-pressed='true'] {
+  border-color: #334e68;
+  background: #334e68;
+  box-shadow: 0 0 0 3px rgba(51, 78, 104, 0.14);
+  color: #ffffff;
+}
+
+.condition-toggle-row {
+  gap: 18px;
+  padding: 14px 16px;
+}
+
+.yes-no-toggle {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #ffffff;
+  grid-template-columns: repeat(2, minmax(70px, 1fr));
+  gap: 8px;
+  padding: 6px;
+}
+
+.yes-no-toggle button {
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--muted-strong);
+  font-size: 0.98rem;
+  font-weight: 600;
+  padding: 0 16px;
+}
+
+.yes-no-toggle button:hover,
+.yes-no-toggle button:focus-visible {
+  border-color: rgba(51, 78, 104, 0.22);
+  background: #f5f7fa;
+  box-shadow: 0 0 0 3px rgba(51, 78, 104, 0.12);
+  color: #334e68;
+}
+
+.yes-no-toggle button.active,
+.yes-no-toggle button[aria-pressed='true'] {
+  border-color: #334e68;
+  background: #334e68;
+  box-shadow: none;
+  color: #ffffff;
+}
+
+@media (max-width: 520px) {
+  .choice-button-group {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .choice-button,
+  .yes-no-toggle button {
+    width: 100%;
+  }
+
+  .condition-toggle-row {
+    grid-template-columns: 1fr;
+  }
+
+  .yes-no-toggle {
+    width: 100%;
   }
 }
