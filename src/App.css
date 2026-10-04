@@ -9233,11 +9233,12 @@ textarea:focus {
   display: block;
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
+  overflow-wrap: break-word;
   font-size: 0.84rem;
   line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .pedigree-node-card .family-condition-summary-list {
@@ -9560,7 +9561,14 @@ textarea:focus {
 }
 
 .pedigree-stage .pedigree-node-card .family-profile-title-row strong,
-.pedigree-stage .pedigree-node-card .family-profile-role,
+.pedigree-stage .pedigree-node-card .family-profile-role {
+  max-width: 100%;
+  overflow: visible;
+  overflow-wrap: break-word;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .pedigree-stage .pedigree-node-card .family-condition-summary-list,
 .pedigree-stage .pedigree-node-card .family-history-action-text {
   max-width: 100%;

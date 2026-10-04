@@ -42,6 +42,7 @@ import {
 } from './familyStructurePersistence'
 import { isPreventionActionApplicable } from './healthEligibility'
 import {
+  hasAddedFamilyCondition,
   moreInheritedConditionGroup,
   resolveFamilyConditionSelection,
   searchFamilyConditions,
@@ -4387,6 +4388,7 @@ function App() {
             : getDisplayConditionName(condition),
       }
     })
+  const canSaveFamilyHealthHistory = hasAddedFamilyCondition(selectedIllnesses)
   const activeConditionGroup = searchableFamilyConditionGroups.find(
     (group) => group.id === activeFamilyConditionGroup,
   )
@@ -5723,6 +5725,11 @@ function App() {
 
   async function addFamilyMember(event) {
     event.preventDefault()
+
+    if (!hasAddedFamilyCondition(selectedIllnesses)) {
+      setError('Click Add Condition before saving this health history.')
+      return
+    }
 
     if (!relationship) {
       setError(
@@ -7713,10 +7720,12 @@ function App() {
                     {error}
                   </p>
 
-                  <button className="primary-action" type="submit">
-                    Save Health History{' '}
-                    <span aria-hidden="true">→</span>
-                  </button>
+                  {canSaveFamilyHealthHistory ? (
+                    <button className="primary-action" type="submit">
+                      Save Health History{' '}
+                      <span aria-hidden="true">→</span>
+                    </button>
+                  ) : null}
                 </form>
               </aside>
               {showFamilyEditorDiscardPrompt ? (

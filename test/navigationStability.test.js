@@ -129,6 +129,23 @@ test('supplementary and no-known condition controls belong to current health onl
   )
 })
 
+test('family health history save waits for an added condition', () => {
+  const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
+
+  assert.match(
+    appSource,
+    /const canSaveFamilyHealthHistory = hasAddedFamilyCondition\(selectedIllnesses\)/,
+  )
+  assert.match(
+    appSource,
+    /if \(!hasAddedFamilyCondition\(selectedIllnesses\)\) \{\s*setError\('Click Add Condition before saving this health history\.'\)/,
+  )
+  assert.match(
+    appSource,
+    /\{canSaveFamilyHealthHistory \? \(\s*<button className="primary-action" type="submit">\s*Save Health History/s,
+  )
+})
+
 test('resource finder stays hidden until an action requests it', () => {
   const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
 

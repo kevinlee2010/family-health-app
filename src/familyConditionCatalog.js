@@ -90,6 +90,10 @@ export function searchFamilyConditions(groups = [], query = '', limit = 12) {
     .slice(0, limit)
 }
 
+export function hasAddedFamilyCondition(selectedConditions = []) {
+  return selectedConditions.some((condition) => String(condition || '').trim())
+}
+
 export function resolveFamilyConditionSelection({
   noConditionLabels = [],
   noKnownConditionsLabel,
