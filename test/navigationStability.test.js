@@ -50,6 +50,21 @@ test('home uses the concise profile summary and links to the health profile', ()
   assert.doesNotMatch(appSource, /personalizedPreventionSummary/)
 })
 
+test('home prevention progress follows the current prevention plan actions', () => {
+  const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
+
+  assert.match(appSource, /label: 'Prevention Progress'/)
+  assert.match(
+    appSource,
+    /value: `\$\{completedTodayPreventionActions\.length\} \/ \$\{todayPreventionActions\.length\} actions completed`/,
+  )
+  assert.match(appSource, /detail: "Today's personalized actions\."/)
+  assert.match(appSource, /progressValue: todayPreventionCompletionPercent/)
+  assert.doesNotMatch(appSource, /label: 'Habit Progress'/)
+  assert.doesNotMatch(appSource, /label: 'Weekly Consistency'/)
+  assert.doesNotMatch(appSource, /detail: 'Active this week'/)
+})
+
 test('health profile introduction is not clipped or truncated on desktop', () => {
   const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
   const cssSource = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')

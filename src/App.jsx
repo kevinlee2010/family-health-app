@@ -1392,21 +1392,6 @@ function getLocalWeekDateKeys(date = new Date()) {
   })
 }
 
-function getWeeklyActiveDayCount(goalCompletionHistory, date = new Date()) {
-  if (!isPlainObject(goalCompletionHistory)) {
-    return 0
-  }
-
-  const currentWeekDateKeys = new Set(getLocalWeekDateKeys(date))
-
-  return Object.entries(goalCompletionHistory).filter(
-    ([dateKey, completedGoalIds]) =>
-      currentWeekDateKeys.has(dateKey) &&
-      Array.isArray(completedGoalIds) &&
-      completedGoalIds.length > 0,
-  ).length
-}
-
 function formatDisplayList(items) {
   const uniqueItems = [...new Set(items.filter(Boolean))]
 
@@ -4042,14 +4027,6 @@ function App() {
       preventionProfile,
     ],
   )
-  const todayGoalDate = getLocalDateKey()
-  const hasCurrentDailyGoals =
-    dailyGoalsDate === todayGoalDate && dailyGoals.length > 0
-  const coachGoals = isAssessmentComplete
-    ? hasCurrentDailyGoals
-      ? dailyGoals
-      : generatedCoachGoals
-    : []
   const generatedPreventionActionPlan = useMemo(
     () =>
       isAssessmentComplete
@@ -4131,14 +4108,17 @@ function App() {
   const areAllWeekPreventionActionsComplete =
     weekPreventionActions.length > 0 &&
     completedWeekPreventionActions.length === weekPreventionActions.length
-  const completedCoachGoals = coachGoals.filter((goal) => habitProgress[goal.id])
-  const weeklyActiveDayCount = getWeeklyActiveDayCount(goalCompletionHistory)
+  const todayPreventionCompletionPercent = todayPreventionActions.length
+    ? Math.round(
+        (completedTodayPreventionActions.length / todayPreventionActions.length) * 100,
+      )
+    : 0
   const dashboardFocusSummary = formatDisplayList(
     preventionPlan.topPriorities.map((priority) => priority.title).slice(0, 2),
   )
   const healthProfileDetail = dashboardFocusSummary
-    ? `Personalized around ${dashboardFocusSummary.toLowerCase()} from your profile.`
-    : 'Personalized from your family history and lifestyle information.'
+    ? `Personalized from your profile. Current focus: ${dashboardFocusSummary}.`
+    : 'Personalized from your family health and everyday habits.'
   const activeConditionDetails = activeConditionName
     ? getConditionDetails(activeConditionName)
     : null
@@ -4588,17 +4568,10 @@ function App() {
         },
         {
           icon: '◌',
-          label: 'Habit Progress',
-          value: `${completedCoachGoals.length}/${coachGoals.length}`,
-          detail: 'Completed today',
-        },
-        {
-          icon: '□',
-          label: 'Weekly Consistency',
-          value: `${weeklyActiveDayCount} ${
-            weeklyActiveDayCount === 1 ? 'day' : 'days'
-          }`,
-          detail: 'Active this week',
+          label: 'Prevention Progress',
+          value: `${completedTodayPreventionActions.length} / ${todayPreventionActions.length} actions completed`,
+          detail: "Today's personalized actions.",
+          progressValue: todayPreventionCompletionPercent,
         },
       ]
     : []
@@ -6884,7 +6857,12 @@ function App() {
                 <h2 id="profile-overview-title">Health Profile</h2>
                 <div className="dashboard-summary-grid">
                   {dashboardSummaryCards.map((card) => (
-                    <article className="dashboard-summary-card" key={card.label}>
+                    <article
+                      className={`dashboard-summary-card${
+                        Number.isFinite(card.progressValue) ? ' has-progress' : ''
+                      }`}
+                      key={card.label}
+                    >
                       <span className="card-topline">
                         <span className="card-icon" aria-hidden="true">
                           {card.icon}
@@ -6893,6 +6871,14 @@ function App() {
                       </span>
                       <strong>{card.value}</strong>
                       <p>{card.detail}</p>
+                      {Number.isFinite(card.progressValue) ? (
+                        <div className="dashboard-summary-progress">
+                          <ProgressBar
+                            label={`${card.label}: ${card.value}`}
+                            value={card.progressValue}
+                          />
+                        </div>
+                      ) : null}
                     </article>
                   ))}
                 </div>
