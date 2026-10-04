@@ -4297,9 +4297,8 @@ function App() {
     ? isPhysicalActivityResourceAction
       ? 'Parks & Trails Near You'
       : 'Resources for this action'
-    : 'Local Resources'
-  let weeklyEventDescription =
-    'Choose an action above to see matching places, services, tools, or guidance.'
+    : ''
+  let weeklyEventDescription = ''
 
   if (activeGoalAction) {
     if (isPhysicalActivityResourceAction && weeklyEventFilter.zipCode) {
@@ -7087,7 +7086,6 @@ function App() {
                                 heightFeet: event.target.value,
                               }))
                             }
-                            placeholder="e.g., 5"
                           />
                           <span>ft</span>
                         </div>
@@ -7108,7 +7106,6 @@ function App() {
                                 heightInches: event.target.value,
                               }))
                             }
-                            placeholder="e.g., 8"
                           />
                           <span>in</span>
                         </div>
@@ -7130,7 +7127,6 @@ function App() {
                             weight: event.target.value,
                           }))
                         }
-                        placeholder="e.g., 150"
                       />
                       <span>lb</span>
                     </div>
@@ -8141,12 +8137,12 @@ function App() {
         </section>
       ) : null}
 
-      {activeView === 'coach' ? (
+      {activeView === 'coach' && activeGoalAction ? (
         <section className="wellness-panel" aria-labelledby="wellness-recommendations-title">
           <section className="location-card" aria-labelledby="location-title">
             <div>
               <p className="eyebrow">Resources</p>
-              <h2 id="location-title">Local Resources</h2>
+              <h2 id="location-title">Find resources for this action</h2>
               <p>
                 Use your current location or enter a city or ZIP code to find
                 resources connected to the prevention action you choose.
@@ -8260,9 +8256,7 @@ function App() {
                   displayedWeeklyEvents.length === 0 &&
                   displayedOnlineEvents.length === 0 ? (
                     <p className="helper-text">
-                      {!activeGoalAction
-                        ? 'Choose an action with a resource button to see matching resources.'
-                        : activeGoalIntent?.resourceIntent === 'mammography-facility' &&
+                      {activeGoalIntent?.resourceIntent === 'mammography-facility' &&
                       weeklyEventFilter.status === 'location-needed'
                         ? 'Add your ZIP code to find nearby mammography facilities.'
                         : activeGoalIntent?.resourceIntent === 'physical-activity' &&

@@ -548,3 +548,13 @@ Track tag: project development.
 - Existing eligibility safeguards remain in place for blood-pressure and screening guidance, so these actions appear only when supported by the user's profile.
 - Added tests for the weekly planning boundary and the supportive personalized progress wording.
 - Verification: `npm run lint`, `npm test`, and `npm run build` passed; all 214 tests passed. The existing Vite large-chunk warning remains.
+
+## 2026-10-04 Resource Empty State And Measurement Update
+
+Track tag: project development.
+
+- Removed the always-visible `Local Resources` empty panel and its two action-selection instructions from the Prevention Plan.
+- The existing resource finder is now progressive: it appears only after the user explicitly opens resources from a prevention action, preserving useful resource functionality without showing an empty section.
+- Removed example-number placeholders from height feet, height inches, and weight. Empty saved values now render as genuinely blank inputs while unit labels remain visible.
+- Added source-level regression coverage for the conditional resource finder and blank optional measurement fields.
+- Verification: `npm run lint`, `npm test`, and `npm run build` passed; all 216 tests passed. The existing Vite large-chunk warning remains.

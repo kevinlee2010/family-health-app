@@ -99,3 +99,24 @@ test('supplementary and no-known condition controls belong to current health onl
     /const searchableFamilyConditionGroups = guidedFamilyConditionGroups/,
   )
 })
+
+test('resource finder stays hidden until an action requests it', () => {
+  const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
+
+  assert.match(appSource, /activeView === 'coach' && activeGoalAction/)
+  assert.doesNotMatch(appSource, />Local Resources</)
+  assert.doesNotMatch(
+    appSource,
+    /Choose an action with a resource button to see matching resources\./,
+  )
+  assert.doesNotMatch(
+    appSource,
+    /Choose an action above to see matching places, services, tools, or guidance\./,
+  )
+})
+
+test('optional body measurements do not display example numbers', () => {
+  const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
+
+  assert.doesNotMatch(appSource, /placeholder="e\.g\., (5|8|150)"/)
+})
