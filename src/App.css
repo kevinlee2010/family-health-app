@@ -7602,6 +7602,14 @@ label,
   margin-bottom: 7px;
 }
 
+.dashboard-welcome-card .dashboard-welcome-description {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  width: 100%;
+}
+
 @keyframes greetingFadeIn {
   from {
     opacity: 0;
@@ -7615,6 +7623,12 @@ label,
 @media (prefers-reduced-motion: reduce) {
   .dashboard-greeting {
     animation: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-welcome-card .dashboard-welcome-description {
+    white-space: normal;
   }
 }
 

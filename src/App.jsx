@@ -6817,9 +6817,8 @@ function App() {
                 <h1 className="dashboard-greeting" id="dashboard-title">
                   {dashboardGreeting}
                 </h1>
-                <p>
-                  Keep building a prevention plan shaped by your family health,
-                  everyday habits, and daily focus steps.
+                <p className="dashboard-welcome-description">
+                  Keep building a prevention plan shaped by your family health, everyday habits, and daily focus steps.
                 </p>
               </div>
             </div>

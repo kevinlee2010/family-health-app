@@ -65,6 +65,20 @@ test('home prevention progress follows the current prevention plan actions', () 
   assert.doesNotMatch(appSource, /detail: 'Active this week'/)
 })
 
+test('home prevention-plan subtitle stays visible on one desktop line', () => {
+  const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
+  const cssSource = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
+
+  assert.match(
+    appSource,
+    /className="dashboard-welcome-description">\s*Keep building a prevention plan shaped by your family health, everyday habits, and daily focus steps\./,
+  )
+  assert.match(
+    cssSource,
+    /\.dashboard-welcome-card \.dashboard-welcome-description\s*\{[^}]*overflow:\s*visible;[^}]*text-overflow:\s*clip;[^}]*white-space:\s*nowrap;/s,
+  )
+})
+
 test('health profile introduction is not clipped or truncated on desktop', () => {
   const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
   const cssSource = readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
