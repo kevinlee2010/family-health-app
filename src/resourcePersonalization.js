@@ -47,15 +47,21 @@ const healthPriorityDefinitions = [
     ],
     eventKeywords: [
       'blood pressure',
+      'blood pressure check',
       'hypertension',
       'heart health',
       'cardiovascular',
       'cholesterol',
+      'cholesterol education',
       'stroke prevention',
       'CPR',
       'walking group',
       'fitness',
+      'fitness class',
       'exercise',
+      'heart-healthy nutrition',
+      'heart healthy nutrition',
+      'smoking cessation',
       'heart screening',
     ],
     preventionActions: [
@@ -78,10 +84,16 @@ const healthPriorityDefinitions = [
       'A1C',
       'glucose',
       'nutrition',
+      'nutrition class',
       'healthy eating',
       'weight management',
+      'weight-management',
+      'weight management program',
       'cooking class',
       'exercise',
+      'exercise program',
+      'farmers market',
+      'diabetes education',
     ],
     preventionActions: [
       'Move regularly each week',
@@ -126,6 +138,11 @@ const healthPriorityDefinitions = [
       'colonoscopy',
       'cancer screening',
       'colorectal awareness',
+      'screening education',
+      'digestive health',
+      'digestive-health',
+      'physical activity',
+      'healthy eating',
     ],
     preventionActions: [
       'Discuss colorectal screening timing',
@@ -151,6 +168,9 @@ const healthPriorityDefinitions = [
       'support group',
       'mental health',
       'wellness',
+      'stress reduction',
+      'sleep program',
+      'community wellness',
     ],
     preventionActions: [
       'Practice a simple stress-management habit',
@@ -339,6 +359,7 @@ const eventMatchingRules = {
       'blood pressure check',
       'hypertension',
       'cholesterol screening',
+      'cholesterol education',
       'heart health',
       'cardiovascular screening',
       'stroke prevention',
@@ -353,6 +374,8 @@ const eventMatchingRules = {
       'healthy cooking',
       'cooking class',
       'nutrition workshop',
+      'heart healthy nutrition',
+      'smoking cessation',
       'wellness screening',
       'community health fair',
       'fitness',
@@ -369,8 +392,11 @@ const eventMatchingRules = {
       ],
       'Discuss cholesterol screening': [
         'cholesterol screening',
+        'cholesterol education',
         'cardiovascular screening',
         'heart health',
+        'heart healthy nutrition',
+        'smoking cessation',
         'community health fair',
       ],
       'Stay physically active': [
@@ -402,6 +428,7 @@ const eventMatchingRules = {
       'a1c',
       'glucose',
       'diabetes prevention',
+      'diabetes education',
     ],
     supporting: [
       'nutrition',
@@ -409,7 +436,10 @@ const eventMatchingRules = {
       'healthy cooking',
       'cooking class',
       'weight management',
+      'weight management program',
+      'farmers market',
       'exercise',
+      'exercise program',
       'fitness class',
       'walking group',
     ],
@@ -419,12 +449,15 @@ const eventMatchingRules = {
         'a1c',
         'glucose',
         'diabetes prevention',
+        'diabetes education',
       ],
       'Choose balanced meals with fiber-rich foods': [
         'nutrition',
         'healthy eating',
         'healthy cooking',
         'cooking class',
+        'farmers market',
+        'weight management',
       ],
       'Move regularly each week': [
         'walking group',
@@ -505,6 +538,7 @@ const eventMatchingRules = {
       'colon cancer',
       'colorectal cancer',
       'colorectal screening',
+      'screening education',
       'colonoscopy',
       'fit test',
       'fit kit',
@@ -517,18 +551,21 @@ const eventMatchingRules = {
       'cooking class',
       'nutrition',
       'physical activity',
+      'digestive health',
       'family history workshop',
       'genetic counseling',
     ],
     actionKeywords: {
       'Discuss colorectal screening timing': [
         'colorectal screening',
+        'screening education',
         'colon cancer',
         'colorectal cancer',
         'fit kit',
         'fit test',
         'colonoscopy',
         'cancer screening',
+        'digestive health',
       ],
       'Eat a healthy diet and stay active': [
         'nutrition',
@@ -569,21 +606,26 @@ const eventMatchingRules = {
       'meditation',
       'support group',
       'behavioral health',
+      'stress reduction',
     ],
     supporting: [
       'wellness',
       'sleep',
+      'sleep program',
       'walking group',
       'fitness class',
+      'community wellness',
       'community health fair',
     ],
     actionKeywords: {
       'Practice a simple stress-management habit': [
         'stress',
+        'stress reduction',
         'mindfulness',
         'meditation',
+        'community wellness',
       ],
-      'Protect sleep and recovery time': ['sleep', 'wellness'],
+      'Protect sleep and recovery time': ['sleep', 'sleep program', 'wellness'],
       'Consider counseling or support resources': [
         'mental health',
         'counseling',
@@ -1065,6 +1107,10 @@ function getNormalizedResourceType(resource) {
   return resource?.resourceType || classifyResourceType(resource)
 }
 
+function isTrustedOrganizationResource(resource) {
+  return ['organization', 'trusted_organization'].includes(resource?.resourceType)
+}
+
 function classifyResourceType(resource) {
   if (resource?.resourceType === 'park') return 'park'
   if (resource?.resourceType === 'organization' || resource?.resourceType === 'trusted_organization') {
@@ -1128,7 +1174,14 @@ function classifyResourceType(resource) {
 }
 
 function getResourceTypeLimitKey(resource) {
-  return getNormalizedResourceType(resource)
+  const resourceType = getNormalizedResourceType(resource)
+
+  if (['screening', 'vaccine_clinic'].includes(resourceType)) return 'screening_or_clinic'
+  if (['nutrition_class', 'farmers_market'].includes(resourceType)) return 'nutrition'
+  if (['walking_group', 'fitness_class', 'park'].includes(resourceType)) return 'movement'
+  if (['support_group', 'online_education'].includes(resourceType)) return resourceType
+
+  return resourceType
 }
 
 function getResourceUrl(resource) {
@@ -1153,7 +1206,7 @@ function getResourceMapsUrl(resource) {
 }
 
 function isProfessionalOnlyResource(resource) {
-  if (resource?.resourceType === 'park' || resource?.resourceType === 'organization') {
+  if (resource?.resourceType === 'park' || isTrustedOrganizationResource(resource)) {
     return false
   }
 
@@ -1165,7 +1218,7 @@ function isProfessionalOnlyResource(resource) {
 }
 
 function getTrustedSourceScore(resource) {
-  if (resource?.resourceType === 'organization') {
+  if (isTrustedOrganizationResource(resource)) {
     return 8
   }
 
@@ -1211,7 +1264,7 @@ function getDateScore(resource, now = new Date()) {
 }
 
 function getDistanceScore(resource) {
-  if (isOnlineResource(resource) || resource?.resourceType === 'organization') {
+  if (isOnlineResource(resource) || isTrustedOrganizationResource(resource)) {
     return 2
   }
 
@@ -1230,7 +1283,7 @@ function getCityMatchScore(resource) {
   if (resource?.resourceSearchStage === 'exact') return 12
   if (resource?.resourceSearchStage === 'same-city') return 10
   if (resource?.isLocalCity) return 8
-  if (resource?.isOnlineEvent || resource?.resourceType === 'organization') return 2
+  if (resource?.isOnlineEvent || isTrustedOrganizationResource(resource)) return 2
 
   return 0
 }
@@ -1243,14 +1296,32 @@ function getRecommendationExplanation(resource, priority, action) {
   }
 
   if (resource.resourceType === 'park') {
-    return `${resource.title} is recommended because ${priority.label.toLowerCase()} is one of your top priorities and nearby parks can make regular movement easier.${actionText}`
+    return 'Supports your goal to stay physically active.'
   }
 
-  if (resource.resourceType === 'organization') {
-    return `${resource.title} is recommended as a trusted education source for ${priority.label.toLowerCase()}.${actionText}`
+  if (isTrustedOrganizationResource(resource)) {
+    return `Provides trusted education related to ${priority.label.toLowerCase()}.`
   }
 
-  return `${resource.title} is recommended because it matches ${priority.label.toLowerCase()} and your prevention plan.${actionText}`
+  const normalizedType = getNormalizedResourceType(resource)
+
+  if (normalizedType === 'screening') {
+    return `Provides education related to ${priority.label.toLowerCase()} screening and awareness.`
+  }
+
+  if (['nutrition_class', 'farmers_market'].includes(normalizedType)) {
+    return `Offers practical nutrition support for ${priority.label.toLowerCase()}.`
+  }
+
+  if (['walking_group', 'fitness_class'].includes(normalizedType)) {
+    return 'Supports your goal to stay physically active.'
+  }
+
+  if (['support_group', 'online_education'].includes(normalizedType)) {
+    return `Offers education or support related to ${priority.label.toLowerCase()}.`
+  }
+
+  return `Supports your prevention plan for ${priority.label.toLowerCase()}.${actionText}`.trim()
 }
 
 function getBestPriorityMatch(resource, priorities) {
@@ -1396,6 +1467,10 @@ function normalizeCity(value) {
 }
 
 function getBestResourceActionMatch(resource, priorities) {
+  if (getNormalizedResourceType(resource) === 'vaccine_clinic') {
+    return null
+  }
+
   return priorities
     .flatMap((priority, priorityIndex) =>
       priority.preventionActions.map((action, actionIndex) => ({
@@ -1455,29 +1530,41 @@ function getStageForResource({
   return ''
 }
 
+function getFallbackQualityLabel(resource, matchType = 'related') {
+  if (resource?.eventPriorityId === 'general-prevention') return 'General preventive-care resource'
+  if (isTrustedOrganizationResource(resource)) return 'Trusted organization'
+  if (isOnlineResource(resource)) return 'Online resource'
+  if (['within-10', 'within-25'].includes(resource?.resourceSearchStage)) return 'Nearby option'
+  if (matchType === 'direct' && ['exact', 'same-city'].includes(resource?.resourceSearchStage)) {
+    return 'Best local match'
+  }
+
+  return 'Related prevention resource'
+}
+
 const stagedSearchMetadata = {
   exact: {
-    label: 'Exact ZIP results',
+    label: 'Best local match',
     rank: 1,
-    score: 8,
+    score: 50,
   },
   'same-city': {
-    label: 'Same-city results',
+    label: 'Related prevention resource',
     rank: 2,
-    score: 5,
+    score: 40,
   },
   'within-10': {
-    label: 'Within 10 miles',
+    label: 'Nearby option',
     rank: 3,
-    score: 3,
+    score: 20,
   },
   'within-25': {
-    label: 'Within 25 miles',
+    label: 'Nearby option',
     rank: 4,
-    score: 1,
+    score: 10,
   },
   fallback: {
-    label: 'Online and statewide resources',
+    label: 'Online resource',
     rank: 5,
     score: 1,
   },
@@ -1593,12 +1680,13 @@ function getTrustedOrganizationsForPriorities(priorities = []) {
       isOnlineEvent: true,
       platform: 'Trusted website',
       recommendationAction: 'Learn from trusted health organizations',
-      recommendationLabel: 'Trusted health organization',
+      recommendationLabel: 'Trusted organization',
       recommendationScore: 2,
       resourceSearchStage: 'fallback',
-      resourceSearchStageLabel: 'Online and statewide resources',
+      resourceSearchStageLabel: 'Trusted organization',
       resourceSearchStageRank: stagedSearchMetadata.fallback.rank,
       resourceType: 'trusted_organization',
+      source: organization.title,
       shortDescription: organization.description,
       sourceUrl: organization.url,
       title: organization.title,
@@ -1759,7 +1847,7 @@ function chooseTopRecommendations({
   candidateResources = [],
   fallbackSections = [],
   includeTrustedOrganizations = true,
-  limit = 5,
+  limit = 7,
   now = new Date(),
   priorities = [],
 }) {
@@ -1792,7 +1880,17 @@ function chooseTopRecommendations({
     const typeKey = getResourceTypeLimitKey(resource)
     const currentTypeCount = typeCounts.get(typeKey) || 0
 
-    return enforceNewType ? currentTypeCount === 0 : currentTypeCount < 1
+    if (getNormalizedResourceType(resource) === 'park') {
+      return currentTypeCount === 0
+    }
+
+    if (enforceNewType) {
+      return currentTypeCount === 0
+    }
+
+    const relaxedTypeLimit = getNormalizedResourceType(resource) === 'trusted_organization' ? 3 : 2
+
+    return currentTypeCount < relaxedTypeLimit
   }
 
   const selectResource = (resource) => {
@@ -1814,23 +1912,11 @@ function chooseTopRecommendations({
   })
 
   recurringDedupedCandidates.forEach((resource) => {
-    if (!['trusted_organization', 'park', 'farmers_market', 'online_education'].includes(
-      getNormalizedResourceType(resource),
-    )) {
+    if (!canSelectResource(resource, { enforceNewType: false })) {
       return
     }
 
-    const fallbackResource = {
-      ...resource,
-      eventPriorityId: 'general-prevention',
-      recommendationLabel: 'General preventive resource',
-    }
-
-    if (!canSelectResource(fallbackResource, { enforceNewType: false })) {
-      return
-    }
-
-    selectResource(fallbackResource)
+    selectResource(resource)
   })
 
   return selected
@@ -1886,7 +1972,7 @@ function scoreResourceForAction(resource, priority, action) {
   const priorityMatch = scoreEventForPriority(resource, priority)
   const resourceTypeMatch =
     resource.resourceType === 'park' && rule.resourceTypes.includes('park')
-      ? [{ keyword: 'park', score: rule.mode === 'lifestyle' ? 12 : 2 }]
+      ? [{ keyword: 'park', score: rule.mode === 'lifestyle' ? 4 : 1 }]
       : []
   const supportingMatches =
     priorityMatch?.keywords
@@ -1915,6 +2001,7 @@ function scoreResourceForAction(resource, priority, action) {
   return {
     action,
     keywords,
+    matchType: priorityMatch?.score >= 7 ? 'direct' : 'related',
     reason: `Recommended for "${action}" because it matches ${keywords.join(', ')}.`,
     score,
   }
@@ -2374,7 +2461,7 @@ export function getStagedResourceSearch({
     }
 
     const locationScore = metadata.score
-    const stagedResource = {
+    const stagedResourceBase = {
       ...resource,
       city: resourceCity || resource.city,
       distanceMiles,
@@ -2392,15 +2479,26 @@ export function getStagedResourceSearch({
       isLocalCity:
         normalizeCity(resourceCity) === normalizeCity(selectedCity),
       isOnlineEvent: isOnline,
+      matchType: match.match.matchType || 'related',
       priorityRelevanceScore: priorityMatch?.match?.score || match.priority.score || 0,
       recommendationAction: match.action,
-      recommendationLabel: getResourceCategoryDefinition(match.priority.id)?.matchLabel,
       actionRelevanceScore: match.match.score,
       recommendationScore: match.match.score + locationScore,
       resourceSearchStage: stage,
       resourceSearchStageLabel: metadata.label,
       resourceSearchStageRank: metadata.rank,
       zipCode: resourceZip || resource.zipCode,
+    }
+    const stagedResource = {
+      ...stagedResourceBase,
+      recommendationLabel: getFallbackQualityLabel(
+        stagedResourceBase,
+        stagedResourceBase.matchType,
+      ),
+      resourceSearchStageLabel: getFallbackQualityLabel(
+        stagedResourceBase,
+        stagedResourceBase.matchType,
+      ),
     }
 
     stageBuckets[stage].push(stagedResource)
@@ -2484,6 +2582,7 @@ export function getStagedResourceSearch({
 export function getUserResourcePriorities({
   familyHealthSummary = {},
   familyMembers = [],
+  preventionPlan = {},
   preventionScore = {},
 } = {}) {
   const priorityMap = new Map()
@@ -2522,7 +2621,9 @@ export function getUserResourcePriorities({
     })
   })
 
-  preventionScore.topPriorities?.forEach((priority) => {
+  const preventionSignals = preventionPlan.topPriorities ? preventionPlan : preventionScore
+
+  preventionSignals.topPriorities?.forEach((priority) => {
     lifestylePriorityCategoryMap[priority.id]?.forEach((categoryId) => {
       addLifestyleSignal(priorityMap, categoryId, priority.title)
     })

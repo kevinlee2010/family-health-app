@@ -227,7 +227,7 @@ const cardiovascularLifestyleRules = [
   createRule({
     id: 'physicalInactivity',
     points: 2,
-    explanation: "The reported activity level is below the app's activity target.",
+    explanation: 'The reported activity level indicates limited weekly movement.',
     source: sourceLabels.aha,
     type: modifiabilityTypes.modifiable,
     applies: isPhysicallyInactive,
@@ -304,7 +304,7 @@ export const conditionRules = {
     createRule({
       id: 'physicalInactivity',
       points: 2,
-      explanation: "The reported activity level is below the app's activity target.",
+      explanation: 'The reported activity level indicates limited weekly movement.',
       source: sourceLabels.cdc,
       type: modifiabilityTypes.modifiable,
       applies: isPhysicallyInactive,
@@ -351,7 +351,7 @@ export const conditionRules = {
     createRule({
       id: 'physicalInactivity',
       points: 2,
-      explanation: "The reported activity level is below the app's activity target.",
+      explanation: 'The reported activity level indicates limited weekly movement.',
       source: sourceLabels.aha,
       type: modifiabilityTypes.modifiable,
       applies: isPhysicallyInactive,
@@ -413,7 +413,7 @@ export const conditionRules = {
     createRule({
       id: 'physicalInactivity',
       points: 2,
-      explanation: "The reported activity level is below the app's activity target.",
+      explanation: 'The reported activity level indicates limited weekly movement.',
       source: sourceLabels.acs,
       type: modifiabilityTypes.modifiable,
       applies: isPhysicallyInactive,

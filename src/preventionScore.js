@@ -69,17 +69,20 @@ function getScreeningAwarenessScore(profile) {
     'Not age appropriate yet': 5,
     'Need to schedule': 3,
     'Not sure': 2,
+    Unknown: 2,
   })
   const bloodPressureScore = getCategoryScore(profile.knownHighBloodPressure, {
     No: 3,
     Yes: 3,
     'Not sure': 1,
+    Unknown: 1,
     'Prefer not to answer': 0,
   })
   const cholesterolScore = getCategoryScore(profile.knownHighCholesterol, {
     No: 3,
     Yes: 3,
     'Not sure': 1,
+    Unknown: 1,
     'Prefer not to answer': 0,
   })
   const diabetesScore = getCategoryScore(profile.diabetesStatus, {
@@ -87,7 +90,9 @@ function getScreeningAwarenessScore(profile) {
     Prediabetes: 3,
     Diabetes: 3,
     'Diabetes, not sure what type': 3,
+    'Diabetes, type unknown': 3,
     'Not sure': 1,
+    Unknown: 1,
     'Prefer not to answer': 0,
   })
   const scores = [
@@ -407,6 +412,41 @@ export function calculatePreventionScore({
     explanation: '',
     positives,
     score,
+    topPriorities,
+  }
+}
+
+export function buildPreventionPlanSignals({
+  familyHealthSummary = {},
+  profile = {},
+} = {}) {
+  const safeFamilyHealthSummary = {
+    categories: [],
+    topAreas: [],
+    ...familyHealthSummary,
+  }
+  const lifestylePriorities = getLifestylePriority(profile)
+  const familyPriorities = safeFamilyHealthSummary.topAreas
+    .filter((category) => category.riskLevel !== 'Average')
+    .map((category) => ({
+      detail: category.explanation,
+      icon: getHealthCategoryIcon(category.id),
+      id: category.id,
+      scoreImpact: category.riskLevel === 'High' ? 8 : 5,
+      title: category.name,
+    }))
+  const topPriorities = [...lifestylePriorities, ...familyPriorities]
+    .sort((first, second) => second.scoreImpact - first.scoreImpact)
+    .slice(0, 3)
+  const positives = getPositivePreventionSignals(profile, safeFamilyHealthSummary)
+  const improvements = lifestylePriorities.map((priority) => priority.title).slice(0, 5)
+
+  return {
+    areasForImprovement:
+      improvements.length > 0
+        ? improvements
+        : ['Keep family history updated', 'Review routine checkups', 'Maintain healthy habits'],
+    positives,
     topPriorities,
   }
 }

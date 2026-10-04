@@ -1,3 +1,8 @@
+import {
+  getPublicDataContext,
+  getPublicDataResources,
+} from './data/publicHealthDatasets.js'
+
 const legacyDiabetesLabel = ['type', '2', 'diabetes'].join(' ')
 
 const conditionDetails = {
@@ -743,9 +748,23 @@ export function getConditionDetails(conditionName) {
   const normalizedName = normalizeConditionName(conditionName)
   const detailKey = conditionAliases[normalizedName] || normalizedName
   const exactDetails = conditionDetails[detailKey]
+  const publicDataContext = getPublicDataContext(conditionName)
+  const publicDataResources = getPublicDataResources(conditionName)
 
   if (exactDetails) {
-    return exactDetails
+    return {
+      ...exactDetails,
+      publicDataContext,
+      resources: [
+        ...exactDetails.resources,
+        ...publicDataResources.filter(
+          (publicResource) =>
+            !exactDetails.resources.some(
+              (resource) => resource.url === publicResource.url,
+            ),
+        ),
+      ],
+    }
   }
 
   const fallback = conditionCategoryFallbacks.find(({ keywords }) =>
@@ -759,5 +778,13 @@ export function getConditionDetails(conditionName) {
   return {
     ...fallback,
     name: conditionName,
+    publicDataContext,
+    resources: [
+      ...fallback.resources,
+      ...publicDataResources.filter(
+        (publicResource) =>
+          !fallback.resources.some((resource) => resource.url === publicResource.url),
+      ),
+    ],
   }
 }

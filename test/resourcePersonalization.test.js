@@ -178,7 +178,9 @@ test('recommended events are grouped under each top health priority', () => {
     { illnesses: ['Type 2 diabetes'], relationship: 'Mother' },
     { illnesses: ['Colon cancer'], relationship: 'Grandparent' },
   ])
-  const groups = groupEventsByPriority(localEvents, priorities)
+  const groups = groupEventsByPriority(localEvents, priorities, {
+    now: new Date('2026-07-29T00:00:00-07:00'),
+  })
 
   assert.deepEqual(
     groups.map((group) => group.priority.id),
@@ -344,6 +346,23 @@ test('parks are limited to the selected ZIP city and ranked by distance', () => 
   assert.ok(parks[0].distanceMiles <= parks.at(-1).distanceMiles)
 })
 
+test('park and trail options change with the selected ZIP code', () => {
+  const sanFranciscoParks = getParksNearZip('94127')
+  const berkeleyParks = getParksNearZip('94704')
+
+  assert.ok(sanFranciscoParks.length >= 3)
+  assert.ok(berkeleyParks.length >= 3)
+  assert.equal(
+    sanFranciscoParks.every((park) => park.city === 'San Francisco'),
+    true,
+  )
+  assert.equal(berkeleyParks.every((park) => park.city === 'Berkeley'), true)
+  assert.notDeepEqual(
+    sanFranciscoParks.map((park) => park.id),
+    berkeleyParks.map((park) => park.id),
+  )
+})
+
 test('action-level recommendations match parks to physical activity actions', () => {
   const priorities = getPriorities([
     { illnesses: ['High cholesterol'], relationship: 'Father' },
@@ -381,6 +400,7 @@ test('action-level recommendations do not duplicate one resource under multiple 
       },
     ],
     priorities,
+    { now: new Date('2026-07-29T00:00:00-07:00') },
   )
   const resources = groups.flatMap((group) =>
     group.actions.flatMap((actionGroup) => actionGroup.resources),
@@ -465,7 +485,7 @@ test('current events database matches broad prevention terms and rejects unrelat
   }
 })
 
-test('staged resource search ranks exact ZIP resources before broader recommendations', () => {
+test('staged resource search ranks exact ZIP resources before fallback organizations', () => {
   const priorities = getPriorities([
     { illnesses: ['High cholesterol'], relationship: 'Father' },
   ])
@@ -500,7 +520,7 @@ test('staged resource search ranks exact ZIP resources before broader recommenda
   assert.equal(search.selectedStage, 'exact')
   assert.deepEqual(
     search.resources.map((resource) => resource.id).slice(0, 2),
-    ['walk-94132', 'walk-94117'],
+    ['walk-94132', 'organization-cdc'],
   )
 })
 
@@ -573,7 +593,7 @@ test('staged resource search uses online priority resources and trusted fallback
   assert.equal(search.resources[0].distanceMiles, null)
 })
 
-test('recommendation system shows at most five resources and two per health priority', () => {
+test('recommendation system shows up to seven resources and two per health priority', () => {
   const priorities = getPriorities([
     { illnesses: ['High cholesterol'], relationship: 'Father' },
     { illnesses: ['Type 2 diabetes'], relationship: 'Mother' },
@@ -633,7 +653,7 @@ test('recommendation system shows at most five resources and two per health prio
     return counts
   }, {})
 
-  assert.ok(search.resources.length <= 5)
+  assert.ok(search.resources.length <= 7)
   assert.equal(
     Object.values(countsByPriority).every((count) => count <= 2),
     true,

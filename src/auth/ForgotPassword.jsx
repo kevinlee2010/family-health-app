@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-export function ForgotPassword({ onSignIn }) {
+export function ForgotPassword({ onBackHome, onSignIn }) {
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -37,7 +37,7 @@ export function ForgotPassword({ onSignIn }) {
         </span>
         <div>
           <h1>Reset password</h1>
-          <p>We will send a secure password reset link to your email.</p>
+          <p>Enter your email and we will send a password reset link.</p>
         </div>
       </div>
 
@@ -71,6 +71,10 @@ export function ForgotPassword({ onSignIn }) {
 
       <button className="text-action" type="button" onClick={onSignIn}>
         Back to sign in
+      </button>
+
+      <button className="text-action auth-home-link" type="button" onClick={onBackHome}>
+        Back to Home
       </button>
     </form>
   )

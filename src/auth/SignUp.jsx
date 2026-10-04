@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-export function SignUp({ onSignIn }) {
+export function SignUp({ onBackHome, onSignIn }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -37,7 +37,7 @@ export function SignUp({ onSignIn }) {
         </span>
         <div>
           <h1>Create account</h1>
-          <p>Use email and password to save your profile securely.</p>
+          <p>Save your profile with your account and return anytime.</p>
         </div>
       </div>
 
@@ -84,6 +84,10 @@ export function SignUp({ onSignIn }) {
 
       <button className="text-action" type="button" onClick={onSignIn}>
         Already have an account? Sign in
+      </button>
+
+      <button className="text-action auth-home-link" type="button" onClick={onBackHome}>
+        Back to Home
       </button>
     </form>
   )
