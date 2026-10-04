@@ -6,6 +6,7 @@ import {
   arePreventionActionsSemanticallyDuplicate,
   buildPreventionActionPlan,
   buildPreventionProgressSummary,
+  isWeeklyPlanningAction,
 } from '../src/preventionPlanActions.js'
 
 const heartInsight = {
@@ -189,6 +190,33 @@ test('weekly plan returns distinct multi-day actions without duplicating daily w
   assert.equal(
     plan.thisWeek.some((action) => action.label === 'Take a 20-minute walk.'),
     false,
+  )
+  assert.equal(plan.thisWeek.every(isWeeklyPlanningAction), true)
+})
+
+test('weekly actions require planning, cumulative effort, or an external resource', () => {
+  assert.equal(
+    isWeeklyPlanningAction({
+      label: 'Take a 20-minute walk.',
+      timeframe: 'week',
+    }),
+    false,
+  )
+  assert.equal(
+    isWeeklyPlanningAction({
+      label: 'Complete 150 minutes of activity this week.',
+      target: { targetMinutes: 150, targetSessions: 5 },
+      timeframe: 'week',
+    }),
+    true,
+  )
+  assert.equal(
+    isWeeklyPlanningAction({
+      label: 'Review a relevant screening guideline.',
+      resourceNeeded: true,
+      timeframe: 'week',
+    }),
+    true,
   )
 })
 
@@ -510,6 +538,25 @@ test('prevention progress summary uses recent action history without creating a 
     },
   ])
   assert.equal(progress.some((item) => item.status.includes('/100')), false)
+})
+
+test('low recent completion uses supportive personalized wording', () => {
+  const progress = buildPreventionProgressSummary([
+    {
+      completionAmount: 0,
+      dateAssigned: '2026-08-16',
+      goalId: 'week-physical-activity-target',
+      goalType: 'weekly-physical-activity',
+      period: 'week',
+      target: { targetSessions: 3 },
+    },
+  ])
+
+  assert.equal(progress[0]?.status, 'Personalized to your profile')
+  assert.equal(
+    progress.some((item) => item.status === 'Adjusted for manageability'),
+    false,
+  )
 })
 
 test('today and this week never contain semantically duplicated actions', () => {

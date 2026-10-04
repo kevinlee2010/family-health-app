@@ -537,3 +537,14 @@ Track tag: project development.
 - Family search now uses only the guided relative-history categories. Existing saved relative records, including legacy no-known and supplementary conditions, remain readable and persist normally.
 - Added a regression test confirming these controls belong to Current Health and cannot return to the relative editor accidentally.
 - Verification: `npm run lint`, `npm test`, and `npm run build` passed; all 212 tests passed. The existing Vite large-chunk warning remains.
+
+## 2026-10-04 Prevention Plan Timeframe Update
+
+Track tag: project development.
+
+- Replaced the internal-sounding progress status `Adjusted for manageability` with `Personalized to your profile`.
+- Updated the prevention-plan hierarchy to describe Today as `Small actions you can complete now` and This Week as actions that require planning or build across several days.
+- Added a centralized weekly-action guard. Weekly items must now have a cumulative or multi-day target, or require a relevant external resource/planning step; vague one-off daily actions cannot enter the weekly list.
+- Existing eligibility safeguards remain in place for blood-pressure and screening guidance, so these actions appear only when supported by the user's profile.
+- Added tests for the weekly planning boundary and the supportive personalized progress wording.
+- Verification: `npm run lint`, `npm test`, and `npm run build` passed; all 214 tests passed. The existing Vite large-chunk warning remains.

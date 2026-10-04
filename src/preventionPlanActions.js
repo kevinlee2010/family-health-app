@@ -168,6 +168,23 @@ function getDistinctWeeklyActions(actions, todayActions, limit) {
   }, [])
 }
 
+export function isWeeklyPlanningAction(action = {}) {
+  if (action.timeframe !== 'week') {
+    return false
+  }
+
+  const target = action.target || {}
+  const hasMultiDayOrCumulativeTarget = Boolean(
+    Number(target.targetMinutes) > 20 ||
+      Number(target.targetSessions) > 1 ||
+      Number(target.sessions) > 1 ||
+      Number(target.days) > 1 ||
+      Number(target.count) > 1,
+  )
+
+  return hasMultiDayOrCumulativeTarget || Boolean(action.resourceNeeded)
+}
+
 function isSupportedAction(action, profile) {
   return Boolean(
     action?.label &&
@@ -1112,7 +1129,7 @@ export function buildPreventionActionPlan({
   const weekActions = getDistinctWeeklyActions(
     thisWeek.filter(
       (action) =>
-        action.timeframe === 'week' && isSupportedAction(action, profile),
+        isWeeklyPlanningAction(action) && isSupportedAction(action, profile),
     ),
     todayActions,
     3,
@@ -1160,7 +1177,7 @@ export function buildPreventionProgressSummary(actionHistory = []) {
           ? `${completedCount} of ${entries.length} recent weekly goals completed`
           : average >= 0.5
             ? 'Building consistency'
-            : 'Adjusted for manageability',
+            : 'Personalized to your profile',
     })
   })
 

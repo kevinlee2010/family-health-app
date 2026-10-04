@@ -7999,7 +7999,7 @@ function App() {
                 <div className="coach-daily-header">
                   <div>
                     <h2 id="daily-coach-title">Today</h2>
-                    <p>Actions that make sense to complete today.</p>
+                    <p>Small actions you can complete now.</p>
                   </div>
                   <span className="today-goal-count">
                     <span>Today's Progress</span>
@@ -8026,7 +8026,7 @@ function App() {
                 <div className="coach-daily-header">
                   <div>
                     <h2 id="weekly-plan-title">This Week</h2>
-                    <p>Actions to work toward over the next several days.</p>
+                    <p>Actions that require planning or build across several days.</p>
                   </div>
                   <span className="today-goal-count">
                     <span>Weekly Progress</span>
