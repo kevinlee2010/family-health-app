@@ -2,18 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
-  hasAddedFamilyCondition,
   moreInheritedConditionGroup,
   resolveFamilyConditionSelection,
   searchFamilyConditions,
 } from '../src/familyConditionCatalog.js'
-
-test('family health history can be saved only after a condition is added', () => {
-  assert.equal(hasAddedFamilyCondition([]), false)
-  assert.equal(hasAddedFamilyCondition(['', '   ']), false)
-  assert.equal(hasAddedFamilyCondition(['High blood pressure']), true)
-  assert.equal(hasAddedFamilyCondition(['Unknown']), true)
-})
 
 const commonGroups = [
   {

@@ -42,7 +42,6 @@ import {
 } from './familyStructurePersistence'
 import { isPreventionActionApplicable } from './healthEligibility'
 import {
-  hasAddedFamilyCondition,
   moreInheritedConditionGroup,
   resolveFamilyConditionSelection,
   searchFamilyConditions,
@@ -4388,7 +4387,9 @@ function App() {
             : getDisplayConditionName(condition),
       }
     })
-  const canSaveFamilyHealthHistory = hasAddedFamilyCondition(selectedIllnesses)
+  const addedFamilyConditions = selectedFamilyConditionSummary
+  const canSaveFamilyHealthHistory =
+    addedFamilyConditions.length > 0 && !pendingFamilyCondition
   const activeConditionGroup = searchableFamilyConditionGroups.find(
     (group) => group.id === activeFamilyConditionGroup,
   )
@@ -5726,7 +5727,7 @@ function App() {
   async function addFamilyMember(event) {
     event.preventDefault()
 
-    if (!hasAddedFamilyCondition(selectedIllnesses)) {
+    if (addedFamilyConditions.length === 0 || pendingFamilyCondition) {
       setError('Click Add Condition before saving this health history.')
       return
     }
@@ -7317,7 +7318,6 @@ function App() {
                             onChange={(event) =>
                               handleFamilyStructureChange(field.id, event.target.value)
                             }
-                            placeholder="Optional"
                           />
                         </label>
                       ))}
@@ -7656,14 +7656,14 @@ function App() {
                     </div>
                   </fieldset>
 
-                  {selectedFamilyConditionSummary.length > 0 ? (
+                  {addedFamilyConditions.length > 0 ? (
                     <section
                       className="selected-conditions-summary"
                       aria-labelledby="selected-conditions-title"
                     >
                       <h3 id="selected-conditions-title">Your Added Conditions</h3>
                       <ul>
-                        {selectedFamilyConditionSummary.map((condition) => (
+                        {addedFamilyConditions.map((condition) => (
                           <li key={condition.conditionName}>
                             <div>
                               <span>{condition.name}</span>

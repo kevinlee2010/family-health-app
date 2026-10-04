@@ -134,16 +134,26 @@ test('family health history save waits for an added condition', () => {
 
   assert.match(
     appSource,
-    /const canSaveFamilyHealthHistory = hasAddedFamilyCondition\(selectedIllnesses\)/,
+    /const addedFamilyConditions = selectedFamilyConditionSummary\s+const canSaveFamilyHealthHistory =\s+addedFamilyConditions\.length > 0 && !pendingFamilyCondition/,
   )
   assert.match(
     appSource,
-    /if \(!hasAddedFamilyCondition\(selectedIllnesses\)\) \{\s*setError\('Click Add Condition before saving this health history\.'\)/,
+    /if \(addedFamilyConditions\.length === 0 \|\| pendingFamilyCondition\) \{\s*setError\('Click Add Condition before saving this health history\.'\)/,
   )
   assert.match(
     appSource,
     /\{canSaveFamilyHealthHistory \? \(\s*<button className="primary-action" type="submit">\s*Save Health History/s,
   )
+})
+
+test('family structure count fields stay blank without optional placeholder text', () => {
+  const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
+  const familyStructureSection = appSource.match(
+    /\{activeView === 'structure' \? \(([\s\S]*?)\{activeView === 'family' \? \(/,
+  )?.[1]
+
+  assert.ok(familyStructureSection)
+  assert.doesNotMatch(familyStructureSection, /placeholder="Optional"/)
 })
 
 test('resource finder stays hidden until an action requests it', () => {
